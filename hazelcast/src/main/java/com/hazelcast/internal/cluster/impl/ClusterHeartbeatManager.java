@@ -124,6 +124,12 @@ public class ClusterHeartbeatManager {
             return new DeadlineClusterFailureDetector(maxNoHeartbeatMillis);
         }
         if ("phi-accrual".equals(type)) {
+            int defaultValue = Integer.parseInt(GroupProperty.MAX_NO_HEARTBEAT_SECONDS.getDefaultValue());
+            if (maxNoHeartbeatMillis == TimeUnit.SECONDS.toMillis(defaultValue)) {
+                logger.warning("When using Phi-Accrual Failure Detector, please consider using a lower '"
+                        + GroupProperty.MAX_NO_HEARTBEAT_SECONDS.getName() + "' value. Current is: "
+                        + defaultValue + " seconds.");
+            }
             return new PhiAccrualClusterFailureDetector(maxNoHeartbeatMillis, heartbeatIntervalMillis, properties);
         }
         throw new IllegalArgumentException("Unknown failure detector type: " + type);

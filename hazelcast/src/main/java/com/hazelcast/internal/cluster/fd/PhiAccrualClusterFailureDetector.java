@@ -25,6 +25,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 
 import static com.hazelcast.util.ConcurrencyUtil.getOrPutIfAbsent;
+import static java.util.concurrent.TimeUnit.MILLISECONDS;
 
 /**
  * Cluster failure detector based on 'The Phi Accrual Failure Detector' by Hayashibara et al.
@@ -48,7 +49,7 @@ public class PhiAccrualClusterFailureDetector implements ClusterFailureDetector 
      * Minimum standard deviation to use for the normal distribution used when calculating phi.
      */
     private static final HazelcastProperty HEARTBEAT_PHI_FAILURE_DETECTOR_MIN_STD_DEV_MILLIS
-            = new HazelcastProperty("hazelcast.heartbeat.phiaccrual.failuredetector.min.std.dev.millis", 100);
+            = new HazelcastProperty("hazelcast.heartbeat.phiaccrual.failuredetector.min.std.dev.millis", 100, MILLISECONDS);
 
 
     private final int phiThreshold;

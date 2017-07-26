@@ -346,6 +346,10 @@ public final class GroupProperty {
             = new HazelcastProperty("hazelcast.max.join.seconds", 300, SECONDS);
     public static final HazelcastProperty MAX_JOIN_MERGE_TARGET_SECONDS
             = new HazelcastProperty("hazelcast.max.join.merge.target.seconds", 20, SECONDS);
+
+    /**
+     * The interval at which member heartbeat messages are sent
+     */
     public static final HazelcastProperty HEARTBEAT_INTERVAL_SECONDS
             = new HazelcastProperty("hazelcast.heartbeat.interval.seconds", 5, SECONDS);
 
