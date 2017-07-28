@@ -35,6 +35,16 @@ public class PhiAccrualClusterFailureDetector implements ClusterFailureDetector 
 
     /**
      * Threshold for suspicion level. After calculated phi exceeds this threshold, a member is considered as dead.
+     * <p>
+     * <ul>
+     * <li>
+     * A low threshold allows to detect member crashes/failures faster but can generate more mistakes
+     * and cause wrong member suspicions.
+     * </li>
+     * <li>
+     * A high threshold generates fewer mistakes but is slower detect actual crashes/failures.
+     * </li>
+     * </ul>
      */
     private static final HazelcastProperty HEARTBEAT_PHI_FAILURE_DETECTOR_THRESHOLD
             = new HazelcastProperty("hazelcast.heartbeat.phiaccrual.failuredetector.threshold", 10);
@@ -47,6 +57,7 @@ public class PhiAccrualClusterFailureDetector implements ClusterFailureDetector 
 
     /**
      * Minimum standard deviation to use for the normal distribution used when calculating phi.
+     * Too low standard deviation might result in too much sensitivity.
      */
     private static final HazelcastProperty HEARTBEAT_PHI_FAILURE_DETECTOR_MIN_STD_DEV_MILLIS
             = new HazelcastProperty("hazelcast.heartbeat.phiaccrual.failuredetector.min.std.dev.millis", 100, MILLISECONDS);
