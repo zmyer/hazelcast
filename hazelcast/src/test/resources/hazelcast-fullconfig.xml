@@ -36,7 +36,7 @@
 <hazelcast xmlns="http://www.hazelcast.com/schema/config"
            xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
            xsi:schemaLocation="http://www.hazelcast.com/schema/config
-           http://www.hazelcast.com/schema/config/hazelcast-config-3.10.xsd">
+           http://www.hazelcast.com/schema/config/hazelcast-config-3.11.xsd">
 
     <group>
         <name>dev</name>
@@ -608,6 +608,7 @@
         <prefetch-count>100</prefetch-count>
         <prefetch-validity-millis>600000</prefetch-validity-millis>
         <id-offset>0</id-offset>
+        <node-id-offset>0</node-id-offset>
         <statistics-enabled>false</statistics-enabled>
     </flake-id-generator>
 
@@ -638,6 +639,20 @@
                         class-name="com.hazelcast.examples.SerializerFactory"/>
         </serializers>
         <check-class-def-errors>false</check-class-def-errors>
+        <java-serialization-filter defaults-disabled="true">
+            <blacklist>
+                <class>com.acme.app.BeanComparator</class>
+            </blacklist>
+            <whitelist>
+                <class>java.lang.String</class>
+                <class>example.Foo</class>
+                <package>com.acme.app</package>
+                <package>com.acme.app.subpkg</package>
+                <prefix>java</prefix>
+                <prefix>com.</prefix>
+                <prefix>[</prefix>
+            </whitelist>
+        </java-serialization-filter>
     </serialization>
 
     <native-memory allocator-type="STANDARD" enabled="true">
@@ -742,6 +757,7 @@
                 </endpoints>
             </config-permission>
         </client-permissions>
+        <client-block-unmapped-actions>true</client-block-unmapped-actions>
     </security>
 
     <member-attributes>

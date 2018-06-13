@@ -16,12 +16,16 @@
 
 package com.hazelcast.spi.merge;
 
+import com.hazelcast.spi.annotation.Beta;
+
 /**
  * Represents a read-only view of a last stored time for the merging process after a split-brain.
  *
+ * @param <V> the type of the value
  * @since 3.10
  */
-public interface MergingLastStoredTime {
+@Beta
+public interface MergingLastStoredTime<V> extends MergingValue<V> {
 
     /**
      * Returns the last stored time of the merge data.

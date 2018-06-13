@@ -16,9 +16,7 @@
 
 package com.hazelcast.client.impl.protocol.task;
 
-import com.hazelcast.client.ClientEndpoint;
 import com.hazelcast.client.ClientTypes;
-import com.hazelcast.client.impl.ClientEndpointImpl;
 import com.hazelcast.client.impl.ReAuthenticationOperationSupplier;
 import com.hazelcast.client.impl.client.ClientPrincipal;
 import com.hazelcast.client.impl.protocol.AuthenticationStatus;
@@ -50,10 +48,10 @@ public abstract class AuthenticationBaseMessageTask<P> extends AbstractStableClu
 
     protected transient ClientPrincipal principal;
     protected transient Credentials credentials;
-    protected transient byte clientSerializationVersion;
-    protected transient String clientVersion;
+    transient byte clientSerializationVersion;
+    transient String clientVersion;
 
-    public AuthenticationBaseMessageTask(ClientMessage clientMessage, Node node, Connection connection) {
+    AuthenticationBaseMessageTask(ClientMessage clientMessage, Node node, Connection connection) {
         super(clientMessage, node, connection);
     }
 
@@ -64,21 +62,15 @@ public abstract class AuthenticationBaseMessageTask<P> extends AbstractStableClu
 
     @Override
     protected Object resolve(Object response) {
+        if (logger.isFineEnabled()) {
+            logger.fine("Processed owner authentication with principal " + principal);
+        }
         return prepareAuthenticatedClientMessage();
     }
 
-    @Override
-    protected ClientEndpointImpl getEndpoint() {
-        ClientEndpoint endpoint = endpointManager.getEndpoint(connection);
-        if (endpoint != null) {
-            return (ClientEndpointImpl) endpoint;
-        }
-        return new ClientEndpointImpl(clientEngine, nodeEngine, connection);
-    }
 
-    @Override
-    protected boolean isAuthenticationMessage() {
-        return true;
+    protected void doRun() throws Throwable {
+        initializeAndProcessMessage();
     }
 
     @Override
@@ -103,6 +95,9 @@ public abstract class AuthenticationBaseMessageTask<P> extends AbstractStableClu
         String uuid = getUuid();
         String localMemberUUID = clientEngine.getThisUuid();
         principal = new ClientPrincipal(uuid, localMemberUUID);
+        if (logger.isFineEnabled()) {
+            logger.fine("Processing owner authentication with principal " + principal);
+        }
         super.processMessage();
     }
 

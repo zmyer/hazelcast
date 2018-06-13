@@ -19,7 +19,6 @@ package com.hazelcast.map.impl.eviction;
 import com.hazelcast.cluster.ClusterState;
 import com.hazelcast.core.LifecycleEvent;
 import com.hazelcast.core.LifecycleListener;
-import com.hazelcast.internal.cluster.ClusterService;
 import com.hazelcast.internal.nearcache.impl.invalidation.InvalidationQueue;
 import com.hazelcast.map.impl.MapService;
 import com.hazelcast.map.impl.PartitionContainer;
@@ -39,7 +38,6 @@ import com.hazelcast.spi.partition.IPartitionService;
 import com.hazelcast.spi.properties.HazelcastProperties;
 import com.hazelcast.spi.properties.HazelcastProperty;
 import com.hazelcast.util.Clock;
-import com.hazelcast.version.Version;
 import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
 
 import java.util.ArrayList;
@@ -51,7 +49,6 @@ import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.atomic.AtomicBoolean;
 
-import static com.hazelcast.internal.cluster.Versions.V3_9;
 import static com.hazelcast.map.impl.MapService.SERVICE_NAME;
 import static com.hazelcast.util.CollectionUtil.isEmpty;
 import static com.hazelcast.util.Preconditions.checkPositive;
@@ -140,7 +137,6 @@ public final class ExpirationManager implements OperationResponseHandler, Lifecy
     private final int cleanupOperationCount;
     private final Address thisAddress;
     private final NodeEngine nodeEngine;
-    private final ClusterService clusterService;
     private final HazelcastProperties properties;
     private final TaskScheduler globalTaskScheduler;
     private final IPartitionService partitionService;
@@ -169,7 +165,6 @@ public final class ExpirationManager implements OperationResponseHandler, Lifecy
         this.globalTaskScheduler = nodeEngine.getExecutionService().getGlobalTaskScheduler();
         this.operationService = (InternalOperationService) nodeEngine.getOperationService();
         this.partitionCount = partitionService.getPartitionCount();
-        this.clusterService = nodeEngine.getClusterService();
         this.properties = nodeEngine.getProperties();
         this.taskPeriodSeconds = properties.getSeconds(TASK_PERIOD_SECONDS);
         checkPositive(taskPeriodSeconds, "taskPeriodSeconds should be a positive number");
@@ -273,7 +268,10 @@ public final class ExpirationManager implements OperationResponseHandler, Lifecy
      * This task provides per partition expiration operation logic. (not per map, not per record store).
      * Fires cleanup operations at most partition operation thread count or some factor of it in one round.
      */
-    private class ClearExpiredRecordsTask implements Runnable {
+    class ClearExpiredRecordsTask implements Runnable {
+
+        volatile long lastStartMillis;
+        volatile long lastEndMillis;
 
         private final Comparator<PartitionContainer> partitionContainerComparator = new Comparator<PartitionContainer>() {
             @Override
@@ -291,7 +289,11 @@ public final class ExpirationManager implements OperationResponseHandler, Lifecy
                     return;
                 }
 
+                lastStartMillis = System.currentTimeMillis();
+
                 runInternal();
+
+                lastEndMillis = System.currentTimeMillis();
 
             } finally {
                 singleRunPermit.set(false);
@@ -473,12 +475,7 @@ public final class ExpirationManager implements OperationResponseHandler, Lifecy
     }
 
     public boolean canPrimaryDriveExpiration() {
-        if (!primaryDrivesEviction) {
-            return false;
-        }
-
-        Version version = clusterService.getClusterVersion();
-        return version.isGreaterOrEqual(V3_9);
+        return primaryDrivesEviction;
     }
 
     private void doBackupExpiration(PartitionContainer container) {
@@ -566,4 +563,8 @@ public final class ExpirationManager implements OperationResponseHandler, Lifecy
         return scheduled.get();
     }
 
+    // only used for testing purposes
+    ClearExpiredRecordsTask getTask() {
+        return task;
+    }
 }

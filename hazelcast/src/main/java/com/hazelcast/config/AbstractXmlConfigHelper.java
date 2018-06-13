@@ -25,7 +25,6 @@ import com.hazelcast.logging.Logger;
 import com.hazelcast.memory.MemorySize;
 import com.hazelcast.memory.MemoryUnit;
 import com.hazelcast.util.StringUtil;
-import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
 import org.w3c.dom.Document;
 import org.w3c.dom.NamedNodeMap;
 import org.w3c.dom.Node;
@@ -48,8 +47,6 @@ import java.io.ByteArrayOutputStream;
 import java.io.InputStream;
 import java.net.URL;
 import java.nio.ByteOrder;
-import java.text.DecimalFormat;
-import java.text.ParseException;
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.Map;
@@ -183,7 +180,7 @@ public abstract class AbstractXmlConfigHelper {
 
         // schema validation
         SchemaFactory schemaFactory = SchemaFactory.newInstance(XMLConstants.W3C_XML_SCHEMA_NS_URI);
-        Schema schema = schemaFactory.newSchema(schemas.toArray(new Source[schemas.size()]));
+        Schema schema = schemaFactory.newSchema(schemas.toArray(new Source[0]));
         Validator validator = schema.newValidator();
         try {
             SAXSource source = new SAXSource(new InputSource(is));
@@ -452,6 +449,8 @@ public abstract class AbstractXmlConfigHelper {
                 fillPortableFactories(child, serializationConfig);
             } else if ("serializers".equals(name)) {
                 fillSerializers(child, serializationConfig);
+            } else if ("java-serialization-filter".equals(name)) {
+                fillJavaSerializationFilter(child, serializationConfig);
             }
         }
         return serializationConfig;
@@ -510,7 +509,39 @@ public abstract class AbstractXmlConfigHelper {
         }
     }
 
-    @SuppressFBWarnings("DM_BOXED_PRIMITIVE_FOR_PARSING")
+    protected void fillJavaSerializationFilter(final Node node, SerializationConfig serializationConfig) {
+        JavaSerializationFilterConfig filterConfig = new JavaSerializationFilterConfig();
+        serializationConfig.setJavaSerializationFilterConfig(filterConfig);
+        Node defaultsDisabledNode = node.getAttributes().getNamedItem("defaults-disabled");
+        boolean defaultsDisabled = defaultsDisabledNode != null && getBooleanValue(getTextContent(defaultsDisabledNode));
+        filterConfig.setDefaultsDisabled(defaultsDisabled);
+        for (Node child : childElements(node)) {
+            final String name = cleanNodeName(child);
+            if ("blacklist".equals(name)) {
+                ClassFilter list = parseClassFilterList(child);
+                filterConfig.setBlacklist(list);
+            } else if ("whitelist".equals(name)) {
+                ClassFilter list = parseClassFilterList(child);
+                filterConfig.setWhitelist(list);
+            }
+        }
+    }
+
+    private ClassFilter parseClassFilterList(Node node) {
+        ClassFilter list = new ClassFilter();
+        for (Node child : childElements(node)) {
+            final String name = cleanNodeName(child);
+            if ("class".equals(name)) {
+                list.addClasses(getTextContent(child));
+            } else if ("package".equals(name)) {
+                list.addPackages(getTextContent(child));
+            } else if ("prefix".equals(name)) {
+                list.addPrefixes(getTextContent(child));
+            }
+        }
+        return list;
+    }
+
     protected void fillNativeMemoryConfig(Node node, NativeMemoryConfig nativeMemoryConfig) {
         final NamedNodeMap atts = node.getAttributes();
         final Node enabledNode = atts.getNamedItem("enabled");
@@ -530,7 +561,7 @@ public abstract class AbstractXmlConfigHelper {
                 final NamedNodeMap attrs = n.getAttributes();
                 final String value = getTextContent(attrs.getNamedItem("value"));
                 final MemoryUnit unit = MemoryUnit.valueOf(getTextContent(attrs.getNamedItem("unit")));
-                MemorySize memorySize = new MemorySize(Long.valueOf(value), unit);
+                MemorySize memorySize = new MemorySize(Long.parseLong(value), unit);
                 nativeMemoryConfig.setSize(memorySize);
             } else if ("min-block-size".equals(nodeName)) {
                 String value = getTextContent(n);
@@ -540,13 +571,7 @@ public abstract class AbstractXmlConfigHelper {
                 nativeMemoryConfig.setPageSize(Integer.parseInt(value));
             } else if ("metadata-space-percentage".equals(nodeName)) {
                 String value = getTextContent(n);
-                try {
-                    Number percentage = new DecimalFormat("##.#").parse(value);
-                    nativeMemoryConfig.setMetadataSpacePercentage(percentage.floatValue());
-                } catch (ParseException e) {
-                    LOGGER.info("Metadata space percentage, [" + value
-                            + "], is not a proper value. Default value will be used!");
-                }
+                nativeMemoryConfig.setMetadataSpacePercentage(Float.parseFloat(value));
             }
         }
     }

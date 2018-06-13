@@ -37,6 +37,8 @@ import com.hazelcast.internal.partition.InternalPartition;
 import com.hazelcast.internal.partition.InternalPartitionService;
 import com.hazelcast.internal.partition.impl.PartitionServiceState;
 import com.hazelcast.internal.serialization.InternalSerializationService;
+import com.hazelcast.logging.ILogger;
+import com.hazelcast.logging.Logger;
 import com.hazelcast.map.impl.operation.DefaultMapOperationProvider;
 import com.hazelcast.map.impl.operation.MapOperation;
 import com.hazelcast.map.impl.operation.MapOperationProvider;
@@ -55,6 +57,7 @@ import com.hazelcast.spi.serialization.SerializationService;
 import com.hazelcast.test.annotation.ParallelTest;
 import com.hazelcast.test.jitter.JitterRule;
 import org.junit.After;
+import org.junit.AssumptionViolatedException;
 import org.junit.ComparisonFailure;
 import org.junit.Rule;
 import org.junit.experimental.categories.Category;
@@ -63,6 +66,7 @@ import java.io.Serializable;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Field;
 import java.lang.reflect.Modifier;
+import java.nio.ByteOrder;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
@@ -93,9 +97,12 @@ import static java.util.concurrent.TimeUnit.NANOSECONDS;
 import static java.util.concurrent.TimeUnit.SECONDS;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNotEquals;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
+import static org.junit.Assume.assumeFalse;
+import static org.junit.Assume.assumeTrue;
 
 /**
  * Base class for Hazelcast tests which provides a big number of convenient test methods.
@@ -108,6 +115,10 @@ import static org.junit.Assert.fail;
 @SuppressWarnings({"unused", "SameParameterValue", "WeakerAccess"})
 public abstract class HazelcastTestSupport {
 
+    private static final boolean EXPECT_DIFFERENT_HASHCODES = (new Object().hashCode() != new Object().hashCode());
+
+    public static final String JAVA_VERSION = System.getProperty("java.version");
+    public static final String JVM_NAME = System.getProperty("java.vm.name");
     public static final int ASSERT_TRUE_EVENTUALLY_TIMEOUT;
 
     @Rule
@@ -360,6 +371,42 @@ public abstract class HazelcastTestSupport {
     }
 
     /**
+     * Sleeps for time that is left until referenceTime + seconds. If no
+     * time is left until that time, a warning is logged and no sleep
+     * will happen.
+     * <p>
+     * Opposed to the language provided sleep constructs, this method
+     * does not guarantee minimum sleep time as it assumes that no time
+     * elapsed since {@code referenceTime} which is never true.
+     * <p>
+     * This method can be useful in hiding occasional hiccups of the
+     * execution environment in tests which are sensitive to
+     * oversleeping. Tests like the ones verify TTL, lease time behavior
+     * are typical examples for that.
+     *
+     * @param referenceTime the time in milliseconds since which the
+     *                      sleep end time should be calculated
+     * @param seconds       desired sleep duration in seconds
+     */
+    public static void sleepAtMostSeconds(long referenceTime, int seconds) {
+        long now = System.currentTimeMillis();
+        long sleepEnd = referenceTime + SECONDS.toMillis(seconds);
+        long sleepTime = sleepEnd - now;
+
+        if (sleepTime > 0) {
+            try {
+                MILLISECONDS.sleep(sleepTime);
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+            }
+        } else {
+            ILogger logger = Logger.getLogger(HazelcastTestSupport.class);
+            long absSleepTime = Math.abs(sleepTime);
+            logger.warning("There is no time left to sleep. We are beyond the desired end of sleep by " + absSleepTime + "ms");
+        }
+    }
+
+    /**
      * Sleeps for the given amount of time and after that, sets stop to true.
      * <p>
      * If stop is changed to true while sleeping, the calls returns before waiting the full sleeping period.
@@ -585,8 +632,8 @@ public abstract class HazelcastTestSupport {
         if (h1 == null || h2 == null) {
             return;
         }
-        Node n1 = TestUtil.getNode(h1);
-        Node n2 = TestUtil.getNode(h2);
+        Node n1 = getNode(h1);
+        Node n2 = getNode(h2);
         suspectMember(n1, n2);
         suspectMember(n2, n1);
     }
@@ -627,7 +674,7 @@ public abstract class HazelcastTestSupport {
     }
 
     public static boolean isInstanceInSafeState(HazelcastInstance instance) {
-        Node node = TestUtil.getNode(instance);
+        Node node = getNode(instance);
         if (node == null) {
             return true;
         }
@@ -779,25 +826,27 @@ public abstract class HazelcastTestSupport {
 
     public static <E> void assertContains(Collection<E> collection, E expected) {
         if (!collection.contains(expected)) {
-            fail(format("Collection %s didn't contain expected '%s'", collection, expected));
+            fail(format("Collection %s (%d) didn't contain expected '%s'", collection, collection.size(), expected));
         }
     }
 
     public static <E> void assertNotContains(Collection<E> collection, E expected) {
         if (collection.contains(expected)) {
-            fail(format("Collection %s contained unexpected '%s'", collection, expected));
+            fail(format("Collection %s (%d) contained unexpected '%s'", collection, collection.size(), expected));
         }
     }
 
     public static <E> void assertContainsAll(Collection<E> collection, Collection<E> expected) {
         if (!collection.containsAll(expected)) {
-            fail(format("Collection %s didn't contain expected %s", collection, expected));
+            fail(format("Collection %s (%d) didn't contain expected %s (%d)",
+                    collection, collection.size(), expected, expected.size()));
         }
     }
 
     public static <E> void assertNotContainsAll(Collection<E> collection, Collection<E> expected) {
         if (collection.containsAll(expected)) {
-            fail(format("Collection %s contained unexpected %s", collection, expected));
+            fail(format("Collection %s (%d) contained unexpected %s (%d)",
+                    collection, collection.size(), expected, expected.size()));
         }
     }
 
@@ -1188,7 +1237,7 @@ public abstract class HazelcastTestSupport {
         assertFalseEventually(task, ASSERT_TRUE_EVENTUALLY_TIMEOUT);
     }
 
-    public static void assertTrueEventually(AssertTask task, long timeoutSeconds) {
+    public static void assertTrueEventually(String message, AssertTask task, long timeoutSeconds) {
         AssertionError error = null;
         // we are going to check five times a second
         int sleepMillis = 200;
@@ -1209,11 +1258,20 @@ public abstract class HazelcastTestSupport {
         if (error != null) {
             throw error;
         }
-        fail("assertTrueEventually() failed without AssertionError!");
+        fail("assertTrueEventually() failed without AssertionError! " + message);
+    }
+
+    public static void assertTrueEventually(AssertTask task, long timeoutSeconds) {
+        assertTrueEventually(null, task, timeoutSeconds);
+    }
+
+
+    public static void assertTrueEventually(String message, AssertTask task) {
+        assertTrueEventually(message, task, ASSERT_TRUE_EVENTUALLY_TIMEOUT);
     }
 
     public static void assertTrueEventually(AssertTask task) {
-        assertTrueEventually(task, ASSERT_TRUE_EVENTUALLY_TIMEOUT);
+        assertTrueEventually(null, task, ASSERT_TRUE_EVENTUALLY_TIMEOUT);
     }
 
     public static void assertTrueDelayed5sec(AssertTask task) {
@@ -1241,13 +1299,25 @@ public abstract class HazelcastTestSupport {
         assertEquals(format(message, expected, actual), expected, actual);
     }
 
+    /**
+     * This method executes the normal assertNotEquals with expected and actual values.
+     * In addition it formats the given string with those values to provide a good assert message.
+     *
+     * @param message  assert message which is formatted with expected and actual values
+     * @param expected expected value which is used for assert
+     * @param actual   actual value which is used for assert
+     */
+    public static void assertNotEqualsStringFormat(String message, Object expected, Object actual) {
+        assertNotEquals(format(message, expected, actual), expected, actual);
+    }
+
     public static void assertBetween(String label, long actualValue, long lowerBound, long upperBound) {
-        assertTrue(format("Expected %s between %d and %d, but was %d", label, lowerBound, upperBound, actualValue),
+        assertTrue(format("Expected '%s' to be between %d and %d, but was %d", label, lowerBound, upperBound, actualValue),
                 actualValue >= lowerBound && actualValue <= upperBound);
     }
 
     public static void assertGreaterOrEquals(String label, long actualValue, long lowerBound) {
-        assertTrue(format("Expected %s greater or equals %d, but was %d", label, lowerBound, actualValue),
+        assertTrue(format("Expected '%s' to be greater than or equal to %d, but was %d", label, lowerBound, actualValue),
                 actualValue >= lowerBound);
     }
 
@@ -1374,6 +1444,7 @@ public abstract class HazelcastTestSupport {
     private interface Latch {
         boolean await(long timeout, TimeUnit unit)
                 throws InterruptedException;
+
         long getCount();
     }
 
@@ -1445,5 +1516,47 @@ public abstract class HazelcastTestSupport {
 
     protected MapOperationProvider getMapOperationProvider() {
         return new DefaultMapOperationProvider();
+    }
+
+    // ######################################
+    // ########## test assumptions ##########
+    // ######################################
+
+    public static void assumeThatNoJDK6() {
+        assumeFalse("Java 6 used", JAVA_VERSION.startsWith("1.6."));
+    }
+
+    public static void assumeThatJDK8() {
+        assumeTrue("Java 8 should be used", JAVA_VERSION.startsWith("1.8."));
+    }
+
+    public static void assumeThatNotZingJDK6() {
+        assumeFalse("Zing JDK6 used", JAVA_VERSION.startsWith("1.6.") && JVM_NAME.startsWith("Zing"));
+    }
+
+    public static void assumeThatNoWindowsOS() {
+        assumeFalse(System.getProperty("os.name").toLowerCase().contains("windows"));
+    }
+
+    /**
+     * Throws {@link AssumptionViolatedException} if two new Objects have the same hashCode (e.g. when running tests
+     * with static hashCode ({@code -XX:hashCode=2}).
+     */
+    public static void assumeDifferentHashCodes() {
+        assumeTrue("Hash codes are equal for different objects", EXPECT_DIFFERENT_HASHCODES);
+    }
+
+    /**
+     * Throws {@link AssumptionViolatedException} if the given {@link InternalSerializationService} is not configured
+     * with the assumed {@link ByteOrder}.
+     *
+     * @param serializationService the {@link InternalSerializationService} to check
+     * @param assumedByteOrder     the assumed {@link ByteOrder}
+     */
+    public static void assumeConfiguredByteOrder(InternalSerializationService serializationService,
+                                                 ByteOrder assumedByteOrder) {
+        ByteOrder configuredByteOrder = serializationService.getByteOrder();
+        assumeTrue(format("Assumed configured byte order %s, but was %s", assumedByteOrder, configuredByteOrder),
+                configuredByteOrder.equals(assumedByteOrder));
     }
 }

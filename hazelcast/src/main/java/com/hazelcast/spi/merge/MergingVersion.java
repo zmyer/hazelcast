@@ -16,12 +16,16 @@
 
 package com.hazelcast.spi.merge;
 
+import com.hazelcast.spi.annotation.Beta;
+
 /**
  * Represents a read-only view of a version for the merging process after a split-brain.
  *
+ * @param <V> the type of the value
  * @since 3.10
  */
-public interface MergingVersion {
+@Beta
+public interface MergingVersion<V> extends MergingValue<V> {
 
     /**
      * Returns the version of the merge data.

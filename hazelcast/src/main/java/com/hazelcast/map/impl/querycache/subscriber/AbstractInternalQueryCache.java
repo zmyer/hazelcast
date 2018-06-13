@@ -87,6 +87,10 @@ abstract class AbstractInternalQueryCache<K, V> implements InternalQueryCache<K,
         }
     }
 
+    public QueryCacheContext getContext() {
+        return context;
+    }
+
     @Override
     public void setPublisherListenerId(String publisherListenerId) {
         this.publisherListenerId = publisherListenerId;
@@ -103,7 +107,7 @@ abstract class AbstractInternalQueryCache<K, V> implements InternalQueryCache<K,
 
     private QueryCacheConfig getQueryCacheConfig() {
         QueryCacheConfigurator queryCacheConfigurator = context.getQueryCacheConfigurator();
-        return queryCacheConfigurator.getOrCreateConfiguration(mapName, cacheName);
+        return queryCacheConfigurator.getOrCreateConfiguration(mapName, cacheName, cacheId);
     }
 
     private EvictionListener getEvictionListener() {

@@ -36,6 +36,7 @@ import org.junit.runner.RunWith;
 import java.util.EventListener;
 import java.util.List;
 
+import static com.hazelcast.test.HazelcastTestSupport.assumeDifferentHashCodes;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotEquals;
@@ -181,6 +182,7 @@ public class MapConfigTest {
         config.getMapConfig("test").setMapStoreConfig(mapStoreConfig);
         config.getMapConfig("default").setMapStoreConfig(null);
         assertNotNull(config.getMapConfig("test").getMapStoreConfig());
+        assertNull(config.getMapConfig("default").getMapStoreConfig());
     }
 
     @Test(expected = IllegalArgumentException.class)
@@ -438,6 +440,7 @@ public class MapConfigTest {
 
     @Test
     public void testEqualsAndHashCode() {
+        assumeDifferentHashCodes();
         EqualsVerifier.forClass(MapConfig.class)
                 .allFieldsShouldBeUsedExcept("readOnly")
                 .suppress(Warning.NULL_FIELDS, Warning.NONFINAL_FIELDS)

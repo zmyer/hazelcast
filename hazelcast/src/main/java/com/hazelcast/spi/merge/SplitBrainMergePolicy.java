@@ -21,6 +21,7 @@ import com.hazelcast.core.HazelcastInstanceAware;
 import com.hazelcast.instance.Node;
 import com.hazelcast.nio.serialization.DataSerializable;
 import com.hazelcast.spi.NodeAware;
+import com.hazelcast.spi.annotation.Beta;
 
 /**
  * Policy for merging data structure values after a split-brain has been healed.
@@ -45,9 +46,13 @@ import com.hazelcast.spi.NodeAware;
  * <p>
  * A merge policy can also implement {@link NodeAware} to get an instance of {@link Node} injected.
  *
+ * @param <V> the type of the returned merged value
+ * @param <T> the type of the required merging value, e.g. a simple {@code MergingValue<V>}
+ *            or a composition like {@code MergingEntry<String, V> & MergingHits<V> & MergingLastAccessTime<V>}
  * @since 3.10
  */
-public interface SplitBrainMergePolicy extends DataSerializable {
+@Beta
+public interface SplitBrainMergePolicy<V, T extends MergingValue<V>> extends DataSerializable {
 
     /**
      * Selects the value of either the merging or the existing {@link MergingValue} which should be merged.
@@ -58,8 +63,7 @@ public interface SplitBrainMergePolicy extends DataSerializable {
      * @param mergingValue  {@link MergingValue} instance that has the merging data of the smaller sub-cluster
      * @param existingValue {@link MergingValue} instance that has the existing data
      *                      or {@code null} if no matching data exists
-     * @param <V>           the type of the value
      * @return the selected value for merging
      */
-    <V> V merge(MergingValue<V> mergingValue, MergingValue<V> existingValue);
+    V merge(T mergingValue, T existingValue);
 }

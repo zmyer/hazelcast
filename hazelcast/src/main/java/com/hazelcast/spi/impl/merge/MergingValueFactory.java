@@ -28,11 +28,27 @@ import com.hazelcast.multimap.impl.MultiMapMergeContainer;
 import com.hazelcast.multimap.impl.MultiMapRecord;
 import com.hazelcast.nio.serialization.Data;
 import com.hazelcast.replicatedmap.impl.record.ReplicatedRecord;
+import com.hazelcast.ringbuffer.impl.Ringbuffer;
 import com.hazelcast.scheduledexecutor.impl.ScheduledTaskDescriptor;
 import com.hazelcast.spi.merge.MergingEntry;
 import com.hazelcast.spi.merge.MergingValue;
+import com.hazelcast.spi.merge.RingbufferMergeData;
+import com.hazelcast.spi.merge.SplitBrainMergeTypes.AtomicLongMergeTypes;
+import com.hazelcast.spi.merge.SplitBrainMergeTypes.AtomicReferenceMergeTypes;
+import com.hazelcast.spi.merge.SplitBrainMergeTypes.CacheMergeTypes;
+import com.hazelcast.spi.merge.SplitBrainMergeTypes.CardinalityEstimatorMergeTypes;
+import com.hazelcast.spi.merge.SplitBrainMergeTypes.CollectionMergeTypes;
+import com.hazelcast.spi.merge.SplitBrainMergeTypes.MapMergeTypes;
+import com.hazelcast.spi.merge.SplitBrainMergeTypes.MultiMapMergeTypes;
+import com.hazelcast.spi.merge.SplitBrainMergeTypes.QueueMergeTypes;
+import com.hazelcast.spi.merge.SplitBrainMergeTypes.ReplicatedMapMergeTypes;
+import com.hazelcast.spi.merge.SplitBrainMergeTypes.RingbufferMergeTypes;
+import com.hazelcast.spi.merge.SplitBrainMergeTypes.ScheduledExecutorMergeTypes;
 import com.hazelcast.spi.serialization.SerializationService;
-import com.hazelcast.util.Clock;
+
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.Queue;
 
 /**
  * Provides static factory methods to create {@link MergingValue} and {@link MergingEntry} instances.
@@ -44,35 +60,42 @@ public final class MergingValueFactory {
     private MergingValueFactory() {
     }
 
-    public static <V> MergingValue<V> createMergingValue(SerializationService serializationService, V value) {
-        return new MergingValueImpl<V>(serializationService)
+    public static CollectionMergeTypes createMergingValue(SerializationService serializationService,
+                                                          Collection<CollectionItem> items) {
+        Collection<Object> values = new ArrayList<Object>(items.size());
+        for (CollectionItem item : items) {
+            values.add(item.getValue());
+        }
+        return new CollectionMergingValueImpl(serializationService)
+                .setValue(values);
+    }
+
+    public static QueueMergeTypes createMergingValue(SerializationService serializationService, Queue<QueueItem> items) {
+        Collection<Object> values = new ArrayList<Object>(items.size());
+        for (QueueItem item : items) {
+            values.add(item.getData());
+        }
+        return new QueueMergingValueImpl(serializationService)
+                .setValue(values);
+    }
+
+    public static AtomicLongMergeTypes createMergingValue(SerializationService serializationService, Long value) {
+        return new AtomicLongMergingValueImpl(serializationService)
                 .setValue(value);
     }
 
-    public static MergingValue<Data> createMergingValue(SerializationService serializationService, CollectionItem item) {
-        return new MergingValueImpl<Data>(serializationService)
-                .setValue(item.getValue());
+    public static AtomicReferenceMergeTypes createMergingValue(SerializationService serializationService, Data value) {
+        return new AtomicReferenceMergingValueImpl(serializationService)
+                .setValue(value);
     }
 
-    public static MergingValue<Data> createMergingValue(SerializationService serializationService, QueueItem item) {
-        return new MergingValueImpl<Data>(serializationService)
-                .setValue(item.getData());
-    }
-
-    public static <K, V> MergingEntry<K, V> createMergingEntry(SerializationService serializationService, K key, V value) {
-        return new MergingEntryImpl<K, V>(serializationService)
-                .setKey(key)
-                .setValue(value)
-                .setCreationTime(Clock.currentTimeMillis());
-    }
-
-    public static <K, V> MergingEntry<K, V> createMergingEntry(SerializationService serializationService,
-                                                               EntryView<K, V> entryView) {
-        return new FullMergingEntryImpl<K, V>(serializationService)
+    public static MapMergeTypes createMergingEntry(SerializationService serializationService, EntryView<Data, Data> entryView) {
+        return new MapMergingEntryImpl(serializationService)
                 .setKey(entryView.getKey())
                 .setValue(entryView.getValue())
                 .setCreationTime(entryView.getCreationTime())
                 .setExpirationTime(entryView.getExpirationTime())
+                .setLastStoredTime(entryView.getLastStoredTime())
                 .setLastUpdateTime(entryView.getLastUpdateTime())
                 .setLastAccessTime(entryView.getLastAccessTime())
                 .setHits(entryView.getHits())
@@ -81,9 +104,41 @@ public final class MergingValueFactory {
                 .setCost(entryView.getCost());
     }
 
-    public static <K, V> MergingEntry<K, V> createMergingEntry(SerializationService serializationService,
-                                                               CacheEntryView<K, V> entryView) {
-        return new FullMergingEntryImpl<K, V>(serializationService)
+    public static MapMergeTypes createMergingEntry(SerializationService serializationService, Record record) {
+        return new MapMergingEntryImpl(serializationService)
+                .setKey(record.getKey())
+                .setValue(serializationService.toData(record.getValue()))
+                .setCreationTime(record.getCreationTime())
+                .setExpirationTime(record.getExpirationTime())
+                .setLastStoredTime(record.getLastStoredTime())
+                .setLastAccessTime(record.getLastAccessTime())
+                .setLastStoredTime(record.getLastStoredTime())
+                .setLastUpdateTime(record.getLastUpdateTime())
+                .setHits(record.getHits())
+                .setTtl(record.getTtl())
+                .setVersion(record.getVersion())
+                .setCost(record.getCost());
+    }
+
+    public static MapMergeTypes createMergingEntry(SerializationService serializationService,
+                                                   Data dataKey, Data dataValue, Record record) {
+        return new MapMergingEntryImpl(serializationService)
+                .setKey(dataKey)
+                .setValue(dataValue)
+                .setCreationTime(record.getCreationTime())
+                .setExpirationTime(record.getExpirationTime())
+                .setLastStoredTime(record.getLastStoredTime())
+                .setLastAccessTime(record.getLastAccessTime())
+                .setLastUpdateTime(record.getLastUpdateTime())
+                .setHits(record.getHits())
+                .setTtl(record.getTtl())
+                .setVersion(record.getVersion())
+                .setCost(record.getCost());
+    }
+
+    public static CacheMergeTypes createMergingEntry(SerializationService serializationService,
+                                                     CacheEntryView<Data, Data> entryView) {
+        return new CacheMergingEntryImpl(serializationService)
                 .setKey(entryView.getKey())
                 .setValue(entryView.getValue())
                 .setCreationTime(entryView.getCreationTime())
@@ -92,73 +147,19 @@ public final class MergingValueFactory {
                 .setHits(entryView.getAccessHit());
     }
 
-    public static MergingEntry<Data, Data> createMergingEntry(SerializationService serializationService,
-                                                              Record record, Data dataValue) {
-        return new FullMergingEntryImpl<Data, Data>(serializationService)
-                .setKey(record.getKey())
-                .setValue(dataValue)
-                .setCreationTime(record.getCreationTime())
-                .setExpirationTime(record.getExpirationTime())
-                .setHits(record.getHits())
-                .setLastAccessTime(record.getLastAccessTime())
-                .setLastStoredTime(record.getLastStoredTime())
-                .setLastUpdateTime(record.getLastUpdateTime())
-                .setVersion(record.getVersion())
-                .setTtl(record.getTtl());
-    }
-
-    public static MergingEntry<Data, Object> createMergingEntry(SerializationService serializationService, Record record) {
-        return new FullMergingEntryImpl<Data, Object>(serializationService)
-                .setKey(record.getKey())
-                .setValue(record.getValue())
-                .setCreationTime(record.getCreationTime())
-                .setExpirationTime(record.getExpirationTime())
-                .setHits(record.getHits())
-                .setLastAccessTime(record.getLastAccessTime())
-                .setLastStoredTime(record.getLastStoredTime())
-                .setLastUpdateTime(record.getLastUpdateTime())
-                .setVersion(record.getVersion())
-                .setTtl(record.getTtl());
-    }
-
-    public static MergingEntry<Data, Object> createMergingEntry(SerializationService serializationService,
-                                                                MultiMapMergeContainer container,
-                                                                MultiMapRecord record) {
-        return new FullMergingEntryImpl<Data, Object>(serializationService)
-                .setKey(container.getKey())
-                .setValue(record.getObject())
-                .setCreationTime(container.getCreationTime())
-                .setLastAccessTime(container.getLastAccessTime())
-                .setLastUpdateTime(container.getLastUpdateTime())
-                .setHits(container.getHits());
-    }
-
-    public static MergingEntry<Data, Object> createMergingEntry(SerializationService serializationService,
-                                                                MultiMapContainer container, Data key,
-                                                                MultiMapRecord record, int hits) {
-        return new FullMergingEntryImpl<Data, Object>(serializationService)
-                .setKey(key)
-                .setValue(record.getObject())
-                .setCreationTime(container.getCreationTime())
-                .setLastAccessTime(container.getLastAccessTime())
-                .setLastUpdateTime(container.getLastUpdateTime())
-                .setHits(hits);
-    }
-
-    public static <R extends CacheRecord> MergingEntry<Data, Data> createMergingEntry(
-            SerializationService serializationService, Data key, Data value, R record) {
-        return new FullMergingEntryImpl<Data, Data>(serializationService)
+    public static <R extends CacheRecord> CacheMergeTypes createMergingEntry(SerializationService serializationService,
+                                                                             Data key, Data value, R record) {
+        return new CacheMergingEntryImpl(serializationService)
                 .setKey(key)
                 .setValue(value)
                 .setCreationTime(record.getCreationTime())
                 .setExpirationTime(record.getExpirationTime())
-                .setHits(record.getAccessHit())
-                .setLastAccessTime(record.getLastAccessTime());
+                .setLastAccessTime(record.getLastAccessTime())
+                .setHits(record.getAccessHit());
     }
 
-    public static MergingEntry<Object, Object> createMergingEntry(SerializationService serializationService,
-                                                                  ReplicatedRecord record) {
-        return new FullMergingEntryImpl<Object, Object>(serializationService)
+    public static ReplicatedMapMergeTypes createMergingEntry(SerializationService serializationService, ReplicatedRecord record) {
+        return new ReplicatedMapMergingEntryImpl(serializationService)
                 .setKey(record.getKeyInternal())
                 .setValue(record.getValueInternal())
                 .setCreationTime(record.getCreationTime())
@@ -168,19 +169,55 @@ public final class MergingValueFactory {
                 .setTtl(record.getTtlMillis());
     }
 
-    public static MergingEntry<String, HyperLogLog> createMergingEntry(SerializationService serializationService,
-                                                                       String name, HyperLogLog item) {
-        return new MergingEntryImpl<String, HyperLogLog>(serializationService)
-                .setKey(name)
-                .setValue(item)
-                .setCreationTime(Clock.currentTimeMillis());
+    public static MultiMapMergeTypes createMergingEntry(SerializationService serializationService,
+                                                        MultiMapMergeContainer container) {
+        Collection<Object> values = new ArrayList<Object>(container.getRecords().size());
+        for (MultiMapRecord record : container.getRecords()) {
+            values.add(record.getObject());
+        }
+
+        return new MultiMapMergingEntryImpl(serializationService)
+                .setKey(container.getKey())
+                .setValues(values)
+                .setCreationTime(container.getCreationTime())
+                .setLastAccessTime(container.getLastAccessTime())
+                .setLastUpdateTime(container.getLastUpdateTime())
+                .setHits(container.getHits());
     }
 
-    public static MergingEntry<String, ScheduledTaskDescriptor> createMergingEntry(SerializationService serializationService,
-                                                                                   ScheduledTaskDescriptor task) {
-        return new MergingEntryImpl<String, ScheduledTaskDescriptor>(serializationService)
+    public static MultiMapMergeTypes createMergingEntry(SerializationService serializationService, MultiMapContainer container,
+                                                        Data dataKey, Collection<MultiMapRecord> records, long hits) {
+        Collection<Object> values = new ArrayList<Object>(records.size());
+        for (MultiMapRecord record : records) {
+            values.add(record.getObject());
+        }
+
+        return new MultiMapMergingEntryImpl(serializationService)
+                .setKey(dataKey)
+                .setValues(values)
+                .setCreationTime(container.getCreationTime())
+                .setLastAccessTime(container.getLastAccessTime())
+                .setLastUpdateTime(container.getLastUpdateTime())
+                .setHits(hits);
+    }
+
+    public static RingbufferMergeTypes createMergingValue(SerializationService serializationService, Ringbuffer<Object> items) {
+        RingbufferMergeData mergingData = new RingbufferMergeData(items);
+        return new RingbufferMergingValueImpl(serializationService)
+                .setValues(mergingData);
+    }
+
+    public static CardinalityEstimatorMergeTypes createMergingEntry(SerializationService serializationService,
+                                                                    String name, HyperLogLog hyperLogLog) {
+        return new CardinalityEstimatorMergingEntry(serializationService)
+                .setKey(name)
+                .setValue(hyperLogLog);
+    }
+
+    public static ScheduledExecutorMergeTypes createMergingEntry(SerializationService serializationService,
+                                                                 ScheduledTaskDescriptor task) {
+        return new ScheduledExecutorMergingEntryImpl(serializationService)
                 .setKey(task.getDefinition().getName())
-                .setValue(task)
-                .setCreationTime(Clock.currentTimeMillis());
+                .setValue(task);
     }
 }

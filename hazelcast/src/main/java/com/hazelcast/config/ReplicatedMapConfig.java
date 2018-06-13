@@ -22,6 +22,8 @@ import com.hazelcast.nio.ObjectDataOutput;
 import com.hazelcast.nio.serialization.IdentifiedDataSerializable;
 import com.hazelcast.nio.serialization.impl.Versioned;
 import com.hazelcast.spi.merge.PutIfAbsentMergePolicy;
+import com.hazelcast.spi.merge.SplitBrainMergeTypeProvider;
+import com.hazelcast.spi.merge.SplitBrainMergeTypes;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -36,7 +38,7 @@ import static com.hazelcast.util.Preconditions.checkNotNull;
  * Contains the configuration for an {@link com.hazelcast.core.ReplicatedMap}
  */
 @SuppressWarnings("checkstyle:methodcount")
-public class ReplicatedMapConfig implements IdentifiedDataSerializable, Versioned {
+public class ReplicatedMapConfig implements SplitBrainMergeTypeProvider, IdentifiedDataSerializable, Versioned {
 
     /**
      * Default value of concurrency level
@@ -75,6 +77,8 @@ public class ReplicatedMapConfig implements IdentifiedDataSerializable, Versione
     private List<ListenerConfig> listenerConfigs;
 
     private String quorumName;
+
+    private transient volatile ReplicatedMapConfigReadOnly readOnly;
 
     public ReplicatedMapConfig() {
     }
@@ -288,7 +292,10 @@ public class ReplicatedMapConfig implements IdentifiedDataSerializable, Versione
      * @deprecated this method will be removed in 4.0; it is meant for internal usage only
      */
     public ReplicatedMapConfig getAsReadOnly() {
-        return new ReplicatedMapConfigReadOnly(this);
+        if (readOnly == null) {
+            readOnly = new ReplicatedMapConfigReadOnly(this);
+        }
+        return readOnly;
     }
 
     /**
@@ -373,6 +380,11 @@ public class ReplicatedMapConfig implements IdentifiedDataSerializable, Versione
     }
 
     @Override
+    public Class getProvidedMergeTypes() {
+        return SplitBrainMergeTypes.ReplicatedMapMergeTypes.class;
+    }
+
+    @Override
     public String toString() {
         return "ReplicatedMapConfig{"
                 + "name='" + name + '\''
@@ -421,7 +433,7 @@ public class ReplicatedMapConfig implements IdentifiedDataSerializable, Versione
         asyncFillup = in.readBoolean();
         statisticsEnabled = in.readBoolean();
         // RU_COMPAT_3_9
-        if (in.getVersion().isLessThan(Versions.V3_10)) {
+        if (in.getVersion().isUnknownOrLessThan(Versions.V3_10)) {
             mergePolicyConfig.setPolicy(in.readUTF());
         }
         listenerConfigs = readNullableList(in);

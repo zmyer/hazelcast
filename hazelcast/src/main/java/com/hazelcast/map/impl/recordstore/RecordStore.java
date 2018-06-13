@@ -28,10 +28,11 @@ import com.hazelcast.map.impl.record.Record;
 import com.hazelcast.map.impl.record.RecordFactory;
 import com.hazelcast.map.merge.MapMergePolicy;
 import com.hazelcast.monitor.LocalRecordStoreStats;
+import com.hazelcast.nio.Address;
 import com.hazelcast.nio.serialization.Data;
 import com.hazelcast.spi.exception.RetryableHazelcastException;
-import com.hazelcast.spi.merge.MergingEntry;
 import com.hazelcast.spi.merge.SplitBrainMergePolicy;
+import com.hazelcast.spi.merge.SplitBrainMergeTypes.MapMergeTypes;
 
 import java.util.Iterator;
 import java.util.List;
@@ -63,7 +64,7 @@ public interface RecordStore<R extends Record> {
      */
     Object put(Data dataKey, Object dataValue, long ttl);
 
-    Object putIfAbsent(Data dataKey, Object value, long ttl);
+    Object putIfAbsent(Data dataKey, Object value, long ttl, Address callerAddress);
 
     R putBackup(Data key, Object value);
 
@@ -102,7 +103,7 @@ public interface RecordStore<R extends Record> {
      * @param backup  <code>true</code> if a backup partition, otherwise <code>false</code>.
      * @return value of an entry in {@link RecordStore}
      */
-    Object get(Data dataKey, boolean backup);
+    Object get(Data dataKey, boolean backup, Address callerAddress);
 
     /**
      * Called when {@link com.hazelcast.config.MapConfig#isReadBackupData} is <code>true</code> from
@@ -117,14 +118,14 @@ public interface RecordStore<R extends Record> {
      */
     Data readBackupData(Data key);
 
-    MapEntries getAll(Set<Data> keySet);
+    MapEntries getAll(Set<Data> keySet, Address callerAddress);
 
     /**
      * Checks if the key exist in memory without trying to load data from map-loader
      */
     boolean existInMemory(Data key);
 
-    boolean containsKey(Data dataKey);
+    boolean containsKey(Data dataKey, Address callerAddress);
 
     int getLockedEntryCount();
 
@@ -154,7 +155,7 @@ public interface RecordStore<R extends Record> {
      * <tt>null</tt> if there was no mapping for <tt>key</tt>.
      * @see com.hazelcast.map.impl.operation.PutFromLoadAllOperation
      */
-    Object putFromLoad(Data key, Object value);
+    Object putFromLoad(Data key, Object value, Address callerAddress);
 
     /**
      * Puts key-value pair to map which is the result of a load from map store operation on backup.
@@ -168,6 +169,15 @@ public interface RecordStore<R extends Record> {
     Object putFromLoadBackup(Data key, Object value);
 
     /**
+     * Merges the given {@link MapMergeTypes} via the given {@link SplitBrainMergePolicy}.
+     *
+     * @param mergingEntry the {@link MapMergeTypes} instance to merge
+     * @param mergePolicy  the {@link SplitBrainMergePolicy} instance to apply
+     * @return {@code true} if merge is applied, otherwise {@code false}
+     */
+    boolean merge(MapMergeTypes mergingEntry, SplitBrainMergePolicy<Data, MapMergeTypes> mergePolicy);
+
+    /**
      * Merges the given {@link EntryView} via the given {@link MapMergePolicy}.
      *
      * @param mergingEntry the {@link EntryView} instance to merge
@@ -175,15 +185,6 @@ public interface RecordStore<R extends Record> {
      * @return {@code true} if merge is applied, otherwise {@code false}
      */
     boolean merge(Data dataKey, EntryView mergingEntry, MapMergePolicy mergePolicy);
-
-    /**
-     * Merges the given {@link MergingEntry} via the given {@link SplitBrainMergePolicy}.
-     *
-     * @param mergingEntry the {@link MergingEntry} instance to merge
-     * @param mergePolicy  the {@link SplitBrainMergePolicy} instance to apply
-     * @return {@code true} if merge is applied, otherwise {@code false}
-     */
-    boolean merge(MergingEntry<Data, Object> mergingEntry, SplitBrainMergePolicy mergePolicy);
 
     R getRecord(Data key);
 
@@ -372,7 +373,7 @@ public interface RecordStore<R extends Record> {
 
     Record createRecord(Object value, long ttlMillis, long now);
 
-    Record loadRecordOrNull(Data key, boolean backup);
+    Record loadRecordOrNull(Data key, boolean backup, Address callerAddress);
 
     /**
      * This can be used to release unused resources.
@@ -380,6 +381,12 @@ public interface RecordStore<R extends Record> {
     void disposeDeferredBlocks();
 
     void destroy();
+
+    /**
+     * Like {@link #destroy()} but does not touch state on other services
+     * like lock service or event journal service.
+     */
+    void destroyInternals();
 
     /**
      * Initialize the recordStore after creation

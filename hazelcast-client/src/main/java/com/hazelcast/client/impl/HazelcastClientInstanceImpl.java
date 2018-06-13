@@ -67,7 +67,6 @@ import com.hazelcast.collection.impl.set.SetService;
 import com.hazelcast.concurrent.atomiclong.AtomicLongService;
 import com.hazelcast.concurrent.atomicreference.AtomicReferenceService;
 import com.hazelcast.concurrent.countdownlatch.CountDownLatchService;
-import com.hazelcast.flakeidgen.impl.FlakeIdGeneratorService;
 import com.hazelcast.concurrent.idgen.IdGeneratorService;
 import com.hazelcast.concurrent.lock.LockServiceImpl;
 import com.hazelcast.concurrent.semaphore.SemaphoreService;
@@ -79,7 +78,6 @@ import com.hazelcast.core.ClientService;
 import com.hazelcast.core.Cluster;
 import com.hazelcast.core.DistributedObject;
 import com.hazelcast.core.DistributedObjectListener;
-import com.hazelcast.flakeidgen.FlakeIdGenerator;
 import com.hazelcast.core.HazelcastInstance;
 import com.hazelcast.core.IAtomicLong;
 import com.hazelcast.core.IAtomicReference;
@@ -102,6 +100,8 @@ import com.hazelcast.crdt.pncounter.PNCounterService;
 import com.hazelcast.durableexecutor.DurableExecutorService;
 import com.hazelcast.durableexecutor.impl.DistributedDurableExecutorService;
 import com.hazelcast.executor.impl.DistributedExecutorService;
+import com.hazelcast.flakeidgen.FlakeIdGenerator;
+import com.hazelcast.flakeidgen.impl.FlakeIdGeneratorService;
 import com.hazelcast.instance.BuildInfoProvider;
 import com.hazelcast.internal.diagnostics.BuildInfoPlugin;
 import com.hazelcast.internal.diagnostics.ConfigPropertiesPlugin;
@@ -143,8 +143,6 @@ import com.hazelcast.spi.discovery.integration.DiscoveryService;
 import com.hazelcast.spi.discovery.integration.DiscoveryServiceProvider;
 import com.hazelcast.spi.discovery.integration.DiscoveryServiceSettings;
 import com.hazelcast.spi.impl.SerializationServiceSupport;
-import com.hazelcast.spi.impl.sequence.CallIdFactory;
-import com.hazelcast.spi.impl.sequence.CallIdSequence;
 import com.hazelcast.spi.properties.GroupProperty;
 import com.hazelcast.spi.properties.HazelcastProperties;
 import com.hazelcast.spi.serialization.SerializationService;
@@ -168,8 +166,6 @@ import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.Future;
 import java.util.concurrent.atomic.AtomicInteger;
 
-import static com.hazelcast.client.spi.properties.ClientProperty.BACKPRESSURE_BACKOFF_TIMEOUT_MILLIS;
-import static com.hazelcast.client.spi.properties.ClientProperty.MAX_CONCURRENT_INVOCATIONS;
 import static com.hazelcast.util.ExceptionUtil.rethrow;
 import static com.hazelcast.util.Preconditions.checkNotNull;
 import static java.lang.System.currentTimeMillis;
@@ -206,7 +202,6 @@ public class HazelcastClientInstanceImpl implements HazelcastInstance, Serializa
     private final ClientICacheManager hazelcastCacheManager;
     private final ClientLockReferenceIdGenerator lockReferenceIdGenerator;
     private final ClientExceptionFactory clientExceptionFactory;
-    private final CallIdSequence callIdSequence;
     private final ClientUserCodeDeploymentService userCodeDeploymentService;
 
     public HazelcastClientInstanceImpl(ClientConfig config,
@@ -247,11 +242,6 @@ public class HazelcastClientInstanceImpl implements HazelcastInstance, Serializa
                 .createConnectionManager(config, this, discoveryService, addressProviders);
         clusterService = new ClientClusterServiceImpl(this);
 
-        int maxAllowedConcurrentInvocations = properties.getInteger(MAX_CONCURRENT_INVOCATIONS);
-        long backofftimeoutMs = properties.getLong(BACKPRESSURE_BACKOFF_TIMEOUT_MILLIS);
-        boolean isBackPressureEnabled = maxAllowedConcurrentInvocations != Integer.MAX_VALUE;
-        callIdSequence = CallIdFactory
-                .newCallIdSequence(isBackPressureEnabled, maxAllowedConcurrentInvocations, backofftimeoutMs);
 
         invocationService = initInvocationService();
         listenerService = initListenerService();
@@ -460,6 +450,7 @@ public class HazelcastClientInstanceImpl implements HazelcastInstance, Serializa
         partitionService.listenPartitionTable(ownerConnection);
         clusterService.listenMembershipEvents(ownerConnection);
         userCodeDeploymentService.deploy(this, ownerConnection);
+        proxyManager.createDistributedObjectsOnCluster(ownerConnection);
     }
 
     public MetricsRegistryImpl getMetricsRegistry() {
@@ -487,57 +478,68 @@ public class HazelcastClientInstanceImpl implements HazelcastInstance, Serializa
 
     @Override
     public <E> IQueue<E> getQueue(String name) {
+        checkNotNull(name, "Retrieving a queue instance with a null name is not allowed!");
         return getDistributedObject(QueueService.SERVICE_NAME, name);
     }
 
     @Override
     public <E> ITopic<E> getTopic(String name) {
+        checkNotNull(name, "Retrieving a topic instance with a null name is not allowed!");
         return getDistributedObject(TopicService.SERVICE_NAME, name);
     }
 
     @Override
     public <E> ISet<E> getSet(String name) {
+        checkNotNull(name, "Retrieving a set instance with a null name is not allowed!");
         return getDistributedObject(SetService.SERVICE_NAME, name);
     }
 
     @Override
     public <E> IList<E> getList(String name) {
+        checkNotNull(name, "Retrieving a list instance with a null name is not allowed!");
         return getDistributedObject(ListService.SERVICE_NAME, name);
     }
 
     @Override
     public <K, V> IMap<K, V> getMap(String name) {
+        checkNotNull(name, "Retrieving a map instance with a null name is not allowed!");
         return getDistributedObject(MapService.SERVICE_NAME, name);
     }
 
     @Override
     public <K, V> MultiMap<K, V> getMultiMap(String name) {
+        checkNotNull(name, "Retrieving a multi-map instance with a null name is not allowed!");
         return getDistributedObject(MultiMapService.SERVICE_NAME, name);
 
     }
 
     @Override
     public <K, V> ReplicatedMap<K, V> getReplicatedMap(String name) {
+        checkNotNull(name, "Retrieving a replicated map instance with a null name is not allowed!");
         return getDistributedObject(ReplicatedMapService.SERVICE_NAME, name);
     }
 
     @Override
     public JobTracker getJobTracker(String name) {
+        checkNotNull(name, "Retrieving a job tracker instance with a null name is not allowed!");
         return getDistributedObject(MapReduceService.SERVICE_NAME, name);
     }
 
     @Override
     public ILock getLock(String key) {
+        checkNotNull(key, "Retrieving a lock instance with a null key is not allowed!");
         return getDistributedObject(LockServiceImpl.SERVICE_NAME, key);
     }
 
     @Override
     public <E> ITopic<E> getReliableTopic(String name) {
+        checkNotNull(name, "Retrieving a topic instance with a null name is not allowed!");
         return getDistributedObject(ReliableTopicService.SERVICE_NAME, name);
     }
 
     @Override
     public <E> Ringbuffer<E> getRingbuffer(String name) {
+        checkNotNull(name, "Retrieving a ringbuffer instance with a null name is not allowed!");
         return getDistributedObject(RingbufferService.SERVICE_NAME, name);
     }
 
@@ -558,11 +560,13 @@ public class HazelcastClientInstanceImpl implements HazelcastInstance, Serializa
 
     @Override
     public IExecutorService getExecutorService(String name) {
+        checkNotNull(name, "Retrieving an executor instance with a null name is not allowed!");
         return getDistributedObject(DistributedExecutorService.SERVICE_NAME, name);
     }
 
     @Override
     public DurableExecutorService getDurableExecutorService(String name) {
+        checkNotNull(name, "Retrieving a durable executor instance with a null name is not allowed!");
         return getDistributedObject(DistributedDurableExecutorService.SERVICE_NAME, name);
     }
 
@@ -592,21 +596,25 @@ public class HazelcastClientInstanceImpl implements HazelcastInstance, Serializa
 
     @Override
     public IdGenerator getIdGenerator(String name) {
+        checkNotNull(name, "Retrieving an ID-generator instance with a null name is not allowed!");
         return getDistributedObject(IdGeneratorService.SERVICE_NAME, name);
     }
 
     @Override
     public FlakeIdGenerator getFlakeIdGenerator(String name) {
+        checkNotNull(name, "Retrieving a Flake ID-generator instance with a null name is not allowed!");
         return getDistributedObject(FlakeIdGeneratorService.SERVICE_NAME, name);
     }
 
     @Override
     public IAtomicLong getAtomicLong(String name) {
+        checkNotNull(name, "Retrieving an atomic-long instance with a null name is not allowed!");
         return getDistributedObject(AtomicLongService.SERVICE_NAME, name);
     }
 
     @Override
     public CardinalityEstimator getCardinalityEstimator(String name) {
+        checkNotNull(name, "Retrieving a cardinality estimator instance with a null name is not allowed!");
         return getDistributedObject(CardinalityEstimatorService.SERVICE_NAME, name);
     }
 
@@ -618,21 +626,25 @@ public class HazelcastClientInstanceImpl implements HazelcastInstance, Serializa
 
     @Override
     public <E> IAtomicReference<E> getAtomicReference(String name) {
+        checkNotNull(name, "Retrieving an atomic-reference instance with a null name is not allowed!");
         return getDistributedObject(AtomicReferenceService.SERVICE_NAME, name);
     }
 
     @Override
     public ICountDownLatch getCountDownLatch(String name) {
+        checkNotNull(name, "Retrieving a countdown-latch instance with a null name is not allowed!");
         return getDistributedObject(CountDownLatchService.SERVICE_NAME, name);
     }
 
     @Override
     public ISemaphore getSemaphore(String name) {
+        checkNotNull(name, "Retrieving a semaphore instance with a null name is not allowed!");
         return getDistributedObject(SemaphoreService.SERVICE_NAME, name);
     }
 
     @Override
     public IScheduledExecutorService getScheduledExecutorService(String name) {
+        checkNotNull(name, "Retrieving a scheduled executor instance with a null name is not allowed!");
         return getDistributedObject(DistributedScheduledExecutorService.SERVICE_NAME, name);
     }
 
@@ -658,7 +670,7 @@ public class HazelcastClientInstanceImpl implements HazelcastInstance, Serializa
             }
 
             for (DistributedObjectInfo distributedObjectInfo : localDistributedObjects) {
-                proxyManager.removeProxy(distributedObjectInfo.getServiceName(), distributedObjectInfo.getName());
+                proxyManager.destroyProxyLocally(distributedObjectInfo.getServiceName(), distributedObjectInfo.getName());
             }
             return (Collection<DistributedObject>) proxyManager.getDistributedObjects();
         } catch (Exception e) {
@@ -762,10 +774,6 @@ public class HazelcastClientInstanceImpl implements HazelcastInstance, Serializa
 
     public ClientExtension getClientExtension() {
         return clientExtension;
-    }
-
-    public CallIdSequence getCallIdSequence() {
-        return callIdSequence;
     }
 
     public Credentials getCredentials() {

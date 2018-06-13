@@ -42,6 +42,7 @@ import java.util.Iterator;
 
 import static com.hazelcast.map.impl.querycache.publisher.AccumulatorSweeper.flushAccumulator;
 import static com.hazelcast.map.impl.querycache.publisher.AccumulatorSweeper.removeAccumulator;
+import static com.hazelcast.map.impl.querycache.publisher.AccumulatorSweeper.sendEndOfSequenceEvents;
 import static com.hazelcast.spi.partition.MigrationEndpoint.DESTINATION;
 import static com.hazelcast.spi.partition.MigrationEndpoint.SOURCE;
 
@@ -83,6 +84,29 @@ class MapMigrationAwareService implements FragmentedMigrationAwareService {
 
             // 2. Populate non-global partitioned indexes.
             populateIndexes(event, TargetIndexes.NON_GLOBAL);
+        }
+
+        flushAndRemoveQueryCaches(event);
+    }
+
+    /**
+     * Flush and remove query cache on this source partition.
+     */
+    private void flushAndRemoveQueryCaches(PartitionMigrationEvent event) {
+        int partitionId = event.getPartitionId();
+        QueryCacheContext queryCacheContext = mapServiceContext.getQueryCacheContext();
+        PublisherContext publisherContext = queryCacheContext.getPublisherContext();
+
+        if (event.getMigrationEndpoint() == MigrationEndpoint.SOURCE) {
+            flushAccumulator(publisherContext, partitionId);
+            removeAccumulator(publisherContext, partitionId);
+            return;
+        }
+
+        if (isLocalPromotion(event)) {
+            removeAccumulator(publisherContext, partitionId);
+            sendEndOfSequenceEvents(publisherContext, partitionId);
+            return;
         }
     }
 
@@ -130,11 +154,6 @@ class MapMigrationAwareService implements FragmentedMigrationAwareService {
 
         if (SOURCE == event.getMigrationEndpoint()) {
             clearMapsHavingLesserBackupCountThan(event.getPartitionId(), event.getNewReplicaIndex());
-            getMetaDataGenerator().removeUuidAndSequence(event.getPartitionId());
-        } else if (DESTINATION == event.getMigrationEndpoint()) {
-            if (event.getNewReplicaIndex() != 0) {
-                getMetaDataGenerator().regenerateUuid(event.getPartitionId());
-            }
         }
 
         PartitionContainer partitionContainer = mapServiceContext.getPartitionContainer(event.getPartitionId());
@@ -145,13 +164,18 @@ class MapMigrationAwareService implements FragmentedMigrationAwareService {
         }
         mapServiceContext.reloadOwnedPartitions();
 
-        QueryCacheContext queryCacheContext = mapServiceContext.getQueryCacheContext();
-        PublisherContext publisherContext = queryCacheContext.getPublisherContext();
+        removeOrRegenerateNearCacheUuid(event);
+    }
 
-        if (event.getMigrationEndpoint() == MigrationEndpoint.SOURCE) {
-            int partitionId = event.getPartitionId();
-            flushAccumulator(publisherContext, partitionId);
-            removeAccumulator(publisherContext, partitionId);
+    private void removeOrRegenerateNearCacheUuid(PartitionMigrationEvent event) {
+        if (SOURCE == event.getMigrationEndpoint()) {
+            getMetaDataGenerator().removeUuidAndSequence(event.getPartitionId());
+            return;
+        }
+
+        if (DESTINATION == event.getMigrationEndpoint() && event.getNewReplicaIndex() != 0) {
+            getMetaDataGenerator().regenerateUuid(event.getPartitionId());
+            return;
         }
     }
 

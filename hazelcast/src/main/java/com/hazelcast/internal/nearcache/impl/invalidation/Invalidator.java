@@ -29,6 +29,7 @@ import java.util.Collection;
 import java.util.UUID;
 
 import static com.hazelcast.internal.util.ToHeapDataConverter.toHeapData;
+import static com.hazelcast.util.Preconditions.checkNotNull;
 
 /**
  * Contains shared functionality for Near Cache invalidation.
@@ -64,9 +65,8 @@ public abstract class Invalidator {
      * @param dataStructureName name of the data structure to be invalidated
      */
     public final void invalidateKey(Data key, String dataStructureName, String sourceUuid) {
-        assert key != null;
-        assert dataStructureName != null;
-        assert sourceUuid != null;
+        checkNotNull(key, "key cannot be null");
+        checkNotNull(sourceUuid, "sourceUuid cannot be null");
 
         Invalidation invalidation = newKeyInvalidation(key, dataStructureName, sourceUuid);
         invalidateInternal(invalidation, getPartitionId(key));
@@ -78,8 +78,7 @@ public abstract class Invalidator {
      * @param dataStructureName name of the data structure to be cleared
      */
     public final void invalidateAllKeys(String dataStructureName, String sourceUuid) {
-        assert dataStructureName != null;
-        assert sourceUuid != null;
+        checkNotNull(sourceUuid, "sourceUuid cannot be null");
 
         int orderKey = getPartitionId(dataStructureName);
         Invalidation invalidation = newClearInvalidation(dataStructureName, sourceUuid);
@@ -88,6 +87,12 @@ public abstract class Invalidator {
 
     public final MetaDataGenerator getMetaDataGenerator() {
         return metaDataGenerator;
+    }
+
+    public final void resetPartitionMetaData(String dataStructureName, int partitionId) {
+        MetaDataGenerator metaDataGenerator = getMetaDataGenerator();
+        metaDataGenerator.regenerateUuid(partitionId);
+        metaDataGenerator.resetSequence(dataStructureName, partitionId);
     }
 
     private Invalidation newKeyInvalidation(Data key, String dataStructureName, String sourceUuid) {

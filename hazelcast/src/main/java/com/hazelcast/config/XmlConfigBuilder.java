@@ -784,6 +784,8 @@ public class XmlConfigBuilder extends AbstractConfigBuilder implements ConfigBui
                 generatorConfig.setPrefetchValidityMillis(Long.parseLong(value));
             } else if ("id-offset".equalsIgnoreCase(nodeName)) {
                 generatorConfig.setIdOffset(Long.parseLong(value));
+            } else if ("node-id-offset".equalsIgnoreCase(nodeName)) {
+                generatorConfig.setNodeIdOffset(Long.parseLong(value));
             } else if ("statistics-enabled".equals(nodeName)) {
                 generatorConfig.setStatisticsEnabled(getBooleanValue(value));
             }
@@ -1362,8 +1364,7 @@ public class XmlConfigBuilder extends AbstractConfigBuilder implements ConfigBui
                     msc.setMaxSizePolicy(MaxSizeConfig.MaxSizePolicy.valueOf(
                             upperCaseInternal(getTextContent(maxSizePolicy))));
                 }
-                int size = sizeParser(value);
-                msc.setSize(size);
+                msc.setSize(getIntegerValue("max-size", value));
             } else if ("eviction-percentage".equals(nodeName)) {
                 mapConfig.setEvictionPercentage(getIntegerValue("eviction-percentage", value
                 ));
@@ -1535,7 +1536,7 @@ public class XmlConfigBuilder extends AbstractConfigBuilder implements ConfigBui
             }
         }
         try {
-            checkCacheConfig(cacheConfig);
+            checkCacheConfig(cacheConfig, null);
         } catch (IllegalArgumentException e) {
             throw new InvalidConfigurationException(e.getMessage());
         }
@@ -1824,29 +1825,6 @@ public class XmlConfigBuilder extends AbstractConfigBuilder implements ConfigBui
             predicateConfig.setSql(textContent);
         }
         queryCacheConfig.setPredicateConfig(predicateConfig);
-    }
-
-    private int sizeParser(String value) {
-        int size;
-        if (value.length() < 2) {
-            size = parseInt(value);
-        } else {
-            char last = value.charAt(value.length() - 1);
-            int type = 0;
-            if (last == 'g' || last == 'G') {
-                type = 1;
-            } else if (last == 'm' || last == 'M') {
-                type = 2;
-            }
-            if (type == 0) {
-                size = parseInt(value);
-            } else if (type == 1) {
-                size = parseInt(value.substring(0, value.length() - 1)) * THOUSAND_FACTOR;
-            } else {
-                size = parseInt(value.substring(0, value.length() - 1));
-            }
-        }
-        return size;
     }
 
     private MapStoreConfig createMapStoreConfig(Node node) {
@@ -2340,6 +2318,8 @@ public class XmlConfigBuilder extends AbstractConfigBuilder implements ConfigBui
                 handleSecurityPermissions(child);
             } else if ("security-interceptors".equals(nodeName)) {
                 handleSecurityInterceptors(child);
+            } else if ("client-block-unmapped-actions".equals(nodeName)) {
+                config.getSecurityConfig().setClientBlockUnmappedActions(getBooleanValue(getTextContent(child)));
             }
         }
     }

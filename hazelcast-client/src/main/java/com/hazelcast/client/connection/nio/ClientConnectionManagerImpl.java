@@ -37,7 +37,6 @@ import com.hazelcast.client.spi.ClientContext;
 import com.hazelcast.client.spi.impl.ClientExecutionServiceImpl;
 import com.hazelcast.client.spi.impl.ClientInvocation;
 import com.hazelcast.client.spi.impl.ClientInvocationFuture;
-import com.hazelcast.client.spi.impl.ConnectionHeartbeatListener;
 import com.hazelcast.config.SSLConfig;
 import com.hazelcast.config.SocketInterceptorConfig;
 import com.hazelcast.core.ExecutionCallback;
@@ -105,7 +104,7 @@ import static java.util.concurrent.TimeUnit.MILLISECONDS;
  * Implementation of {@link ClientConnectionManager}.
  */
 @SuppressWarnings("checkstyle:classdataabstractioncoupling")
-public class ClientConnectionManagerImpl implements ClientConnectionManager, ConnectionHeartbeatListener {
+public class ClientConnectionManagerImpl implements ClientConnectionManager {
 
     private static final int DEFAULT_SSL_THREAD_COUNT = 3;
     private static final int DEFAULT_CONNECTION_ATTEMPT_LIMIT_SYNC = 2;
@@ -138,7 +137,8 @@ public class ClientConnectionManagerImpl implements ClientConnectionManager, Con
     private volatile Address ownerConnectionAddress;
     private volatile Address previousOwnerConnectionAddress;
 
-    private HeartbeatManager heartbeat;
+    private final HeartbeatManager heartbeat;
+    private final long authenticationTimeout;
     private volatile ClientPrincipal principal;
     private final ClientConnectionStrategy connectionStrategy;
     private final ExecutorService clusterConnectionExecutor;
@@ -177,7 +177,7 @@ public class ClientConnectionManagerImpl implements ClientConnectionManager, Con
         this.clusterConnectionExecutor = createSingleThreadExecutorService(client);
         this.shuffleMemberList = client.getProperties().getBoolean(SHUFFLE_MEMBER_LIST);
         this.addressProviders = addressProviders;
-        connectionAttemptPeriod = networkConfig.getConnectionAttemptPeriod();
+        this.connectionAttemptPeriod = networkConfig.getConnectionAttemptPeriod();
 
         int connAttemptLimit = networkConfig.getConnectionAttemptLimit();
         boolean isAsync = client.getClientConfig().getConnectionStrategyConfig().isAsyncStart();
@@ -191,7 +191,8 @@ public class ClientConnectionManagerImpl implements ClientConnectionManager, Con
 
         this.outboundPorts.addAll(getOutboundPorts(networkConfig));
         this.outboundPortCount = outboundPorts.size();
-
+        this.heartbeat = new HeartbeatManager(this, client);
+        this.authenticationTimeout = heartbeat.getHeartbeatTimeout();
         checkSslAllowed();
     }
 
@@ -291,9 +292,8 @@ public class ClientConnectionManagerImpl implements ClientConnectionManager, Con
         }
         alive = true;
         startEventLoopGroup();
-        heartbeat = new HeartbeatManager(this, client);
+
         heartbeat.start();
-        addConnectionHeartbeatListener(this);
         connectionStrategy.init(clientContext);
         connectionStrategy.start();
     }
@@ -637,19 +637,15 @@ public class ClientConnectionManagerImpl implements ClientConnectionManager, Con
         connectionListeners.add(connectionListener);
     }
 
-    @Override
-    public void addConnectionHeartbeatListener(ConnectionHeartbeatListener connectionHeartbeatListener) {
-        heartbeat.addConnectionHeartbeatListener(connectionHeartbeatListener);
-    }
-
     private void authenticate(final Address target, final ClientConnection connection, final boolean asOwner,
                               final AuthenticationFuture future) {
         final ClientPrincipal principal = getPrincipal();
         ClientMessage clientMessage = encodeAuthenticationRequest(asOwner, client.getSerializationService(), principal);
         ClientInvocation clientInvocation = new ClientInvocation(client, clientMessage, null, connection);
         ClientInvocationFuture invocationFuture = clientInvocation.invokeUrgent();
-        ScheduledFuture timeoutTaskFuture = executionService.schedule(new TimeoutAuthenticationTask(invocationFuture),
-                connectionTimeoutMillis, MILLISECONDS);
+
+        ScheduledFuture timeoutTaskFuture = executionService.schedule(
+                new TimeoutAuthenticationTask(invocationFuture), authenticationTimeout, MILLISECONDS);
         invocationFuture.andThen(new AuthCallback(connection, asOwner, target, future, timeoutTaskFuture));
     }
 
@@ -717,16 +713,6 @@ public class ClientConnectionManagerImpl implements ClientConnectionManager, Con
         connectionsInProgress.remove(target);
     }
 
-    @Override
-    public void heartbeatResumed(Connection connection) {
-        connectionStrategy.onHeartbeatResumed((ClientConnection) connection);
-    }
-
-    @Override
-    public void heartbeatStopped(Connection connection) {
-        connectionStrategy.onHeartbeatStopped((ClientConnection) connection);
-    }
-
     private class TimeoutAuthenticationTask implements Runnable {
 
         private final ClientInvocationFuture future;
@@ -741,7 +727,7 @@ public class ClientConnectionManagerImpl implements ClientConnectionManager, Con
                 return;
             }
             future.complete(new TimeoutException("Authentication response did not come back in "
-                    + connectionTimeoutMillis + " millis"));
+                    + authenticationTimeout + " millis"));
         }
 
     }
@@ -911,7 +897,13 @@ public class ClientConnectionManagerImpl implements ClientConnectionManager, Con
 
         LinkedHashSet<Address> providerAddresses = new LinkedHashSet<Address>();
         for (AddressProvider addressProvider : addressProviders) {
-            providerAddresses.addAll(addressProvider.loadAddresses());
+            try {
+                providerAddresses.addAll(addressProvider.loadAddresses());
+            } catch (NullPointerException e) {
+                throw e;
+            } catch (Exception e) {
+                logger.warning("Exception from AddressProvider: " + addressProvider, e);
+            }
         }
 
         if (shuffleMemberList) {
