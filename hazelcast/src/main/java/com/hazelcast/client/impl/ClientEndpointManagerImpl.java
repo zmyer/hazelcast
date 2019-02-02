@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2008-2018, Hazelcast, Inc. All Rights Reserved.
+ * Copyright (c) 2008-2019, Hazelcast, Inc. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,10 +16,6 @@
 
 package com.hazelcast.client.impl;
 
-import com.hazelcast.client.ClientEndpoint;
-import com.hazelcast.client.ClientEndpointManager;
-import com.hazelcast.client.ClientEvent;
-import com.hazelcast.client.ClientEventType;
 import com.hazelcast.internal.metrics.MetricsRegistry;
 import com.hazelcast.internal.metrics.Probe;
 import com.hazelcast.internal.util.counters.MwCounter;
@@ -96,7 +92,8 @@ public class ClientEndpointManagerImpl implements ClientEndpointManager {
             ClientEvent event = new ClientEvent(endpoint.getUuid(),
                     ClientEventType.CONNECTED,
                     endpoint.getSocketAddress(),
-                    endpoint.getClientType());
+                    endpoint.getClientType(),
+                    endpoint.getName(), endpoint.getAttributes());
             sendClientEvent(event);
             return true;
         }
@@ -123,7 +120,8 @@ public class ClientEndpointManagerImpl implements ClientEndpointManager {
         ClientEvent event = new ClientEvent(endpoint.getUuid(),
                 ClientEventType.DISCONNECTED,
                 endpoint.getSocketAddress(),
-                endpoint.getClientType());
+                endpoint.getClientType(),
+                endpoint.getName(), endpoint.getAttributes());
         sendClientEvent(event);
     }
 

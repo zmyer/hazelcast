@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2008-2018, Hazelcast, Inc. All Rights Reserved.
+ * Copyright (c) 2008-2019, Hazelcast, Inc. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -54,7 +54,7 @@ import static org.mockito.Mockito.when;
 public class MapRemoveFailingBackupTest extends HazelcastTestSupport {
 
     @Test
-    public void testMapRemoveFailingBackupShouldNotLeadToStaleDataWhenReadBackupIsEnabled() throws Exception {
+    public void testMapRemoveFailingBackupShouldNotLeadToStaleDataWhenReadBackupIsEnabled() {
         TestHazelcastInstanceFactory factory = createHazelcastInstanceFactory(2);
         final String mapName = randomMapName();
         final String key = "2";
@@ -89,7 +89,7 @@ public class MapRemoveFailingBackupTest extends HazelcastTestSupport {
         mock1.remove(key);
         assertTrueEventually(new AssertTask() {
             @Override
-            public void run() throws Exception {
+            public void run() {
                 assertNull(map1.get(key));
                 assertNull(map2.get(key));
             }
@@ -121,7 +121,7 @@ public class MapRemoveFailingBackupTest extends HazelcastTestSupport {
 
         @Override
         public void run() {
-            dataOldValue = mapService.getMapServiceContext().toData(recordStore.remove(dataKey));
+            dataOldValue = mapService.getMapServiceContext().toData(recordStore.remove(dataKey, getCallerProvenance()));
             successful = dataOldValue != null;
         }
 

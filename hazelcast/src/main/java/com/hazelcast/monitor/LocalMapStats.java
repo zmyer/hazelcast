@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2008-2018, Hazelcast, Inc. All Rights Reserved.
+ * Copyright (c) 2008-2019, Hazelcast, Inc. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -15,6 +15,8 @@
  */
 
 package com.hazelcast.monitor;
+
+import java.util.Map;
 
 /**
  * Local map statistics to be used by {@link MemberState} implementations.
@@ -196,7 +198,7 @@ public interface LocalMapStats extends LocalInstanceStats {
     long total();
 
     /**
-     * Cost of map & Near Cache & backup in bytes
+     * Cost of map & Near Cache & backup & Merkle trees in bytes
      * <p>
      * When {@link com.hazelcast.config.InMemoryFormat#OBJECT} is used, the heapcost is zero.
      *
@@ -205,9 +207,42 @@ public interface LocalMapStats extends LocalInstanceStats {
     long getHeapCost();
 
     /**
+     * Returns the heap cost of the Merkle trees
+     *
+     * @return the heap cost of the Merkle trees
+     */
+    long getMerkleTreesCost();
+
+    /**
      * Returns statistics related to the Near Cache.
      *
      * @return statistics object for the Near Cache
      */
     NearCacheStats getNearCacheStats();
+
+    /**
+     * Returns the total number of queries performed on the map.
+     * <p>
+     * The returned value includes queries processed with and without indexes.
+     *
+     * @see #getIndexedQueryCount()
+     */
+    long getQueryCount();
+
+    /**
+     * Returns the total number of indexed queries performed on the map.
+     * <p>
+     * The returned value includes only queries processed using indexes. If
+     * there are no indexes associated with the map, the returned value is
+     * {@code 0}.
+     *
+     * @see #getQueryCount()
+     */
+    long getIndexedQueryCount();
+
+    /**
+     * Returns the per-index statistics map keyed by the index name.
+     */
+    Map<String, LocalIndexStats> getIndexStats();
+
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2008-2018, Hazelcast, Inc. All Rights Reserved.
+ * Copyright (c) 2008-2019, Hazelcast, Inc. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -39,6 +39,8 @@ public class TruePredicate<K, V> implements IdentifiedDataSerializable, Predicat
      */
     public static final TruePredicate INSTANCE = new TruePredicate();
 
+    private static final long serialVersionUID = 1L;
+
     @SuppressWarnings("unchecked")
     public static <K, V> TruePredicate<K, V> truePredicate() {
         return INSTANCE;
@@ -71,4 +73,18 @@ public class TruePredicate<K, V> implements IdentifiedDataSerializable, Predicat
     public int getId() {
         return PredicateDataSerializerHook.TRUE_PREDICATE;
     }
+
+    @Override
+    public boolean equals(Object o) {
+        if (o == null || !(o instanceof TruePredicate)) {
+            return false;
+        }
+        return true;
+    }
+
+    @Override
+    public int hashCode() {
+        return getClass().hashCode();
+    }
+
 }

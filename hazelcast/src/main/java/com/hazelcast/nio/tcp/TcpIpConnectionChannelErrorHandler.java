@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2008-2018, Hazelcast, Inc. All Rights Reserved.
+ * Copyright (c) 2008-2019, Hazelcast, Inc. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -32,21 +32,24 @@ public class TcpIpConnectionChannelErrorHandler implements ChannelErrorHandler {
     }
 
     @Override
-    public void onError(Channel channel, Throwable cause) {
-        if (cause instanceof OutOfMemoryError) {
-            OutOfMemoryErrorDispatcher.onOutOfMemory((OutOfMemoryError) cause);
+    public void onError(Channel channel, Throwable error) {
+        if (error instanceof OutOfMemoryError) {
+            OutOfMemoryErrorDispatcher.onOutOfMemory((OutOfMemoryError) error);
         }
 
         if (channel == null) {
             // todo: question is if logging is the best solution. If an exception happened without a channel, it is a pretty
             // big event and perhaps we should shutdown the whole HZ instance.
-            logger.severe(cause);
+            logger.severe(error);
         } else {
             TcpIpConnection connection = (TcpIpConnection) channel.attributeMap().get(TcpIpConnection.class);
-            if (cause instanceof EOFException) {
-                connection.close("Connection closed by the other side", cause);
+            if (connection != null) {
+                String closeReason = (error instanceof EOFException)
+                        ? "Connection closed by the other side"
+                        : "Exception in " + connection + ", thread=" + Thread.currentThread().getName();
+                connection.close(closeReason, error);
             } else {
-                connection.close("Exception in " + connection + ", thread=" + Thread.currentThread().getName(), cause);
+                logger.warning("Channel error occured", error);
             }
         }
     }

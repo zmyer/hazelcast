@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2008-2018, Hazelcast, Inc. All Rights Reserved.
+ * Copyright (c) 2008-2019, Hazelcast, Inc. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -63,7 +63,6 @@ public class ClientReconnectTest extends HazelcastTestSupport {
     public void cleanup() {
         hazelcastFactory.terminateAll();
     }
-
 
     @Test
     public void testClientReconnectOnClusterDown() throws Exception {
@@ -153,7 +152,7 @@ public class ClientReconnectTest extends HazelcastTestSupport {
     }
 
     @Test(expected = HazelcastClientNotActiveException.class)
-    public void testExceptionAfterClientShutdown() throws Exception {
+    public void testExceptionAfterClientShutdown() {
         hazelcastFactory.newHazelcastInstance();
         ClientConfig clientConfig = new ClientConfig();
         HazelcastInstance client = hazelcastFactory.newHazelcastClient(clientConfig);
@@ -166,6 +165,18 @@ public class ClientReconnectTest extends HazelcastTestSupport {
         test.get("key");
     }
 
+    @Test(expected = HazelcastClientNotActiveException.class)
+    public void testExceptionAfterClientShutdown_fromClientConnectionManager() {
+        hazelcastFactory.newHazelcastInstance();
+        ClientConfig clientConfig = new ClientConfig();
+        HazelcastInstance client = hazelcastFactory.newHazelcastClient(clientConfig);
+
+        IMap<Object, Object> test = client.getMap("test");
+        test.put("key", "value");
+        client.shutdown();
+        test.size();
+    }
+
     @Test
     public void testShutdownClient_whenThereIsNoCluster() {
         ClientConfig clientConfig = new ClientConfig();
@@ -176,9 +187,9 @@ public class ClientReconnectTest extends HazelcastTestSupport {
         client.shutdown();
     }
 
-    public static abstract class CustomCredentials extends UsernamePasswordCredentials {
+    public abstract static class CustomCredentials extends UsernamePasswordCredentials {
 
-        public CustomCredentials() {
+        CustomCredentials() {
         }
 
         CustomCredentials(String username, String password) {
@@ -194,7 +205,6 @@ public class ClientReconnectTest extends HazelcastTestSupport {
         public int getClassId() {
             return 1;
         }
-
     }
 
     public static class CustomCredentials_takesLong extends CustomCredentials {

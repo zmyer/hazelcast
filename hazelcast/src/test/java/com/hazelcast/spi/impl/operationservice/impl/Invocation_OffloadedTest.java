@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2008-2018, Hazelcast, Inc. All Rights Reserved.
+ * Copyright (c) 2008-2019, Hazelcast, Inc. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -43,11 +43,10 @@ import static org.junit.Assert.assertTrue;
 public class Invocation_OffloadedTest extends HazelcastTestSupport {
 
     private OperationServiceImpl localOperationService;
-    private TestHazelcastInstanceFactory instanceFactory;
 
     @Before
     public void setup() {
-        instanceFactory = createHazelcastInstanceFactory();
+        TestHazelcastInstanceFactory instanceFactory = createHazelcastInstanceFactory();
         Config config = new Config();
         config.setProperty(GroupProperty.MAX_JOIN_SECONDS.getName(), "5");
 

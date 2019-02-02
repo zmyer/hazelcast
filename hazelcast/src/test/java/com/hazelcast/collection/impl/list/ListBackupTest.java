@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2008-2018, Hazelcast, Inc. All Rights Reserved.
+ * Copyright (c) 2008-2019, Hazelcast, Inc. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -17,7 +17,6 @@
 package com.hazelcast.collection.impl.list;
 
 import com.hazelcast.collection.impl.AbstractCollectionBackupTest;
-import com.hazelcast.collection.impl.collection.AbstractCollectionProxyImpl;
 import com.hazelcast.core.HazelcastInstance;
 import com.hazelcast.test.HazelcastParallelClassRunner;
 import com.hazelcast.test.annotation.ParallelTest;
@@ -60,10 +59,5 @@ public class ListBackupTest extends AbstractCollectionBackupTest {
     @Override
     protected Collection<Integer> getBackupCollection(HazelcastInstance instance, String name) {
         return getBackupList(instance, name);
-    }
-
-    @Override
-    protected int getPartitionId(Collection collection) {
-        return ((AbstractCollectionProxyImpl) collection).getPartitionId();
     }
 }

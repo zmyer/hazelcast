@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2008-2018, Hazelcast, Inc. All Rights Reserved.
+ * Copyright (c) 2008-2019, Hazelcast, Inc. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -18,7 +18,6 @@ package com.hazelcast.test;
 
 import com.hazelcast.config.Config;
 import com.hazelcast.core.HazelcastInstance;
-import com.hazelcast.core.HazelcastInstanceNotActiveException;
 import com.hazelcast.core.LifecycleEvent;
 import com.hazelcast.core.LifecycleListener;
 import com.hazelcast.instance.HazelcastInstanceImpl;
@@ -44,6 +43,8 @@ import java.util.List;
 import java.util.Set;
 import java.util.concurrent.CountDownLatch;
 
+import static com.hazelcast.test.starter.ReflectionUtils.getFieldValueReflectively;
+import static com.hazelcast.test.starter.ReflectionUtils.isInstanceOf;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
@@ -155,6 +156,10 @@ public abstract class SplitBrainTestSupport extends HazelcastTestSupport {
         return smallInstanceConfig()
                 .setProperty(GroupProperty.MERGE_FIRST_RUN_DELAY_SECONDS.getName(), "5")
                 .setProperty(GroupProperty.MERGE_NEXT_RUN_DELAY_SECONDS.getName(), "5");
+    }
+
+    protected final Config getConfig() {
+        return super.getConfig();
     }
 
     /**
@@ -329,7 +334,8 @@ public abstract class SplitBrainTestSupport extends HazelcastTestSupport {
     }
 
     private static FirewallingConnectionManager getFireWalledConnectionManager(HazelcastInstance hz) {
-        return (FirewallingConnectionManager) getNode(hz).getConnectionManager();
+        Node node = getNode(hz);
+        return (FirewallingConnectionManager) node.getConnectionManager();
     }
 
     protected Brains getBrains() {
@@ -366,18 +372,16 @@ public abstract class SplitBrainTestSupport extends HazelcastTestSupport {
     }
 
     private static boolean isInstanceActive(HazelcastInstance instance) {
-        if (instance instanceof HazelcastInstanceProxy) {
+        if (isInstanceOf(instance, HazelcastInstanceProxy.class)) {
             try {
-                ((HazelcastInstanceProxy) instance).getOriginal();
-                return true;
-            } catch (HazelcastInstanceNotActiveException exception) {
-                return false;
+                return getFieldValueReflectively(instance, "original") != null;
+            } catch (IllegalAccessException e) {
+                throw new AssertionError("Could not get original field from HazelcastInstanceProxy: " + e.getMessage());
             }
-        } else if (instance instanceof HazelcastInstanceImpl) {
+        } else if (isInstanceOf(instance, HazelcastInstanceImpl.class)) {
             return getNode(instance).getState() == NodeState.ACTIVE;
-        } else {
-            throw new AssertionError("Unsupported HazelcastInstance type");
         }
+        throw new AssertionError("Unsupported HazelcastInstance type: " + instance.getClass().getName());
     }
 
     public static void blockCommunicationBetween(HazelcastInstance h1, HazelcastInstance h2) {
@@ -534,8 +538,8 @@ public abstract class SplitBrainTestSupport extends HazelcastTestSupport {
     protected static class ReturnPiCollectionMergePolicy
             implements SplitBrainMergePolicy<Collection<Object>, MergingValue<Collection<Object>>> {
 
-        private static Collection<Object> PI_COLLECTION;
-        private static Set<Object> PI_SET;
+        private static final Collection<Object> PI_COLLECTION;
+        private static final Set<Object> PI_SET;
 
         static {
             PI_COLLECTION = new ArrayList<Object>(5);

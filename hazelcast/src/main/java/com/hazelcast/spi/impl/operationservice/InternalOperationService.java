@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2008-2018, Hazelcast, Inc. All Rights Reserved.
+ * Copyright (c) 2008-2019, Hazelcast, Inc. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -116,7 +116,7 @@ public interface InternalOperationService extends OperationService {
     /**
      * Executes a PartitionSpecificRunnable.
      * <p/>
-     * This method is typically used by the {@link com.hazelcast.client.ClientEngine}
+     * This method is typically used by the {@link com.hazelcast.client.impl.ClientEngine}
      * when it has received a Packet containing a request that needs to be processed.
      *
      * @param task the task to execute

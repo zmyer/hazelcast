@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2008-2018, Hazelcast, Inc. All Rights Reserved.
+ * Copyright (c) 2008-2019, Hazelcast, Inc. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -23,6 +23,7 @@ import com.hazelcast.config.RingbufferStoreConfig;
 import com.hazelcast.core.HazelcastInstance;
 import com.hazelcast.core.RingbufferStore;
 import com.hazelcast.internal.serialization.InternalSerializationService;
+import com.hazelcast.internal.serialization.impl.DefaultSerializationServiceBuilder;
 import com.hazelcast.internal.serialization.impl.HeapData;
 import com.hazelcast.spi.merge.DiscardMergePolicy;
 import com.hazelcast.spi.merge.PassThroughMergePolicy;
@@ -71,18 +72,6 @@ public class RingbufferSplitBrainTest extends SplitBrainTestSupport {
 
     private static final int ITEM_COUNT = 25;
 
-    private SplitBrainRingbufferStore ringbufferStoreA = new SplitBrainRingbufferStore();
-
-    @Parameter
-    public InMemoryFormat inMemoryFormat;
-    @Parameter(value = 1)
-    public Class<? extends SplitBrainMergePolicy> mergePolicyClass;
-
-    private String ringbufferNameA = randomMapName("ringbufferA-");
-    private String ringbufferNameB = randomMapName("ringbufferB-");
-    private InternalSerializationService serializationService;
-    private SplitBrainRingbufferStore ringbufferStoreB = new SplitBrainRingbufferStore();
-
     @Parameters(name = "format:{0}, mergePolicy:{1}")
     public static Collection<Object[]> parameters() {
         return asList(new Object[][]{
@@ -97,49 +86,24 @@ public class RingbufferSplitBrainTest extends SplitBrainTestSupport {
                 {OBJECT, RingbufferRemoveValuesMergePolicy.class},
         });
     }
+
+    @Parameter
+    public InMemoryFormat inMemoryFormat;
+
+    @Parameter(value = 1)
+    public Class<? extends SplitBrainMergePolicy> mergePolicyClass;
+
+    private String ringbufferNameA = randomMapName("ringbufferA-");
+    private String ringbufferNameB = randomMapName("ringbufferB-");
+    private SplitBrainRingbufferStore ringbufferStoreA = new SplitBrainRingbufferStore().setLabel("A");
+    private SplitBrainRingbufferStore ringbufferStoreB = new SplitBrainRingbufferStore().setLabel("B");
     private Ringbuffer<Object> ringbufferA1;
     private Ringbuffer<Object> ringbufferA2;
     private Ringbuffer<Object> ringbufferB1;
     private Ringbuffer<Object> ringbufferB2;
     private Collection<Object> backupRingbuffer;
     private MergeLifecycleListener mergeLifecycleListener;
-
-    private static void assertRingbufferContent(Collection<Object> ringbuffer) {
-        assertRingbufferContent(ringbuffer, ITEM_COUNT, "item");
-    }
-
-    private static Collection<Object> getRingbufferContent(Ringbuffer<Object> ringbuffer) {
-        List<Object> list = new LinkedList<Object>();
-        try {
-            for (long sequence = ringbuffer.headSequence(); sequence <= ringbuffer.tailSequence(); sequence++) {
-                list.add(ringbuffer.readOne(sequence));
-            }
-        } catch (InterruptedException e) {
-            Thread.currentThread().interrupt();
-        }
-        return list;
-    }
-
-    private static void assertRingbufferContent(Collection<Object> ringbuffer, int expectedSize) {
-        assertRingbufferContent(ringbuffer, expectedSize, null);
-    }
-
-    private static void assertRingbufferContent(Ringbuffer<Object> ringbuffer) {
-        assertRingbufferContent(getRingbufferContent(ringbuffer));
-    }
-
-    private static void assertRingbufferContent(Ringbuffer<Object> ringbuffer, int expectedSize) {
-        assertRingbufferContent(getRingbufferContent(ringbuffer), expectedSize);
-    }
-
-    private static void assertRingbufferContent(Collection<Object> ringbuffer, int expectedSize, String prefix) {
-        assertEqualsStringFormat("ringbuffer " + toString(ringbuffer) + " should contain %d items, but was %d ", expectedSize, ringbuffer.size());
-
-        for (int i = 0; i < expectedSize; i++) {
-            Object expectedValue = prefix == null ? i : prefix + i;
-            assertTrue("ringbuffer " + toString(ringbuffer) + " should contain " + expectedValue, ringbuffer.contains(expectedValue));
-        }
-    }
+    private InternalSerializationService serializationService;
 
     @Override
     protected Config config() {
@@ -149,27 +113,27 @@ public class RingbufferSplitBrainTest extends SplitBrainTestSupport {
 
         Config config = super.config();
         config.getRingbufferConfig(ringbufferNameA)
-              .setInMemoryFormat(inMemoryFormat)
-              .setMergePolicyConfig(mergePolicyConfig)
-              .setRingbufferStoreConfig(new RingbufferStoreConfig()
-                      .setStoreImplementation(ringbufferStoreA))
-              .setBackupCount(1)
-              .setAsyncBackupCount(0)
-              .setTimeToLiveSeconds(0);
+                .setInMemoryFormat(inMemoryFormat)
+                .setMergePolicyConfig(mergePolicyConfig)
+                .setRingbufferStoreConfig(new RingbufferStoreConfig()
+                        .setStoreImplementation(ringbufferStoreA))
+                .setBackupCount(1)
+                .setAsyncBackupCount(0)
+                .setTimeToLiveSeconds(0);
         config.getRingbufferConfig(ringbufferNameB)
-              .setInMemoryFormat(inMemoryFormat)
-              .setMergePolicyConfig(mergePolicyConfig)
-              .setRingbufferStoreConfig(new RingbufferStoreConfig()
-                      .setStoreImplementation(ringbufferStoreB))
-              .setBackupCount(1)
-              .setAsyncBackupCount(0)
-              .setTimeToLiveSeconds(0);
+                .setInMemoryFormat(inMemoryFormat)
+                .setMergePolicyConfig(mergePolicyConfig)
+                .setRingbufferStoreConfig(new RingbufferStoreConfig()
+                        .setStoreImplementation(ringbufferStoreB))
+                .setBackupCount(1)
+                .setAsyncBackupCount(0)
+                .setTimeToLiveSeconds(0);
         return config;
     }
 
     @Override
-    protected void onBeforeSplitBrainCreated(HazelcastInstance[] instances) throws Exception {
-        this.serializationService = getSerializationService(instances[0]);
+    protected void onBeforeSplitBrainCreated(HazelcastInstance[] instances) {
+        serializationService = getSerializationService(instances[0]);
     }
 
     @Override
@@ -208,9 +172,9 @@ public class RingbufferSplitBrainTest extends SplitBrainTestSupport {
         // wait until merge completes
         mergeLifecycleListener.await();
 
-        // we manually purge the unwanted items from the QueueStore, to test if the expected items are correctly stored
-        ringbufferStoreA.purge(serializationService, "lostItem");
-        ringbufferStoreB.purge(serializationService, "lostItem");
+        // we manually purge the unwanted items from the RingbufferStore, to test if the expected items are correctly stored
+        ringbufferStoreA.purge("lostItem");
+        ringbufferStoreB.purge("lostItem");
 
         backupRingbuffer = getBackupRingbuffer(instances, ringbufferA1);
 
@@ -280,14 +244,6 @@ public class RingbufferSplitBrainTest extends SplitBrainTestSupport {
         }
     }
 
-    private void assertRingbufferStoreContent(SplitBrainRingbufferStore ringbufferStore) {
-        assertRingbufferStoreContent(ringbufferStore, ITEM_COUNT, "item");
-    }
-
-    private void assertRingbufferStoreContent(SplitBrainRingbufferStore ringbufferStore, int expectedSize) {
-        assertRingbufferStoreContent(ringbufferStore, expectedSize, null);
-    }
-
     private void afterMergePutIfAbsentMergePolicy() {
         assertRingbufferContent(ringbufferA1);
         assertRingbufferContent(ringbufferA2);
@@ -324,7 +280,7 @@ public class RingbufferSplitBrainTest extends SplitBrainTestSupport {
             ringbufferA2.add(i);
             ringbufferA2.add("lostItem" + i);
         }
-        // we clear the QueueStore, so we can check that the custom created items are correctly stored
+        // we clear the RingbufferStore, so we can check that the custom created items are correctly stored
         ringbufferStoreA.store.clear();
     }
 
@@ -335,8 +291,16 @@ public class RingbufferSplitBrainTest extends SplitBrainTestSupport {
         assertRingbufferStoreContent(ringbufferStoreA, ITEM_COUNT);
     }
 
+    private void assertRingbufferStoreContent(SplitBrainRingbufferStore ringbufferStore) {
+        assertRingbufferStoreContent(ringbufferStore, ITEM_COUNT, "item");
+    }
+
+    private void assertRingbufferStoreContent(SplitBrainRingbufferStore ringbufferStore, int expectedSize) {
+        assertRingbufferStoreContent(ringbufferStore, expectedSize, null);
+    }
+
     private void assertRingbufferStoreContent(SplitBrainRingbufferStore ringbufferStore, int expectedSize, String prefix) {
-        assertEqualsStringFormat("ringbufferStore " + ringbufferStore + " should contain %d items, but was %d",
+        assertEqualsStringFormat("ringbufferStore" + ringbufferStore.label + " should contain %d items, but was %d",
                 expectedSize, ringbufferStore.size());
 
         for (int i = 0; i < expectedSize; i++) {
@@ -344,9 +308,48 @@ public class RingbufferSplitBrainTest extends SplitBrainTestSupport {
             if (inMemoryFormat == BINARY) {
                 expectedValue = serializationService.toData(expectedValue).toByteArray();
             }
-            assertTrue("ringbufferStore " + ringbufferStore + " should contain " + expectedValue,
+            assertTrue("ringbufferStore" + ringbufferStore.label + " should contain " + expectedValue,
                     ringbufferStore.contains(expectedValue));
         }
+    }
+
+    private static void assertRingbufferContent(Ringbuffer<Object> ringbuffer, int expectedSize) {
+        assertRingbufferContent(getRingbufferContent(ringbuffer), expectedSize);
+    }
+
+    private static void assertRingbufferContent(Collection<Object> ringbuffer, int expectedSize) {
+        assertRingbufferContent(ringbuffer, expectedSize, null);
+    }
+
+    private static void assertRingbufferContent(Ringbuffer<Object> ringbuffer) {
+        assertRingbufferContent(getRingbufferContent(ringbuffer));
+    }
+
+    private static void assertRingbufferContent(Collection<Object> ringbuffer) {
+        assertRingbufferContent(ringbuffer, ITEM_COUNT, "item");
+    }
+
+    private static void assertRingbufferContent(Collection<Object> ringbuffer, int expectedSize, String prefix) {
+        assertEqualsStringFormat("ringbuffer " + toString(ringbuffer) + " should contain %d items, but was %d ",
+                expectedSize, ringbuffer.size());
+
+        for (int i = 0; i < expectedSize; i++) {
+            Object expectedValue = prefix == null ? i : prefix + i;
+            assertTrue("ringbuffer " + toString(ringbuffer) + " should contain " + expectedValue,
+                    ringbuffer.contains(expectedValue));
+        }
+    }
+
+    private static Collection<Object> getRingbufferContent(Ringbuffer<Object> ringbuffer) {
+        List<Object> list = new LinkedList<Object>();
+        try {
+            for (long sequence = ringbuffer.headSequence(); sequence <= ringbuffer.tailSequence(); sequence++) {
+                list.add(ringbuffer.readOne(sequence));
+            }
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+        }
+        return list;
     }
 
     /**
@@ -360,9 +363,18 @@ public class RingbufferSplitBrainTest extends SplitBrainTestSupport {
      */
     private static class SplitBrainRingbufferStore implements RingbufferStore<Object> {
 
+        private final SerializationService serializationService = new DefaultSerializationServiceBuilder().build();
+
         private final ConcurrentMap<Long, Collection<Object>> store = new ConcurrentHashMap<Long, Collection<Object>>();
 
-        public SplitBrainRingbufferStore() {
+        private String label;
+
+        SplitBrainRingbufferStore() {
+        }
+
+        SplitBrainRingbufferStore setLabel(String label) {
+            this.label = label;
+            return this;
         }
 
         @Override
@@ -394,7 +406,7 @@ public class RingbufferSplitBrainTest extends SplitBrainTestSupport {
         }
 
         @SuppressWarnings("SameParameterValue")
-        void purge(SerializationService serializationService, String prefix) {
+        void purge(String prefix) {
             Iterator<Collection<Object>> iterator = store.values().iterator();
             while (iterator.hasNext()) {
                 Collection<Object> collection = iterator.next();
@@ -430,7 +442,6 @@ public class RingbufferSplitBrainTest extends SplitBrainTestSupport {
                             return true;
                         }
                     }
-
                 } else {
                     if (collection.contains(expectedValue)) {
                         return true;

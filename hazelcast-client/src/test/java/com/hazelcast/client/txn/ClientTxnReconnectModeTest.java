@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2008-2018, Hazelcast, Inc. All Rights Reserved.
+ * Copyright (c) 2008-2019, Hazelcast, Inc. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -50,7 +50,10 @@ public class ClientTxnReconnectModeTest {
 
     @Parameterized.Parameters(name = "smartRouting:{0} ")
     public static Collection<Object[]> parameters() {
-        return asList(new Object[][]{{true}, {false},});
+        return asList(new Object[][]{
+                {true},
+                {false},
+        });
     }
 
     @After

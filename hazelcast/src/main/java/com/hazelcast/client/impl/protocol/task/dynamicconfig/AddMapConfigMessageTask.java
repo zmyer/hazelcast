@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2008-2018, Hazelcast, Inc. All Rights Reserved.
+ * Copyright (c) 2008-2019, Hazelcast, Inc. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -33,12 +33,9 @@ import com.hazelcast.instance.Node;
 import com.hazelcast.map.eviction.MapEvictionPolicy;
 import com.hazelcast.nio.Connection;
 import com.hazelcast.nio.serialization.IdentifiedDataSerializable;
-import com.hazelcast.version.Version;
 
 import java.util.ArrayList;
 import java.util.List;
-
-import static com.hazelcast.internal.cluster.Versions.V3_10;
 
 public class AddMapConfigMessageTask
         extends AbstractAddConfigMessageTask<DynamicConfigAddMapConfigCodec.RequestParameters> {
@@ -84,14 +81,10 @@ public class AddMapConfigMessageTask
         config.setMaxIdleSeconds(parameters.maxIdleSeconds);
         config.setMaxSizeConfig(new MaxSizeConfig(parameters.maxSizeConfigSize,
                 MaxSizeConfig.MaxSizePolicy.valueOf(parameters.maxSizeConfigMaxSizePolicy)));
-        Version clusterVersion = nodeEngine.getClusterService().getClusterVersion();
-        if (clusterVersion.isGreaterOrEqual(V3_10) && parameters.mergeBatchSizeExist) {
+        if (parameters.mergeBatchSizeExist) {
             MergePolicyConfig mergePolicyConfig = mergePolicyConfig(true, parameters.mergePolicy,
                     parameters.mergeBatchSize);
             config.setMergePolicyConfig(mergePolicyConfig);
-        } else {
-            // RU_COMPAT_3_9
-            config.setMergePolicy(parameters.mergePolicy);
         }
         if (parameters.nearCacheConfig != null) {
             config.setNearCacheConfig(parameters.nearCacheConfig.asNearCacheConfig(serializationService));
@@ -109,6 +102,7 @@ public class AddMapConfigMessageTask
             }
             config.setQueryCacheConfigs(queryCacheConfigs);
         }
+        config.setWanReplicationRef(parameters.wanReplicationRef);
         return config;
     }
 

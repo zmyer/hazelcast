@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2008-2018, Hazelcast, Inc. All Rights Reserved.
+ * Copyright (c) 2008-2019, Hazelcast, Inc. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -23,7 +23,7 @@ import com.hazelcast.client.cache.impl.HazelcastClientCachingProvider;
 import com.hazelcast.client.cache.impl.NearCachedClientCacheProxy;
 import com.hazelcast.client.cache.impl.nearcache.ClientNearCacheTestSupport;
 import com.hazelcast.client.config.ClientConfig;
-import com.hazelcast.client.impl.HazelcastClientProxy;
+import com.hazelcast.client.impl.clientside.HazelcastClientProxy;
 import com.hazelcast.config.CacheConfig;
 import com.hazelcast.config.Config;
 import com.hazelcast.config.EvictionConfig;
@@ -38,6 +38,7 @@ import com.hazelcast.internal.nearcache.impl.DefaultNearCache;
 import com.hazelcast.internal.nearcache.impl.invalidation.MetaDataContainer;
 import com.hazelcast.internal.nearcache.impl.invalidation.MetaDataGenerator;
 import com.hazelcast.internal.nearcache.impl.invalidation.StaleReadDetector;
+import com.hazelcast.internal.nearcache.impl.store.AbstractNearCacheRecordStore;
 import com.hazelcast.test.AssertTask;
 import com.hazelcast.test.HazelcastParallelParametersRunnerFactory;
 import com.hazelcast.test.annotation.NightlyTest;
@@ -67,6 +68,7 @@ import static com.hazelcast.spi.properties.GroupProperty.CACHE_INVALIDATION_MESS
 import static com.hazelcast.spi.properties.GroupProperty.CACHE_INVALIDATION_MESSAGE_BATCH_SIZE;
 import static com.hazelcast.spi.properties.GroupProperty.PARTITION_COUNT;
 import static com.hazelcast.util.RandomPicker.getInt;
+import static java.lang.String.format;
 import static java.util.Arrays.asList;
 import static org.junit.Assert.assertEquals;
 
@@ -217,10 +219,10 @@ public class ClientCacheInvalidationMemberAddRemoveTest extends ClientNearCacheT
                 long memberSequence2 = metaDataGenerator2.currentSequence("/hz/" + DEFAULT_CACHE_NAME, partitionId);
                 UUID memberUuid2 = metaDataGenerator2.getUuidOrNull(partitionId);
 
-                StaleReadDetector staleReadDetector = nearCacheRecordStore.getStaleReadDetector();
+                StaleReadDetector staleReadDetector = getStaleReadDetector((AbstractNearCacheRecordStore) nearCacheRecordStore);
                 MetaDataContainer metaDataContainer = staleReadDetector.getMetaDataContainer(partitionId);
-                return String.format("On client: [uuid=%s, partition=%d, onRecordSequence=%d, latestSequence=%d, staleSequence=%d]," +
-                                "%nOn members: [memberUuid1=%s, memberSequence1=%d, memberUuid2=%s, memberSequence2=%d]",
+                return format("On client: [uuid=%s, partition=%d, onRecordSequence=%d, latestSequence=%d, staleSequence=%d],"
+                                + "%nOn members: [memberUuid1=%s, memberSequence1=%d, memberUuid2=%s, memberSequence2=%d]",
                         metaDataContainer.getUuid(), partitionId, recordSequence, metaDataContainer.getSequence(),
                         metaDataContainer.getStaleSequence(), memberUuid1, memberSequence1, memberUuid2, memberSequence2);
             }
@@ -237,6 +239,10 @@ public class ClientCacheInvalidationMemberAddRemoveTest extends ClientNearCacheT
                 return defaultNearCache.getNearCacheRecordStore();
             }
         });
+    }
+
+    protected StaleReadDetector getStaleReadDetector(NearCacheRecordStore nearCacheRecordStore) {
+        return ((AbstractNearCacheRecordStore) nearCacheRecordStore).getStaleReadDetector();
     }
 
     @Override

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2008-2018, Hazelcast, Inc. All Rights Reserved.
+ * Copyright (c) 2008-2019, Hazelcast, Inc. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -45,8 +45,8 @@ public class SplitBrainMergeTypes {
      */
     @Beta
     public interface MapMergeTypes extends MergingEntry<Data, Data>, MergingCreationTime<Data>, MergingHits<Data>,
-            MergingLastAccessTime<Data>, MergingLastUpdateTime<Data>, MergingTTL<Data>, MergingCosts<Data>, MergingVersion<Data>,
-            MergingExpirationTime<Data>, MergingLastStoredTime<Data> {
+            MergingLastAccessTime<Data>, MergingLastUpdateTime<Data>, MergingTTL<Data>, MergingMaxIdle<Data>, MergingCosts<Data>,
+            MergingVersion<Data>, MergingExpirationTime<Data>, MergingLastStoredTime<Data> {
     }
 
     /**

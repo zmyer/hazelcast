@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2008-2018, Hazelcast, Inc. All Rights Reserved.
+ * Copyright (c) 2008-2019, Hazelcast, Inc. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -31,6 +31,8 @@ import static com.hazelcast.test.AbstractHazelcastClassRunner.getTestMethodName;
 /**
  * Per test-method factory for Hazelcast clients (and also members as it inherits from {@link TestAwareInstanceFactory}).
  * It configures new clients in the same way as it's done for members in {@link TestAwareInstanceFactory#newHazelcastInstance(com.hazelcast.config.Config)}.
+ * <p>
+ * <b>Tests using this factory should not be annotated with {@code ParallelTest} category to avoid runs in multiple JVMs.</b>
  */
 @SuppressWarnings({"unused", "WeakerAccess"})
 public class TestAwareClientFactory extends TestAwareInstanceFactory {

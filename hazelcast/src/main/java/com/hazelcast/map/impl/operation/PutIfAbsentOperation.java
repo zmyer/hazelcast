@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2008-2018, Hazelcast, Inc. All Rights Reserved.
+ * Copyright (c) 2008-2019, Hazelcast, Inc. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -24,8 +24,8 @@ public class PutIfAbsentOperation extends BasePutOperation implements MutatingOp
 
     private boolean successful;
 
-    public PutIfAbsentOperation(String name, Data dataKey, Data value, long ttl) {
-        super(name, dataKey, value, ttl);
+    public PutIfAbsentOperation(String name, Data dataKey, Data value, long ttl, long maxIdle) {
+        super(name, dataKey, value, ttl, maxIdle);
     }
 
     public PutIfAbsentOperation() {
@@ -33,7 +33,7 @@ public class PutIfAbsentOperation extends BasePutOperation implements MutatingOp
 
     @Override
     public void run() {
-        final Object oldValue = recordStore.putIfAbsent(dataKey, dataValue, ttl, getCallerAddress());
+        final Object oldValue = recordStore.putIfAbsent(dataKey, dataValue, ttl, maxIdle, getCallerAddress());
         dataOldValue = mapServiceContext.toData(oldValue);
         successful = dataOldValue == null;
     }

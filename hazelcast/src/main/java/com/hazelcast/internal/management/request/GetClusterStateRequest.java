@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2008-2018, Hazelcast, Inc. All Rights Reserved.
+ * Copyright (c) 2008-2019, Hazelcast, Inc. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,9 +16,9 @@
 
 package com.hazelcast.internal.management.request;
 
-import com.eclipsesource.json.JsonObject;
 import com.hazelcast.cluster.ClusterState;
 import com.hazelcast.internal.management.ManagementCenterService;
+import com.hazelcast.internal.json.JsonObject;
 
 /**
  * Request coming from Management Center for getting the {@link ClusterState}

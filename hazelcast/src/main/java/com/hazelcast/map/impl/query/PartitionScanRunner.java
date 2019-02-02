@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2008-2018, Hazelcast, Inc. All Rights Reserved.
+ * Copyright (c) 2008-2019, Hazelcast, Inc. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -51,7 +51,7 @@ import static com.hazelcast.query.PagingPredicateAccessor.getNearestAnchorEntry;
 import static com.hazelcast.util.SortingUtil.compareAnchor;
 
 /**
- * Responsible for running a full-partition scna for a single partition in the calling thread.
+ * Responsible for running a full-partition scan for a single partition in the calling thread.
  */
 public class PartitionScanRunner {
 

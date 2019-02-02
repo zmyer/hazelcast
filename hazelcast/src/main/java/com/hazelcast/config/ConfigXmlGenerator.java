@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2008-2018, Hazelcast, Inc. All Rights Reserved.
+ * Copyright (c) 2008-2019, Hazelcast, Inc. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -45,12 +45,14 @@ import java.util.Map.Entry;
 import java.util.Properties;
 import java.util.Set;
 
+import static com.hazelcast.config.AliasedDiscoveryConfigUtils.aliasedDiscoveryConfigsFrom;
 import static com.hazelcast.config.PermissionConfig.PermissionType.ALL;
 import static com.hazelcast.config.PermissionConfig.PermissionType.CONFIG;
 import static com.hazelcast.config.PermissionConfig.PermissionType.TRANSACTION;
 import static com.hazelcast.nio.IOUtil.closeResource;
 import static com.hazelcast.util.Preconditions.isNotNull;
 import static com.hazelcast.util.StringUtil.isNullOrEmpty;
+import static com.hazelcast.util.StringUtil.isNullOrEmptyAfterTrim;
 import static java.util.Arrays.asList;
 
 /**
@@ -87,9 +89,9 @@ public class ConfigXmlGenerator {
     /**
      * Creates a ConfigXmlGenerator.
      *
-     * @param formatted {@code true} if the XML should be formatted, {@code false} otherwise
+     * @param formatted           {@code true} if the XML should be formatted, {@code false} otherwise
      * @param maskSensitiveFields {@code true} if the sensitive fields (like passwords) should be masked in the
-     *                                        output XML, {@code false} otherwise
+     *                            output XML, {@code false} otherwise
      */
     public ConfigXmlGenerator(boolean formatted, boolean maskSensitiveFields) {
         this.formatted = formatted;
@@ -143,6 +145,7 @@ public class ConfigXmlGenerator {
         durableExecutorXmlGenerator(gen, config);
         scheduledExecutorXmlGenerator(gen, config);
         eventJournalXmlGenerator(gen, config);
+        merkleTreeXmlGenerator(gen, config);
         partitionGroupXmlGenerator(gen, config);
         cardinalityEstimatorXmlGenerator(gen, config);
         listenerXmlGenerator(gen, config);
@@ -171,6 +174,7 @@ public class ConfigXmlGenerator {
             ManagementCenterConfig mcConfig = config.getManagementCenterConfig();
             gen.open("management-center",
                     "enabled", mcConfig.isEnabled(),
+                    "scripting-enabled", mcConfig.isScriptingEnabled(),
                     "update-interval", mcConfig.getUpdateInterval());
             gen.node("url", mcConfig.getUrl());
             if (mcConfig.getUrl() != null) {
@@ -261,13 +265,13 @@ public class ConfigXmlGenerator {
         }
 
         gen.open("security", "enabled", c.isEnabled())
-           .node("client-block-unmapped-actions", c.getClientBlockUnmappedActions());
+                .node("client-block-unmapped-actions", c.getClientBlockUnmappedActions());
 
         PermissionPolicyConfig ppc = c.getClientPolicyConfig();
         if (ppc.getClassName() != null) {
             gen.open("client-permission-policy", "class-name", ppc.getClassName())
-               .appendProperties(ppc.getProperties())
-               .close();
+                    .appendProperties(ppc.getProperties())
+                    .close();
         }
 
         appendLoginModules(gen, "client-login-modules", c.getClientLoginModuleConfigs());
@@ -276,8 +280,8 @@ public class ConfigXmlGenerator {
         CredentialsFactoryConfig cfc = c.getMemberCredentialsConfig();
         if (cfc.getClassName() != null) {
             gen.open("member-credentials-factory", "class-name", cfc.getClassName())
-               .appendProperties(cfc.getProperties())
-               .close();
+                    .appendProperties(cfc.getProperties())
+                    .close();
         }
 
         List<SecurityInterceptorConfig> sic = c.getSecurityInterceptorConfigs();
@@ -285,7 +289,7 @@ public class ConfigXmlGenerator {
             gen.open("security-interceptors");
             for (SecurityInterceptorConfig s : sic) {
                 gen.open("interceptor", "class-name", s.getClassName())
-                   .close();
+                        .close();
             }
             gen.close();
         }
@@ -340,8 +344,8 @@ public class ConfigXmlGenerator {
                     attrs.add(lm.getUsage().name());
                 }
                 gen.open("login-module", attrs.toArray())
-                   .appendProperties(lm.getProperties())
-                   .close();
+                        .appendProperties(lm.getProperties())
+                        .close();
             }
             gen.close();
         }
@@ -495,10 +499,10 @@ public class ConfigXmlGenerator {
     private static void pnCounterXmlGenerator(XmlGenerator gen, Config config) {
         for (PNCounterConfig counterConfig : config.getPNCounterConfigs().values()) {
             gen.open("pn-counter", "name", counterConfig.getName())
-               .node("replica-count", counterConfig.getReplicaCount())
-               .node("quorum-ref", counterConfig.getQuorumName())
-               .node("statistics-enabled", counterConfig.isStatisticsEnabled())
-               .close();
+                    .node("replica-count", counterConfig.getReplicaCount())
+                    .node("quorum-ref", counterConfig.getQuorumName())
+                    .node("statistics-enabled", counterConfig.isStatisticsEnabled())
+                    .close();
         }
     }
 
@@ -658,25 +662,57 @@ public class ConfigXmlGenerator {
         for (WanReplicationConfig wan : config.getWanReplicationConfigs().values()) {
             gen.open("wan-replication", "name", wan.getName());
             for (WanPublisherConfig p : wan.getWanPublisherConfigs()) {
-                gen.open("wan-publisher", "group-name", p.getGroupName())
-                        .node("class-name", p.getClassName())
-                        .node("queue-full-behavior", p.getQueueFullBehavior())
-                        .node("queue-capacity", p.getQueueCapacity())
-                        .appendProperties(p.getProperties());
-                awsConfigXmlGenerator(gen, p.getAwsConfig());
-                discoveryStrategyConfigXmlGenerator(gen, p.getDiscoveryConfig());
-                gen.close();
+                wanReplicationPublisherXmlGenerator(gen, p);
             }
 
             WanConsumerConfig consumerConfig = wan.getWanConsumerConfig();
             if (consumerConfig != null) {
-                gen.open("wan-consumer")
-                        .node("class-name", classNameOrImplClass(consumerConfig.getClassName(),
-                                consumerConfig.getImplementation()))
-                        .appendProperties(consumerConfig.getProperties())
-                        .close();
+                wanReplicationConsumerGenerator(gen, consumerConfig);
             }
             gen.close();
+        }
+    }
+
+    private static void wanReplicationConsumerGenerator(XmlGenerator gen, WanConsumerConfig consumerConfig) {
+        gen.open("wan-consumer");
+        String consumerClassName = classNameOrImplClass(
+                consumerConfig.getClassName(), consumerConfig.getImplementation());
+        if (consumerClassName != null) {
+            gen.node("class-name", consumerClassName);
+        }
+        gen.node("persist-wan-replicated-data", consumerConfig.isPersistWanReplicatedData())
+           .appendProperties(consumerConfig.getProperties())
+           .close();
+    }
+
+    private static void wanReplicationPublisherXmlGenerator(XmlGenerator gen, WanPublisherConfig p) {
+        String publisherId = !isNullOrEmptyAfterTrim(p.getPublisherId())
+                ? p.getPublisherId() : "";
+        gen.open("wan-publisher", "group-name", p.getGroupName(), "publisher-id", publisherId)
+           .node("class-name", p.getClassName())
+           .node("queue-full-behavior", p.getQueueFullBehavior())
+           .node("initial-publisher-state", p.getInitialPublisherState())
+           .node("queue-capacity", p.getQueueCapacity())
+           .appendProperties(p.getProperties());
+        wanReplicationSyncGenerator(gen, p.getWanSyncConfig());
+        aliasedDiscoveryConfigsGenerator(gen, aliasedDiscoveryConfigsFrom(p));
+        discoveryStrategyConfigXmlGenerator(gen, p.getDiscoveryConfig());
+        gen.close();
+    }
+
+    private static void wanReplicationSyncGenerator(XmlGenerator gen, WanSyncConfig c) {
+        gen.open("wan-sync")
+           .node("consistency-check-strategy", c.getConsistencyCheckStrategy())
+           .close();
+    }
+
+    private static void merkleTreeXmlGenerator(XmlGenerator gen, Config config) {
+        Collection<MerkleTreeConfig> mapMerkleTreeConfigs = config.getMapMerkleTreeConfigs().values();
+        for (MerkleTreeConfig c : mapMerkleTreeConfigs) {
+            gen.open("merkle-tree", "enabled", c.isEnabled())
+               .node("mapName", c.getMapName())
+               .node("depth", c.getDepth())
+               .close();
         }
     }
 
@@ -702,7 +738,7 @@ public class ConfigXmlGenerator {
         gen.open("join");
         multicastConfigXmlGenerator(gen, join);
         tcpConfigXmlGenerator(gen, join);
-        awsConfigXmlGenerator(gen, join.getAwsConfig());
+        aliasedDiscoveryConfigsGenerator(gen, AliasedDiscoveryConfigUtils.aliasedDiscoveryConfigsFrom(join));
         discoveryStrategyConfigXmlGenerator(gen, join.getDiscoveryConfig());
         gen.close();
 
@@ -964,8 +1000,12 @@ public class ConfigXmlGenerator {
 
     private static void wanReplicationConfigXmlGenerator(XmlGenerator gen, WanReplicationRef wan) {
         if (wan != null) {
-            gen.open("wan-replication-ref", "name", wan.getName())
-                    .node("merge-policy", wan.getMergePolicy());
+            gen.open("wan-replication-ref", "name", wan.getName());
+
+            String mergePolicy = wan.getMergePolicy();
+            if (!isNullOrEmpty(mergePolicy)) {
+                gen.node("merge-policy", mergePolicy);
+            }
 
             List<String> filters = wan.getFilters();
             if (CollectionUtil.isNotEmpty(filters)) {
@@ -991,12 +1031,12 @@ public class ConfigXmlGenerator {
             MapStoreConfig.InitialLoadMode initialMode = s.getInitialLoadMode();
 
             gen.open("map-store", "enabled", s.isEnabled(), "initial-mode", initialMode.toString())
-               .node("class-name", clazz)
-               .node("factory-class-name", factoryClass)
-               .node("write-delay-seconds", s.getWriteDelaySeconds())
-               .node("write-batch-size", s.getWriteBatchSize())
-               .appendProperties(s.getProperties())
-               .close();
+                    .node("class-name", clazz)
+                    .node("factory-class-name", factoryClass)
+                    .node("write-delay-seconds", s.getWriteDelaySeconds())
+                    .node("write-batch-size", s.getWriteBatchSize())
+                    .appendProperties(s.getProperties())
+                    .close();
         }
     }
 
@@ -1010,13 +1050,13 @@ public class ConfigXmlGenerator {
             }
 
             gen.node("in-memory-format", n.getInMemoryFormat())
-               .node("invalidate-on-change", n.isInvalidateOnChange())
-               .node("time-to-live-seconds", n.getTimeToLiveSeconds())
-               .node("max-idle-seconds", n.getMaxIdleSeconds())
-               .node("serialize-keys", n.isSerializeKeys())
-               .node("cache-local-entries", n.isCacheLocalEntries())
-               .node("max-size", n.getMaxSize())
-               .node("eviction-policy", n.getEvictionPolicy());
+                    .node("invalidate-on-change", n.isInvalidateOnChange())
+                    .node("time-to-live-seconds", n.getTimeToLiveSeconds())
+                    .node("max-idle-seconds", n.getMaxIdleSeconds())
+                    .node("serialize-keys", n.isSerializeKeys())
+                    .node("cache-local-entries", n.isCacheLocalEntries())
+                    .node("max-size", n.getMaxSize())
+                    .node("eviction-policy", n.getEvictionPolicy());
 
             evictionConfigXmlGenerator(gen, n.getEvictionConfig());
             gen.close();
@@ -1065,20 +1105,20 @@ public class ConfigXmlGenerator {
                 .close();
     }
 
-    private static void awsConfigXmlGenerator(XmlGenerator gen, AwsConfig c) {
-        if (c == null) {
+    private static void aliasedDiscoveryConfigsGenerator(XmlGenerator gen, List<AliasedDiscoveryConfig<?>> configs) {
+        if (configs == null) {
             return;
         }
-        gen.open("aws", "enabled", c.isEnabled())
-                .node("access-key", c.getAccessKey())
-                .node("secret-key", c.getSecretKey())
-                .node("iam-role", c.getIamRole())
-                .node("region", c.getRegion())
-                .node("host-header", c.getHostHeader())
-                .node("security-group-name", c.getSecurityGroupName())
-                .node("tag-key", c.getTagKey())
-                .node("tag-value", c.getTagValue())
-                .close();
+        for (AliasedDiscoveryConfig<?> c : configs) {
+            gen.open(AliasedDiscoveryConfigUtils.tagFor(c), "enabled", c.isEnabled());
+            if (c.isUsePublicIp()) {
+                gen.node("use-public-ip", "true");
+            }
+            for (String key : c.getProperties().keySet()) {
+                gen.node(key, c.getProperties().get(key));
+            }
+            gen.close();
+        }
     }
 
     private static void discoveryStrategyConfigXmlGenerator(XmlGenerator gen, DiscoveryConfig c) {
@@ -1204,13 +1244,13 @@ public class ConfigXmlGenerator {
 
         gen.open("failure-detector");
         gen.open("icmp", "enabled", icmpFailureDetectorConfig.isEnabled())
-           .node("ttl", icmpFailureDetectorConfig.getTtl())
-           .node("interval-milliseconds", icmpFailureDetectorConfig.getIntervalMilliseconds())
-           .node("max-attempts", icmpFailureDetectorConfig.getMaxAttempts())
-           .node("timeout-milliseconds", icmpFailureDetectorConfig.getTimeoutMilliseconds())
-           .node("fail-fast-on-startup", icmpFailureDetectorConfig.isFailFastOnStartup())
-           .node("parallel-mode", icmpFailureDetectorConfig.isParallelMode())
-           .close();
+                .node("ttl", icmpFailureDetectorConfig.getTtl())
+                .node("interval-milliseconds", icmpFailureDetectorConfig.getIntervalMilliseconds())
+                .node("max-attempts", icmpFailureDetectorConfig.getMaxAttempts())
+                .node("timeout-milliseconds", icmpFailureDetectorConfig.getTimeoutMilliseconds())
+                .node("fail-fast-on-startup", icmpFailureDetectorConfig.isFailFastOnStartup())
+                .node("parallel-mode", icmpFailureDetectorConfig.isParallelMode())
+                .close();
         gen.close();
     }
 
@@ -1249,7 +1289,7 @@ public class ConfigXmlGenerator {
         gen.open("crdt-replication");
         if (replicationConfig != null) {
             gen.node("replication-period-millis", replicationConfig.getReplicationPeriodMillis())
-               .node("max-concurrent-replication-targets", replicationConfig.getMaxConcurrentReplicationTargets());
+                    .node("max-concurrent-replication-targets", replicationConfig.getMaxConcurrentReplicationTargets());
         }
         gen.close();
     }
@@ -1422,32 +1462,48 @@ public class ConfigXmlGenerator {
         gen.close();
     }
 
-    private static final class XmlGenerator {
+    /**
+     * Utility class to build xml using a {@link StringBuilder}.
+     */
+    public static final class XmlGenerator {
+
+        private static final int CAPACITY = 64;
 
         private final StringBuilder xml;
         private final ArrayDeque<String> openNodes = new ArrayDeque<String>();
 
-        private XmlGenerator(StringBuilder xml) {
+        public XmlGenerator(StringBuilder xml) {
             this.xml = xml;
         }
 
-        XmlGenerator open(String name, Object... attributes) {
+        public XmlGenerator open(String name, Object... attributes) {
             appendOpenNode(xml, name, attributes);
             openNodes.addLast(name);
             return this;
         }
 
-        XmlGenerator node(String name, Object contents, Object... attributes) {
+        public XmlGenerator node(String name, Object contents, Object... attributes) {
             appendNode(xml, name, contents, attributes);
             return this;
         }
 
-        XmlGenerator close() {
+        public XmlGenerator close() {
             appendCloseNode(xml, openNodes.pollLast());
             return this;
         }
 
-        XmlGenerator appendProperties(Properties props) {
+        public XmlGenerator appendAttributes(Map<String, String> attributes) {
+            if (!attributes.isEmpty()) {
+                open("client-attributes");
+                for (Entry<String, String> entry : attributes.entrySet()) {
+                    node("attribute", entry.getValue(), "name", entry.getKey());
+                }
+                close();
+            }
+            return this;
+        }
+
+        public XmlGenerator appendProperties(Properties props) {
             if (!props.isEmpty()) {
                 open("properties");
                 Set keys = props.keySet();
@@ -1459,10 +1515,10 @@ public class ConfigXmlGenerator {
             return this;
         }
 
-        XmlGenerator appendProperties(Map<String, Comparable> props) {
+        public XmlGenerator appendProperties(Map<String, ? extends Comparable> props) {
             if (!MapUtil.isNullOrEmpty(props)) {
                 open("properties");
-                for (Entry<String, Comparable> entry : props.entrySet()) {
+                for (Entry<String, ? extends Comparable> entry : props.entrySet()) {
                     node("property", entry.getValue(), "name", entry.getKey());
                 }
                 close();
@@ -1480,26 +1536,84 @@ public class ConfigXmlGenerator {
             xml.append("</").append(name).append('>');
         }
 
-        private static void appendAttributes(StringBuilder xml, Object... attributes) {
-            for (int i = 0; i < attributes.length; ) {
-                xml.append(" ").append(attributes[i++]).append("=\"").append(attributes[i++]).append("\"");
-            }
-        }
-
         private static void appendNode(StringBuilder xml, String name, Object contents, Object... attributes) {
             if (contents != null || attributes.length > 0) {
                 xml.append('<').append(name);
-                for (int i = 0; i < attributes.length; ) {
-                    Object key = attributes[i++];
-                    Object val = attributes[i++];
-                    if (val != null) {
-                        xml.append(" ").append(key).append("=\"").append(val).append("\"");
-                    }
-                }
+                appendAttributes(xml, attributes);
                 if (contents != null) {
-                    xml.append('>').append(contents).append("</").append(name).append('>');
+                    xml.append('>');
+                    escapeXml(contents, xml);
+                    xml.append("</").append(name).append('>');
                 } else {
                     xml.append("/>");
+                }
+            }
+        }
+
+        private static void appendAttributes(StringBuilder xml, Object... attributes) {
+            for (int i = 0; i < attributes.length; ) {
+                Object attributeName = attributes[i++];
+                Object attributeValue = attributes[i++];
+                if (attributeValue == null) {
+                    continue;
+                }
+                xml.append(" ").append(attributeName).append("=\"");
+                escapeXmlAttr(attributeValue, xml);
+                xml.append("\"");
+            }
+        }
+
+        /**
+         * Escapes special characters in XML element contents and appends the result to <code>appendTo</code>.
+         */
+        private static void escapeXml(Object o, StringBuilder appendTo) {
+            if (o == null) {
+                appendTo.append("null");
+                return;
+            }
+            String s = o.toString();
+            int length = s.length();
+            appendTo.ensureCapacity(appendTo.length() + length + CAPACITY);
+            for (int i = 0; i < length; i++) {
+                char ch = s.charAt(i);
+                if (ch == '<') {
+                    appendTo.append("&lt;");
+                } else if (ch == '&') {
+                    appendTo.append("&amp;");
+                } else {
+                    appendTo.append(ch);
+                }
+            }
+        }
+
+        /**
+         * Escapes special characters in XML attribute value and appends the result to <code>appendTo</code>.
+         */
+        private static void escapeXmlAttr(Object o, StringBuilder appendTo) {
+            if (o == null) {
+                appendTo.append("null");
+                return;
+            }
+            String s = o.toString();
+            int length = s.length();
+            appendTo.ensureCapacity(appendTo.length() + length + CAPACITY);
+            for (int i = 0; i < length; i++) {
+                char ch = s.charAt(i);
+                switch (ch) {
+                    case '"':
+                        appendTo.append("&quot;");
+                        break;
+                    case '\'':
+                        appendTo.append("&#39;");
+                        break;
+                    case '&':
+                        appendTo.append("&amp;");
+                        break;
+                    case '<':
+                        appendTo.append("&lt;");
+                        break;
+                    default:
+                        appendTo.append(ch);
                 }
             }
         }

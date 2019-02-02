@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2008-2018, Hazelcast, Inc. All Rights Reserved.
+ * Copyright (c) 2008-2019, Hazelcast, Inc. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -23,6 +23,7 @@ import com.hazelcast.instance.BuildInfo;
 import com.hazelcast.instance.MemberImpl;
 import com.hazelcast.instance.Node;
 import com.hazelcast.internal.cluster.MemberInfo;
+import com.hazelcast.internal.cluster.Versions;
 import com.hazelcast.internal.cluster.impl.operations.AuthenticationFailureOp;
 import com.hazelcast.internal.cluster.impl.operations.BeforeJoinCheckFailureOp;
 import com.hazelcast.internal.cluster.impl.operations.ConfigMismatchOp;
@@ -278,22 +279,13 @@ public class ClusterJoinManager {
             return true;
         }
 
-        if (checkClusterStateBeforeJoin(target, targetUuid)) {
-            return true;
-        }
-
         if (joinRequest.getExcludedMemberUuids().contains(clusterService.getThisUuid())) {
             logger.warning("cannot join " + target + " since this node is excluded in its list...");
             hotRestartService.handleExcludedMemberUuids(target, joinRequest.getExcludedMemberUuids());
             return true;
         }
 
-        if (!node.getPartitionService().isMemberAllowedToJoin(target)) {
-            logger.warning(target + " not allowed to join right now, it seems restarted.");
-            return true;
-        }
-
-        return false;
+        return checkClusterStateBeforeJoin(target, targetUuid);
     }
 
     private boolean checkClusterStateBeforeJoin(Address target, String uuid) {
@@ -309,22 +301,25 @@ public class ClusterJoinManager {
             return checkRecentlyJoinedMemberUuidBeforeJoin(target, uuid);
         }
 
-        if (clusterService.isMemberRemovedInNotJoinableState(target)) {
-            MemberImpl removedMember = clusterService.getMembershipManager().getMemberRemovedInNotJoinableState(uuid);
+        // RU_COMPAT_3_11
+        if (clusterService.getClusterVersion().isLessThan(Versions.V3_12)
+                && node.getNodeExtension().getInternalHotRestartService().isEnabled()
+                && clusterService.isMissingMember(target, uuid)) {
 
-            if (removedMember != null && !target.equals(removedMember.getAddress())) {
-
-                logger.warning("UUID " + uuid + " was being used by " + removedMember
-                        + " before. " + target + " is not allowed to join with a UUID which belongs to"
-                        + " a known passive member.");
-
-                return true;
+            Collection<MemberImpl> missingMembers = clusterService.getMembershipManager().getMissingMembers();
+            for (MemberImpl member : missingMembers) {
+                if (!uuid.equals(member.getUuid()) && target.equals(member.getAddress())) {
+                    MemberImpl joiningMember = new MemberImpl(target, MemberVersion.UNKNOWN, false, uuid);
+                    logger.warning("Address " + target + " was being used by " + member + " before. "
+                            + joiningMember + " is not allowed to join with an address which belongs to"
+                            + " a known missing member.");
+                    return true;
+                }
             }
-
             return false;
         }
 
-        if (clusterService.isMemberRemovedInNotJoinableState(uuid)) {
+        if (clusterService.isMissingMember(target, uuid)) {
             return false;
         }
 
@@ -542,9 +537,10 @@ public class ClusterJoinManager {
                         masterAddress, callerAddress, currentMaster));
                 sendJoinRequest(currentMaster, true);
             } else {
-                logger.warning(format("Ambiguous master response: This node has a master %s, but does not have a connection"
-                                + " to %s. Sent master response as %s. Master field will be unset now...",
-                        currentMaster, callerAddress, masterAddress));
+                logger.warning(format("Ambiguous master response! Received master response %s from %s. "
+                                + "This node has a master %s, but does not have an active connection to it. "
+                                + "Master field will be unset now.",
+                        masterAddress, callerAddress, currentMaster));
                 clusterService.setMasterAddress(null);
             }
         } finally {
@@ -752,8 +748,7 @@ public class ClusterJoinManager {
                     if (member.localMember() || joiningMembers.containsKey(member.getAddress())) {
                         continue;
                     }
-                    Operation op = new MembersUpdateOp(member.getUuid(), newMembersView, time,
-                            partitionRuntimeState, true);
+                    Operation op = new MembersUpdateOp(member.getUuid(), newMembersView, time, partitionRuntimeState, true);
                     op.setCallerUuid(thisUuid);
                     invokeClusterOp(op, member.getAddress());
                 }
@@ -828,14 +823,14 @@ public class ClusterJoinManager {
 
         if (targetDataMemberCount > currentDataMemberCount) {
             logger.info("We should merge to " + joinMessage.getAddress()
-                    + ", because their data member count is bigger than ours ["
+                    + " because their data member count is bigger than ours ["
                     + (targetDataMemberCount + " > " + currentDataMemberCount) + ']');
             return LOCAL_NODE_SHOULD_MERGE;
         }
 
         if (targetDataMemberCount < currentDataMemberCount) {
             logger.info(joinMessage.getAddress() + " should merge to us "
-                    + ", because our data member count is bigger than theirs ["
+                    + "because our data member count is bigger than theirs ["
                     + (currentDataMemberCount + " > " + targetDataMemberCount) + ']');
             return REMOTE_NODE_SHOULD_MERGE;
         }
@@ -920,7 +915,7 @@ public class ClusterJoinManager {
         for (Address address : clusterService.getMemberAddresses()) {
             if (targetMemberAddresses.contains(address)) {
                 logger.info(node.getThisAddress() + " CANNOT merge to " + joinMessageAddress
-                        + ", because it thinks " + address + " as its member. "
+                        + ", because it thinks " + address + " is its member. "
                         + "But " + address + " is member of this cluster.");
                 return false;
             }

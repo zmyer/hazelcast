@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2008-2018, Hazelcast, Inc. All Rights Reserved.
+ * Copyright (c) 2008-2019, Hazelcast, Inc. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,13 +16,12 @@
 
 package com.hazelcast.nio;
 
-import org.junit.Test;
-import org.junit.experimental.categories.Category;
-import org.junit.runner.RunWith;
-
 import com.hazelcast.config.JavaSerializationFilterConfig;
 import com.hazelcast.test.HazelcastParallelClassRunner;
 import com.hazelcast.test.annotation.QuickTest;
+import org.junit.Test;
+import org.junit.experimental.categories.Category;
+import org.junit.runner.RunWith;
 
 /**
  * Unit tests for {@link SerializationClassNameFilter}.
@@ -112,7 +111,7 @@ public class SerializationClassNameFilterTest {
         config.getBlacklist().addClasses("java.lang.Test3", "java.lang.Test2", "java.lang.Test1");
         new SerializationClassNameFilter(config).filter("java.lang.Test1");
     }
-    
+
     /**
      * <pre>
      * Given: Blacklist with prefix is used which overlaps default whitelist.

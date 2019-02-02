@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2008-2018, Hazelcast, Inc. All Rights Reserved.
+ * Copyright (c) 2008-2019, Hazelcast, Inc. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -41,8 +41,8 @@ abstract class MapOperationProviderDelegator implements MapOperationProvider {
     abstract MapOperationProvider getDelegate();
 
     @Override
-    public MapOperation createPutOperation(String name, Data key, Data value, long ttl) {
-        return getDelegate().createPutOperation(name, key, value, ttl);
+    public MapOperation createPutOperation(String name, Data key, Data value, long ttl, long maxIdle) {
+        return getDelegate().createPutOperation(name, key, value, ttl, maxIdle);
     }
 
     @Override
@@ -51,18 +51,18 @@ abstract class MapOperationProviderDelegator implements MapOperationProvider {
     }
 
     @Override
-    public MapOperation createSetOperation(String name, Data dataKey, Data value, long ttl) {
-        return getDelegate().createSetOperation(name, dataKey, value, ttl);
+    public MapOperation createSetOperation(String name, Data dataKey, Data value, long ttl, long maxIdle) {
+        return getDelegate().createSetOperation(name, dataKey, value, ttl, maxIdle);
     }
 
     @Override
-    public MapOperation createPutIfAbsentOperation(String name, Data key, Data value, long ttl) {
-        return getDelegate().createPutIfAbsentOperation(name, key, value, ttl);
+    public MapOperation createPutIfAbsentOperation(String name, Data key, Data value, long ttl, long maxIdle) {
+        return getDelegate().createPutIfAbsentOperation(name, key, value, ttl, maxIdle);
     }
 
     @Override
-    public MapOperation createPutTransientOperation(String name, Data key, Data value, long ttl) {
-        return getDelegate().createPutTransientOperation(name, key, value, ttl);
+    public MapOperation createPutTransientOperation(String name, Data key, Data value, long ttl, long maxIdle) {
+        return getDelegate().createPutTransientOperation(name, key, value, ttl, maxIdle);
     }
 
     @Override
@@ -170,6 +170,11 @@ abstract class MapOperationProviderDelegator implements MapOperationProvider {
     @Override
     public MapOperation createTxnSetOperation(String name, Data dataKey, Data value, long version, long ttl) {
         return getDelegate().createTxnSetOperation(name, dataKey, value, version, ttl);
+    }
+
+    @Override
+    public MapOperation createSetTtlOperation(String name, Data key, long ttl) {
+        return getDelegate().createSetTtlOperation(name, key, ttl);
     }
 
     @Override

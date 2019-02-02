@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2008-2018, Hazelcast, Inc. All Rights Reserved.
+ * Copyright (c) 2008-2019, Hazelcast, Inc. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,13 +16,13 @@
 
 package com.hazelcast.internal.management.request;
 
-import com.eclipsesource.json.JsonObject;
 import com.hazelcast.config.MapConfig;
 import com.hazelcast.core.Member;
 import com.hazelcast.internal.management.ManagementCenterService;
 import com.hazelcast.internal.management.dto.MapConfigDTO;
 import com.hazelcast.internal.management.operation.GetMapConfigOperation;
 import com.hazelcast.internal.management.operation.UpdateMapConfigOperation;
+import com.hazelcast.internal.json.JsonObject;
 
 import java.util.Set;
 

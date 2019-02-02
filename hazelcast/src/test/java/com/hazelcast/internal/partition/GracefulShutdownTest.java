@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2008-2018, Hazelcast, Inc. All Rights Reserved.
+ * Copyright (c) 2008-2019, Hazelcast, Inc. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -21,7 +21,6 @@ import com.hazelcast.config.Config;
 import com.hazelcast.core.HazelcastInstance;
 import com.hazelcast.instance.Node;
 import com.hazelcast.internal.partition.impl.InternalPartitionServiceImpl;
-import com.hazelcast.nio.Address;
 import com.hazelcast.spi.properties.GroupProperty;
 import com.hazelcast.test.HazelcastSerialClassRunner;
 import com.hazelcast.test.HazelcastTestSupport;
@@ -494,13 +493,13 @@ public class GracefulShutdownTest extends HazelcastTestSupport {
 
     private static void assertPartitionEquals(InternalPartition partition1, InternalPartition partition2) {
         for (int i = 0; i < MAX_REPLICA_COUNT; i++) {
-            Address address1 = partition1.getReplicaAddress(i);
-            Address address2 = partition2.getReplicaAddress(i);
+            PartitionReplica replica1 = partition1.getReplica(i);
+            PartitionReplica replica2 = partition2.getReplica(i);
 
-            if (address1 == null) {
-                assertNull(address2);
+            if (replica1 == null) {
+                assertNull(replica2);
             } else {
-                assertEquals(address1, address2);
+                assertEquals(replica1, replica2);
             }
         }
     }

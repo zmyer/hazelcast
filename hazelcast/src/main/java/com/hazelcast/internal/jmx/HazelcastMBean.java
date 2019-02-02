@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2008-2018, Hazelcast, Inc. All Rights Reserved.
+ * Copyright (c) 2008-2019, Hazelcast, Inc. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -51,7 +51,7 @@ public abstract class HazelcastMBean<T> implements DynamicMBean, MBeanRegistrati
 
     protected final long updateIntervalSec;
 
-    final T managedObject;
+    protected final T managedObject;
     final ManagementService service;
 
     String description;

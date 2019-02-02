@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2008-2018, Hazelcast, Inc. All Rights Reserved.
+ * Copyright (c) 2008-2019, Hazelcast, Inc. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -126,6 +126,11 @@ public class HTTPCommunicator {
         return doGet(url).response;
     }
 
+    public String getLicenseInfo() throws IOException {
+        String url = address + "license";
+        return doGet(url).response;
+    }
+
     public int getFailingClusterHealthWithTrailingGarbage() throws IOException {
         String baseAddress = instance.getCluster().getLocalMember().getSocketAddress().toString();
         String url = "http:/" + baseAddress + HttpCommandProcessor.URI_HEALTH_URL + "garbage";
@@ -155,17 +160,17 @@ public class HTTPCommunicator {
 
     public int mapDeleteAll(String mapName) throws IOException {
         String url = address + "maps/" + mapName;
-        return doDelete(url);
+        return doDelete(url).responseCode;
     }
 
     public int mapDelete(String mapName, String key) throws IOException {
         String url = address + "maps/" + mapName + "/" + key;
-        return doDelete(url);
+        return doDelete(url).responseCode;
     }
 
-    public int shutdownCluster(String groupName, String groupPassword) throws IOException {
+    public ConnectionResponse shutdownCluster(String groupName, String groupPassword) throws IOException {
         String url = address + "management/cluster/clusterShutdown";
-        return doPost(url, groupName, groupPassword).responseCode;
+        return doPost(url, groupName, groupPassword);
     }
 
     public String shutdownMember(String groupName, String groupPassword) throws IOException {
@@ -224,14 +229,34 @@ public class HTTPCommunicator {
         return doPost(url, groupName, groupPassword).response;
     }
 
-    public String syncMapOverWAN(String wanRepName, String targetGroupName, String mapName) throws IOException {
+    public String syncMapOverWAN(String wanRepName, String publisherId, String mapName) throws IOException {
         String url = address + "mancenter/wan/sync/map";
-        return doPost(url, wanRepName, targetGroupName, mapName).response;
+        return doPost(url, wanRepName, publisherId, mapName).response;
     }
 
-    public String syncMapsOverWAN(String wanRepName, String targetGroupName) throws IOException {
+    public String syncMapsOverWAN(String wanRepName, String publisherId) throws IOException {
         String url = address + "mancenter/wan/sync/allmaps";
-        return doPost(url, wanRepName, targetGroupName).response;
+        return doPost(url, wanRepName, publisherId).response;
+    }
+
+    public String wanMapConsistencyCheck(String wanRepName, String publisherId, String mapName) throws IOException {
+        String url = address + "mancenter/wan/consistencyCheck/map";
+        return doPost(url, wanRepName, publisherId, mapName).response;
+    }
+
+    public String wanPausePublisher(String wanRepName, String publisherId) throws IOException {
+        String url = address + "mancenter/wan/pausePublisher";
+        return doPost(url, wanRepName, publisherId).response;
+    }
+
+    public String wanStopPublisher(String wanRepName, String publisherId) throws IOException {
+        String url = address + "mancenter/wan/stopPublisher";
+        return doPost(url, wanRepName, publisherId).response;
+    }
+
+    public String wanResumePublisher(String wanRepName, String publisherId) throws IOException {
+        String url = address + "mancenter/wan/resumePublisher";
+        return doPost(url, wanRepName, publisherId).response;
     }
 
     public String wanClearQueues(String wanRepName, String targetGroupName) throws IOException {
@@ -348,14 +373,17 @@ public class HTTPCommunicator {
         }
     }
 
-    private int doDelete(String url) throws IOException {
+    private ConnectionResponse doDelete(String url) throws IOException {
         CloseableHttpClient client = newClient();
         CloseableHttpResponse response = null;
         try {
             HttpDelete request = new HttpDelete(url);
             request.setHeader("Content-type", "text/xml; charset=" + "UTF-8");
             response = client.execute(request);
-            return response.getStatusLine().getStatusCode();
+            int responseCode = response.getStatusLine().getStatusCode();
+            HttpEntity entity = response.getEntity();
+            String responseStr = entity != null ? EntityUtils.toString(entity, "UTF-8") : "";
+            return new ConnectionResponse(responseStr, responseCode);
         } finally {
             IOUtil.closeResource(response);
             IOUtil.closeResource(client);
@@ -401,9 +429,38 @@ public class HTTPCommunicator {
         return doHead(url);
     }
 
+    public ConnectionResponse getRequestToUndefinedURI() throws IOException {
+        String url = address + "undefined";
+        return doGet(url);
+    }
+
+    public ConnectionResponse postRequestToUndefinedURI() throws IOException {
+        String url = address + "undefined";
+        return doPost(url);
+    }
+    public ConnectionResponse deleteRequestToUndefinedURI() throws IOException {
+        String url = address + "undefined";
+        return doDelete(url);
+    }
+
     public ConnectionResponse headRequestToClusterInfoURI() throws IOException {
         String url = address + "cluster";
         return doHead(url);
+    }
+
+    public ConnectionResponse getBadRequestURI() throws IOException {
+        String url = address + "maps/name";
+        return doGet(url);
+    }
+
+    public ConnectionResponse postBadRequestURI() throws IOException {
+        String url = address + "maps/name";
+        return doPost(url);
+    }
+
+    public ConnectionResponse deleteBadRequestURI() throws IOException {
+        String url = address + "queues/name";
+        return doDelete(url);
     }
 
     public ConnectionResponse headRequestToClusterHealthURI() throws IOException {

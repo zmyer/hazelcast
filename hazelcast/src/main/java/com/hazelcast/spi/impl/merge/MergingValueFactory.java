@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2008-2018, Hazelcast, Inc. All Rights Reserved.
+ * Copyright (c) 2008-2019, Hazelcast, Inc. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -100,6 +100,7 @@ public final class MergingValueFactory {
                 .setLastAccessTime(entryView.getLastAccessTime())
                 .setHits(entryView.getHits())
                 .setTtl(entryView.getTtl())
+                .setMaxIdle(entryView.getMaxIdle())
                 .setVersion(entryView.getVersion())
                 .setCost(entryView.getCost());
     }
@@ -116,6 +117,7 @@ public final class MergingValueFactory {
                 .setLastUpdateTime(record.getLastUpdateTime())
                 .setHits(record.getHits())
                 .setTtl(record.getTtl())
+                .setMaxIdle(record.getMaxIdle())
                 .setVersion(record.getVersion())
                 .setCost(record.getCost());
     }
@@ -132,6 +134,7 @@ public final class MergingValueFactory {
                 .setLastUpdateTime(record.getLastUpdateTime())
                 .setHits(record.getHits())
                 .setTtl(record.getTtl())
+                .setMaxIdle(record.getMaxIdle())
                 .setVersion(record.getVersion())
                 .setCost(record.getCost());
     }

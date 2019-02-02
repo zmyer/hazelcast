@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2008-2018, Hazelcast, Inc. All Rights Reserved.
+ * Copyright (c) 2008-2019, Hazelcast, Inc. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -24,16 +24,25 @@ import com.hazelcast.config.NearCacheConfig;
 import com.hazelcast.config.SerializationConfig;
 import com.hazelcast.core.HazelcastInstance;
 import com.hazelcast.core.ReplicatedMap;
+import com.hazelcast.nio.ObjectDataInput;
+import com.hazelcast.nio.ObjectDataOutput;
+import com.hazelcast.nio.serialization.DataSerializable;
 import com.hazelcast.nio.serialization.Portable;
 import com.hazelcast.nio.serialization.PortableFactory;
 import com.hazelcast.nio.serialization.PortableReader;
 import com.hazelcast.nio.serialization.PortableWriter;
+import com.hazelcast.replicatedmap.impl.ReplicatedMapProxy;
+import com.hazelcast.replicatedmap.impl.ReplicatedMapService;
+import com.hazelcast.replicatedmap.impl.record.AbstractBaseReplicatedRecordStore;
+import com.hazelcast.replicatedmap.impl.record.ReplicatedRecordStore;
 import com.hazelcast.test.AssertTask;
 import com.hazelcast.test.HazelcastParametersRunnerFactory;
 import com.hazelcast.test.HazelcastTestSupport;
 import com.hazelcast.test.annotation.ParallelTest;
 import com.hazelcast.test.annotation.QuickTest;
+import com.hazelcast.util.scheduler.SecondsBasedEntryTaskScheduler;
 import org.junit.After;
+import org.junit.Assume;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
@@ -52,8 +61,13 @@ import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Random;
 import java.util.Set;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicInteger;
 
+import static com.hazelcast.config.InMemoryFormat.BINARY;
+import static com.hazelcast.config.InMemoryFormat.OBJECT;
 import static java.util.Arrays.asList;
+import static org.hamcrest.Matchers.is;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNull;
@@ -70,13 +84,13 @@ public class ClientReplicatedMapTest extends HazelcastTestSupport {
     public InMemoryFormat inMemoryFormat;
 
     private Config config = new Config();
-    private TestHazelcastFactory hazelcastFactory = new TestHazelcastFactory();
+    private TestHazelcastFactory factory = new TestHazelcastFactory();
 
     @Parameters(name = "format:{0}")
     public static Collection<Object[]> parameters() {
         return asList(new Object[][]{
                 {InMemoryFormat.BINARY},
-                {InMemoryFormat.OBJECT},
+                {OBJECT},
         });
     }
 
@@ -88,21 +102,21 @@ public class ClientReplicatedMapTest extends HazelcastTestSupport {
 
     @After
     public void cleanup() {
-        hazelcastFactory.terminateAll();
+        factory.terminateAll();
     }
 
     @Test
     public void testEmptyMapIsEmpty() {
-        hazelcastFactory.newHazelcastInstance(config);
-        HazelcastInstance client = hazelcastFactory.newHazelcastClient();
+        factory.newHazelcastInstance(config);
+        HazelcastInstance client = factory.newHazelcastClient();
         ReplicatedMap<Integer, Integer> map = client.getReplicatedMap(randomName());
         assertTrue("map should be empty", map.isEmpty());
     }
 
     @Test
     public void testNonEmptyMapIsNotEmpty() {
-        hazelcastFactory.newHazelcastInstance(config);
-        HazelcastInstance client = hazelcastFactory.newHazelcastClient();
+        factory.newHazelcastInstance(config);
+        HazelcastInstance client = factory.newHazelcastClient();
         ReplicatedMap<Integer, Integer> map = client.getReplicatedMap(randomName());
         map.put(1, 1);
         assertFalse("map should not be empty", map.isEmpty());
@@ -110,8 +124,8 @@ public class ClientReplicatedMapTest extends HazelcastTestSupport {
 
     @Test
     public void testPutAll() {
-        HazelcastInstance server = hazelcastFactory.newHazelcastInstance(config);
-        HazelcastInstance client = hazelcastFactory.newHazelcastClient();
+        HazelcastInstance server = factory.newHazelcastInstance(config);
+        HazelcastInstance client = factory.newHazelcastClient();
         ReplicatedMap<String, String> map1 = client.getReplicatedMap("default");
         ReplicatedMap<String, String> map2 = server.getReplicatedMap("default");
 
@@ -132,8 +146,8 @@ public class ClientReplicatedMapTest extends HazelcastTestSupport {
 
     @Test
     public void testGet() {
-        HazelcastInstance instance1 = hazelcastFactory.newHazelcastInstance(config);
-        HazelcastInstance instance2 = hazelcastFactory.newHazelcastClient();
+        HazelcastInstance instance1 = factory.newHazelcastInstance(config);
+        HazelcastInstance instance2 = factory.newHazelcastClient();
 
         final ReplicatedMap<String, String> map1 = instance1.getReplicatedMap("default");
         final ReplicatedMap<String, String> map2 = instance2.getReplicatedMap("default");
@@ -150,16 +164,16 @@ public class ClientReplicatedMapTest extends HazelcastTestSupport {
 
     @Test
     public void testPutNullReturnValueDeserialization() {
-        hazelcastFactory.newHazelcastInstance(config);
-        HazelcastInstance client = hazelcastFactory.newHazelcastClient();
+        factory.newHazelcastInstance(config);
+        HazelcastInstance client = factory.newHazelcastClient();
         ReplicatedMap<Object, Object> map = client.getReplicatedMap(randomMapName());
         assertNull(map.put(1, 2));
     }
 
     @Test
     public void testPutReturnValueDeserialization() {
-        hazelcastFactory.newHazelcastInstance(config);
-        HazelcastInstance client = hazelcastFactory.newHazelcastClient();
+        factory.newHazelcastInstance(config);
+        HazelcastInstance client = factory.newHazelcastClient();
         ReplicatedMap<Object, Object> map = client.getReplicatedMap(randomMapName());
         map.put(1, 2);
         assertEquals(2, map.put(1, 3));
@@ -167,8 +181,8 @@ public class ClientReplicatedMapTest extends HazelcastTestSupport {
 
     @Test
     public void testAdd() {
-        HazelcastInstance instance1 = hazelcastFactory.newHazelcastInstance(config);
-        HazelcastInstance instance2 = hazelcastFactory.newHazelcastClient();
+        HazelcastInstance instance1 = factory.newHazelcastInstance(config);
+        HazelcastInstance instance2 = factory.newHazelcastClient();
 
         final ReplicatedMap<String, String> map1 = instance1.getReplicatedMap("default");
         final ReplicatedMap<String, String> map2 = instance2.getReplicatedMap("default");
@@ -190,8 +204,8 @@ public class ClientReplicatedMapTest extends HazelcastTestSupport {
 
     @Test
     public void testClear() {
-        HazelcastInstance instance1 = hazelcastFactory.newHazelcastInstance(config);
-        HazelcastInstance instance2 = hazelcastFactory.newHazelcastClient();
+        HazelcastInstance instance1 = factory.newHazelcastInstance(config);
+        HazelcastInstance instance2 = factory.newHazelcastClient();
 
         final ReplicatedMap<String, String> map1 = instance1.getReplicatedMap("default");
         final ReplicatedMap<String, String> map2 = instance2.getReplicatedMap("default");
@@ -217,8 +231,8 @@ public class ClientReplicatedMapTest extends HazelcastTestSupport {
 
     @Test
     public void testUpdate() {
-        HazelcastInstance instance1 = hazelcastFactory.newHazelcastInstance(config);
-        HazelcastInstance instance2 = hazelcastFactory.newHazelcastClient();
+        HazelcastInstance instance1 = factory.newHazelcastInstance(config);
+        HazelcastInstance instance2 = factory.newHazelcastClient();
 
         final ReplicatedMap<String, String> map1 = instance1.getReplicatedMap("default");
         final ReplicatedMap<String, String> map2 = instance2.getReplicatedMap("default");
@@ -251,8 +265,8 @@ public class ClientReplicatedMapTest extends HazelcastTestSupport {
 
     @Test
     public void testRemove() {
-        HazelcastInstance instance1 = hazelcastFactory.newHazelcastInstance(config);
-        HazelcastInstance instance2 = hazelcastFactory.newHazelcastClient();
+        HazelcastInstance instance1 = factory.newHazelcastInstance(config);
+        HazelcastInstance instance2 = factory.newHazelcastClient();
 
         final ReplicatedMap<String, String> map1 = instance1.getReplicatedMap("default");
         final ReplicatedMap<String, String> map2 = instance2.getReplicatedMap("default");
@@ -285,8 +299,8 @@ public class ClientReplicatedMapTest extends HazelcastTestSupport {
 
     @Test
     public void testSize() {
-        HazelcastInstance instance1 = hazelcastFactory.newHazelcastInstance(config);
-        HazelcastInstance instance2 = hazelcastFactory.newHazelcastClient();
+        HazelcastInstance instance1 = factory.newHazelcastInstance(config);
+        HazelcastInstance instance2 = factory.newHazelcastClient();
 
         final ReplicatedMap<Integer, Integer> map1 = instance1.getReplicatedMap("default");
         final ReplicatedMap<Integer, Integer> map2 = instance2.getReplicatedMap("default");
@@ -305,8 +319,8 @@ public class ClientReplicatedMapTest extends HazelcastTestSupport {
 
     @Test
     public void testContainsKey() {
-        HazelcastInstance instance1 = hazelcastFactory.newHazelcastInstance(config);
-        HazelcastInstance instance2 = hazelcastFactory.newHazelcastClient();
+        HazelcastInstance instance1 = factory.newHazelcastInstance(config);
+        HazelcastInstance instance2 = factory.newHazelcastClient();
 
         final ReplicatedMap<String, String> map1 = instance1.getReplicatedMap("default");
         final ReplicatedMap<String, String> map2 = instance2.getReplicatedMap("default");
@@ -326,8 +340,8 @@ public class ClientReplicatedMapTest extends HazelcastTestSupport {
 
     @Test
     public void testContainsValue() {
-        HazelcastInstance instance1 = hazelcastFactory.newHazelcastInstance(config);
-        HazelcastInstance instance2 = hazelcastFactory.newHazelcastClient();
+        HazelcastInstance instance1 = factory.newHazelcastInstance(config);
+        HazelcastInstance instance2 = factory.newHazelcastClient();
 
         final ReplicatedMap<Integer, Integer> map1 = instance1.getReplicatedMap("default");
         final ReplicatedMap<Integer, Integer> map2 = instance2.getReplicatedMap("default");
@@ -351,8 +365,8 @@ public class ClientReplicatedMapTest extends HazelcastTestSupport {
 
     @Test
     public void testValues() {
-        HazelcastInstance instance1 = hazelcastFactory.newHazelcastInstance(config);
-        HazelcastInstance instance2 = hazelcastFactory.newHazelcastClient();
+        HazelcastInstance instance1 = factory.newHazelcastInstance(config);
+        HazelcastInstance instance2 = factory.newHazelcastClient();
 
         final ReplicatedMap<Integer, Integer> map1 = instance1.getReplicatedMap("default");
         final ReplicatedMap<Integer, Integer> map2 = instance2.getReplicatedMap("default");
@@ -377,8 +391,8 @@ public class ClientReplicatedMapTest extends HazelcastTestSupport {
 
     @Test
     public void testKeySet() {
-        HazelcastInstance instance1 = hazelcastFactory.newHazelcastInstance(config);
-        HazelcastInstance instance2 = hazelcastFactory.newHazelcastClient();
+        HazelcastInstance instance1 = factory.newHazelcastInstance(config);
+        HazelcastInstance instance2 = factory.newHazelcastClient();
 
         final ReplicatedMap<Integer, Integer> map1 = instance1.getReplicatedMap("default");
         final ReplicatedMap<Integer, Integer> map2 = instance2.getReplicatedMap("default");
@@ -403,8 +417,8 @@ public class ClientReplicatedMapTest extends HazelcastTestSupport {
 
     @Test
     public void testEntrySet() {
-        HazelcastInstance instance1 = hazelcastFactory.newHazelcastInstance(config);
-        HazelcastInstance instance2 = hazelcastFactory.newHazelcastClient();
+        HazelcastInstance instance1 = factory.newHazelcastInstance(config);
+        HazelcastInstance instance2 = factory.newHazelcastClient();
 
         final ReplicatedMap<Integer, Integer> map1 = instance1.getReplicatedMap("default");
         final ReplicatedMap<Integer, Integer> map2 = instance2.getReplicatedMap("default");
@@ -433,8 +447,8 @@ public class ClientReplicatedMapTest extends HazelcastTestSupport {
 
     @Test
     public void testRetrieveUnknownValue() {
-        hazelcastFactory.newHazelcastInstance(config);
-        HazelcastInstance instance = hazelcastFactory.newHazelcastClient();
+        factory.newHazelcastInstance(config);
+        HazelcastInstance instance = factory.newHazelcastClient();
 
         ReplicatedMap<String, String> map = instance.getReplicatedMap("default");
         String value = map.get("foo");
@@ -446,9 +460,9 @@ public class ClientReplicatedMapTest extends HazelcastTestSupport {
         String mapName = randomString();
         ClientConfig clientConfig = getClientConfigWithNearCacheInvalidationEnabled();
 
-        hazelcastFactory.newHazelcastInstance(config);
-        HazelcastInstance client1 = hazelcastFactory.newHazelcastClient(clientConfig);
-        HazelcastInstance client2 = hazelcastFactory.newHazelcastClient(clientConfig);
+        factory.newHazelcastInstance(config);
+        HazelcastInstance client1 = factory.newHazelcastClient(clientConfig);
+        HazelcastInstance client2 = factory.newHazelcastClient(clientConfig);
 
         final ReplicatedMap<Integer, Integer> replicatedMap1 = client1.getReplicatedMap(mapName);
 
@@ -473,9 +487,9 @@ public class ClientReplicatedMapTest extends HazelcastTestSupport {
         String mapName = randomString();
         ClientConfig clientConfig = getClientConfigWithNearCacheInvalidationEnabled();
 
-        hazelcastFactory.newHazelcastInstance(config);
-        HazelcastInstance client1 = hazelcastFactory.newHazelcastClient(clientConfig);
-        HazelcastInstance client2 = hazelcastFactory.newHazelcastClient(clientConfig);
+        factory.newHazelcastInstance(config);
+        HazelcastInstance client1 = factory.newHazelcastClient(clientConfig);
+        HazelcastInstance client2 = factory.newHazelcastClient(clientConfig);
 
         final ReplicatedMap<Integer, Integer> replicatedMap1 = client1.getReplicatedMap(mapName);
 
@@ -497,7 +511,7 @@ public class ClientReplicatedMapTest extends HazelcastTestSupport {
 
     @Test
     public void testClientPortableWithoutRegisteringToNode() {
-        if (inMemoryFormat == InMemoryFormat.OBJECT) {
+        if (inMemoryFormat == OBJECT) {
             return;
         }
 
@@ -511,13 +525,155 @@ public class ClientReplicatedMapTest extends HazelcastTestSupport {
         ClientConfig clientConfig = new ClientConfig()
                 .setSerializationConfig(serializationConfig);
 
-        hazelcastFactory.newHazelcastInstance(config);
-        HazelcastInstance client = hazelcastFactory.newHazelcastClient(clientConfig);
+        factory.newHazelcastInstance(config);
+        HazelcastInstance client = factory.newHazelcastClient(clientConfig);
 
         ReplicatedMap<Integer, SamplePortable> sampleMap = client.getReplicatedMap(randomString());
         sampleMap.put(1, new SamplePortable(666));
         SamplePortable samplePortable = sampleMap.get(1);
         assertEquals(666, samplePortable.a);
+    }
+
+    @Test
+    public void clear_empties_internal_ttl_schedulers() {
+        String mapName = "test";
+        HazelcastInstance node = factory.newHazelcastInstance(config);
+        HazelcastInstance client = factory.newHazelcastClient();
+
+        ReplicatedMap map = client.getReplicatedMap(mapName);
+
+        for (int i = 0; i < 1000; i++) {
+            map.put(i, i, 100, TimeUnit.DAYS);
+        }
+
+        map.clear();
+
+        assertAllTtlSchedulersEmpty(node.getReplicatedMap(mapName));
+    }
+
+    @Test
+    public void remove_empties_internal_ttl_schedulers() {
+        String mapName = "test";
+        HazelcastInstance node = factory.newHazelcastInstance(config);
+        HazelcastInstance client = factory.newHazelcastClient();
+
+        ReplicatedMap map = client.getReplicatedMap(mapName);
+
+        for (int i = 0; i < 1000; i++) {
+            map.put(i, i, 100, TimeUnit.DAYS);
+        }
+
+        for (int i = 0; i < 1000; i++) {
+            map.remove(i);
+        }
+
+        assertAllTtlSchedulersEmpty(node.getReplicatedMap(mapName));
+    }
+
+    @Test
+    public void no_key_value_deserialization_on_server_when_entry_is_removed() {
+        // only run this test for BINARY replicated maps.
+        Assume.assumeThat(inMemoryFormat, is(BINARY));
+
+        Config config = new Config();
+        config.getReplicatedMapConfig("default").setInMemoryFormat(inMemoryFormat);
+
+        HazelcastInstance server = factory.newHazelcastInstance(config);
+        HazelcastInstance client = factory.newHazelcastClient();
+
+        ReplicatedMap<DeserializationCounter, DeserializationCounter> replicatedMap = client.getReplicatedMap("test");
+
+        DeserializationCounter key = new Key1();
+        DeserializationCounter value = new Value1();
+
+        replicatedMap.put(key, value);
+
+        replicatedMap.remove(key);
+
+        assertEquals(0, ((Key1) key).COUNTER.get());
+        // expect only 1 deserialization in ClientReplicatedMapProxy#remove method
+        assertEquals(1, ((Value1) value).COUNTER.get());
+    }
+
+    @Test
+    public void no_key_value_deserialization_on_server_when_entry_is_get() {
+        // only run this test for BINARY replicated maps.
+        Assume.assumeThat(inMemoryFormat, is(BINARY));
+
+        Config config = new Config();
+        config.getReplicatedMapConfig("default").setInMemoryFormat(inMemoryFormat);
+
+        HazelcastInstance server = factory.newHazelcastInstance(config);
+        HazelcastInstance client = factory.newHazelcastClient();
+
+        ReplicatedMap<DeserializationCounter, DeserializationCounter> replicatedMap = client.getReplicatedMap("test");
+
+        DeserializationCounter key = new Key2();
+        DeserializationCounter value = new Value2();
+
+        replicatedMap.put(key, value);
+
+        replicatedMap.get(key);
+
+        assertEquals(0, ((Key2) key).COUNTER.get());
+        // expect only 1 deserialization in ClientReplicatedMapProxy#remove method
+        assertEquals(1, ((Value2) value).COUNTER.get());
+    }
+
+    public static class Key1 extends DeserializationCounter {
+        static final AtomicInteger COUNTER = new AtomicInteger();
+
+        @Override
+        public void readData(ObjectDataInput in) throws IOException {
+            COUNTER.incrementAndGet();
+        }
+    }
+
+    public static class Value1 extends DeserializationCounter {
+        static final AtomicInteger COUNTER = new AtomicInteger();
+
+        @Override
+        public void readData(ObjectDataInput in) {
+            COUNTER.incrementAndGet();
+        }
+    }
+
+    public static class Key2 extends DeserializationCounter {
+        static final AtomicInteger COUNTER = new AtomicInteger();
+
+        @Override
+        public void readData(ObjectDataInput in) {
+            COUNTER.incrementAndGet();
+        }
+    }
+
+    public static class Value2 extends DeserializationCounter {
+        static final AtomicInteger COUNTER = new AtomicInteger();
+
+        @Override
+        public void readData(ObjectDataInput in) {
+            COUNTER.incrementAndGet();
+        }
+    }
+
+    public abstract static class DeserializationCounter implements DataSerializable {
+
+        @Override
+        public void writeData(ObjectDataOutput out) {
+            // NOP since we only care deserialization counts
+        }
+    }
+
+    private static void assertAllTtlSchedulersEmpty(ReplicatedMap map) {
+        String mapName = map.getName();
+        ReplicatedMapProxy replicatedMapProxy = (ReplicatedMapProxy) map;
+        ReplicatedMapService service = (ReplicatedMapService) replicatedMapProxy.getService();
+        Collection<ReplicatedRecordStore> stores = service.getAllReplicatedRecordStores(mapName);
+        for (ReplicatedRecordStore store : stores) {
+            assertEquals(0,
+                    ((SecondsBasedEntryTaskScheduler) ((AbstractBaseReplicatedRecordStore) store)
+                            .getTtlEvictionScheduler()).size());
+        }
     }
 
     @SuppressWarnings("unchecked")
@@ -542,7 +698,7 @@ public class ClientReplicatedMapTest extends HazelcastTestSupport {
     private static ClientConfig getClientConfigWithNearCacheInvalidationEnabled() {
         NearCacheConfig nearCacheConfig = new NearCacheConfig()
                 .setInvalidateOnChange(true)
-                .setInMemoryFormat(InMemoryFormat.OBJECT);
+                .setInMemoryFormat(OBJECT);
 
         return new ClientConfig()
                 .addNearCacheConfig(nearCacheConfig);

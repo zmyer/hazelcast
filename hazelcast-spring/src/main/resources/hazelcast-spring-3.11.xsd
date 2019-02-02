@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!--
-  ~ Copyright (c) 2008-2018, Hazelcast, Inc. All Rights Reserved.
+  ~ Copyright (c) 2008-2019, Hazelcast, Inc. All Rights Reserved.
   ~
   ~ Licensed under the Apache License, Version 2.0 (the "License");
   ~ you may not use this file except in compliance with the License.
@@ -618,8 +618,7 @@
                                     </xs:element>
                                     <xs:element name="near-cache" type="near-cache" minOccurs="0" maxOccurs="1"/>
                                     <xs:element name="query-caches" type="query-caches" minOccurs="0" maxOccurs="1"/>
-                                    <xs:element name="wan-replication-ref" type="wan-replication-ref" minOccurs="0"
-                                                maxOccurs="1">
+                                    <xs:element name="wan-replication-ref" type="wan-replication-ref" minOccurs="0">
                                         <xs:annotation>
                                             <xs:documentation>
                                                 Hazelcast can replicate some or all of the cluster data. For example,
@@ -971,8 +970,7 @@
                                             <xs:attribute name="class-name"/>
                                         </xs:complexType>
                                     </xs:element>
-                                    <xs:element name="wan-replication-ref" type="wan-replication-ref" minOccurs="0"
-                                                maxOccurs="1">
+                                    <xs:element name="wan-replication-ref" type="wan-replication-ref" minOccurs="0">
                                         <xs:annotation>
                                             <xs:documentation>
                                                 Hazelcast can replicate some or all of the cluster data. For example,
@@ -1208,6 +1206,64 @@
                                             Maximum number of seconds for each entry to stay in the event journal.
                                             Entries that are older than &lt;time-to-live-seconds&gt; are evicted from the journal.
                                             Any integer between 0 and Integer.MAX_VALUE. 0 means infinite. Default is 0.
+                                        </xs:documentation>
+                                    </xs:annotation>
+                                </xs:attribute>
+                            </xs:complexType>
+                        </xs:element>
+                        <xs:element name="merkle-tree" minOccurs="0" maxOccurs="unbounded">
+                            <xs:complexType>
+                                <xs:annotation>
+                                    <xs:documentation>
+                                        Configuration for a merkle tree.
+                                        The merkle tree is a data structure used for efficient comparison of the
+                                        difference in the contents of large data structures. The precision of
+                                        such a comparison mechanism is defined by the depth of the merkle tree.
+                                        A larger depth means that a data synchronization mechanism will be able
+                                        to pinpoint a smaller subset of the data structure contents in which a
+                                        change occurred. This causes the synchronization mechanism to be more
+                                        efficient. On the other hand, a larger tree depth means the merkle tree
+                                        will consume more memory.
+                                        A smaller depth means the data synchronization mechanism will have to
+                                        transfer larger chunks of the data structure in which a possible change
+                                        happened. On the other hand, a shallower tree consumes less memory.
+                                        The depth must be between 2 and 27 (exclusive).
+                                        As the comparison mechanism is iterative, a larger depth will also prolong
+                                        the duration of the comparison mechanism. Care must be taken to not have
+                                        large tree depths if the latency of the comparison operation is high.
+                                        The default depth is 10.
+                                        This configuration is not tied to a specific data structure and can be
+                                        reused.
+                                        See https://en.wikipedia.org/wiki/Merkle_tree.
+                                    </xs:documentation>
+                                </xs:annotation>
+                                <xs:attribute name="map-name" type="xs:string">
+                                    <xs:annotation>
+                                        <xs:documentation>
+                                            The name of the map to which this config applies.
+                                        </xs:documentation>
+                                    </xs:annotation>
+                                </xs:attribute>
+                                <xs:attribute name="enabled" type="parameterized-boolean" default="true">
+                                    <xs:annotation>
+                                        <xs:documentation>
+                                            True if the merkle tree is enabled, false otherwise.
+                                        </xs:documentation>
+                                    </xs:annotation>
+                                </xs:attribute>
+                                <xs:attribute name="depth" type="parameterized-unsigned-int">
+                                    <xs:annotation>
+                                        <xs:documentation>
+                                            The depth of the merkle tree.
+                                            A larger depth means that a data synchronization mechanism will be able
+                                            to pinpoint a smaller subset of the data structure contents in which a
+                                            change occurred. This causes the synchronization mechanism to be more
+                                            efficient. On the other hand, a larger tree depth means the merkle tree
+                                            will consume more memory.
+                                            A smaller depth means the data synchronization mechanism will have to
+                                            transfer larger chunks of the data structure in which a possible change
+                                            happened. On the other hand, a shallower tree consumes less memory.
+                                            The depth must be between 2 and 27 (exclusive). The default depth is 10.
                                         </xs:documentation>
                                     </xs:annotation>
                                 </xs:attribute>
@@ -1875,7 +1931,8 @@
                         <xs:element name="query-caches" type="query-caches-client" minOccurs="0" maxOccurs="1"/>
                         <xs:element name="connection-strategy" type="connection-strategy" minOccurs="0" maxOccurs="1"/>
                         <xs:element name="user-code-deployment" type="user-code-deployment-client" minOccurs="0" maxOccurs="1"/>
-                        <xs:element name="flake-id-generator" type="client-flake-id-generator" minOccurs="0" maxOccurs="1"/>
+                        <xs:element name="flake-id-generator" type="client-flake-id-generator" minOccurs="0" maxOccurs="unbounded"/>
+                        <xs:element name="reliable-topic" type="client-reliable-topic" minOccurs="0" maxOccurs="unbounded"/>
                     </xs:choice>
                     <xs:attribute name="executor-pool-size" type="xs:int" use="optional"/>
                     <xs:attribute name="credentials-ref" type="xs:string" use="optional"/>
@@ -2321,18 +2378,9 @@
         <xs:attribute name="loopback-mode-enabled" type="parameterized-boolean" use="optional" default="false"/>
     </xs:complexType>
 
-    <xs:complexType name="aws">
+    <xs:complexType name="aliased-discovery-strategy">
         <xs:sequence/>
-        <xs:attribute name="enabled" type="xs:string" use="optional" default="true"/>
-        <xs:attribute name="access-key" type="xs:string" use="optional"/>
-        <xs:attribute name="secret-key" type="xs:string" use="optional"/>
-        <xs:attribute name="iam-role" type="xs:string" use="optional"/>
-        <xs:attribute name="region" type="xs:string" use="optional" default="us-east-1"/>
-        <xs:attribute name="host-header" type="xs:string" use="optional" default="ec2.amazonaws.com"/>
-        <xs:attribute name="security-group-name" type="xs:string" use="optional" default=""/>
-        <xs:attribute name="tag-key" type="xs:string" use="optional" default=""/>
-        <xs:attribute name="tag-value" type="xs:string" use="optional" default=""/>
-        <xs:attribute name="connection-timeout-seconds" type="xs:string" use="optional" default="5"/>
+        <xs:anyAttribute processContents="skip" />
     </xs:complexType>
 
     <xs:complexType name="discovery-strategies">
@@ -2354,6 +2402,24 @@
         </xs:sequence>
         <xs:attributeGroup ref="class-or-bean-name"/>
         <xs:attribute name="discovery-strategy-factory" type="non-space-string" use="optional"/>
+    </xs:complexType>
+
+    <xs:complexType name="wan-sync">
+        <xs:all>
+            <xs:element name="consistency-check-strategy" type="consistency-check-strategy" minOccurs="0" default="NONE">
+                <xs:annotation>
+                    <xs:documentation>
+                        Sets the strategy for checking consistency of data between source and
+                        target cluster. Any inconsistency will not be reconciled, it will be
+                        merely reported via the usual mechanisms (e.g. statistics, diagnostics).
+                        The user must initiate WAN sync to reconcile there differences. For the
+                        check procedure to work properly, the target cluster should support the
+                        chosen strategy.
+                        Default value is NONE, which means the check is disabled.
+                    </xs:documentation>
+                </xs:annotation>
+            </xs:element>
+        </xs:all>
     </xs:complexType>
 
     <xs:complexType name="merge-policy">
@@ -2413,7 +2479,11 @@
         <xs:sequence>
             <xs:element name="multicast" type="multicast" minOccurs="0"/>
             <xs:element name="tcp-ip" type="tcp-ip" minOccurs="0"/>
-            <xs:element name="aws" type="aws" minOccurs="0"/>
+            <xs:element name="aws" type="aliased-discovery-strategy" minOccurs="0"/>
+            <xs:element name="gcp" type="aliased-discovery-strategy" minOccurs="0"/>
+            <xs:element name="azure" type="aliased-discovery-strategy" minOccurs="0"/>
+            <xs:element name="kubernetes" type="aliased-discovery-strategy" minOccurs="0"/>
+            <xs:element name="eureka" type="aliased-discovery-strategy" minOccurs="0"/>
             <xs:element name="discovery-strategies" type="discovery-strategies" minOccurs="0" maxOccurs="1"/>
         </xs:sequence>
     </xs:complexType>
@@ -2501,13 +2571,6 @@
             <xs:enumeration value="hazelcast.phone.home.enabled"/>
             <xs:enumeration value="hazelcast.map.max.backup.count"/>
             <xs:enumeration value="hazelcast.max.wait.seconds.before.join"/>
-            <xs:enumeration value="hazelcast.mc.max.visible.instance.count">
-                <xs:annotation>
-                    <xs:documentation>
-                        Deprecated as of version 3.10, subject to remove in a future release.
-                    </xs:documentation>
-                </xs:annotation>
-            </xs:enumeration>
             <xs:enumeration value="hazelcast.logging.type"/>
             <xs:enumeration value="hazelcast.compatibility.3.6.client"/>
         </xs:restriction>
@@ -2702,24 +2765,110 @@
                         <xs:element name="queue-full-behavior" type="wan-queue-full-behavior" minOccurs="0" maxOccurs="1"/>
                         <xs:element name="queue-capacity" type="parameterized-positive-integer" default="10000" minOccurs="0"
                                     maxOccurs="1"/>
-                        <xs:element name="aws" type="aws" minOccurs="0" maxOccurs="1"/>
+                        <xs:element name="initial-publisher-state" type="initial-publisher-state" minOccurs="0" maxOccurs="1"
+                                    default="REPLICATING">
+                            <xs:annotation>
+                                <xs:documentation>
+                                    Defines the initial state in which a WAN publisher is started.
+                                    - REPLICATING (default):
+                                    State where both enqueuing new events is allowed, enqueued events are replicated to the target cluster
+                                    and WAN sync is enabled.
+                                    - PAUSED:
+                                    State where new events are enqueued but they are not dequeued. Some events which have been dequeued before
+                                    the state was switched may still be replicated to the target cluster but further events will not be
+                                    replicated. WAN sync is enabled.
+                                    - STOPPED:
+                                    State where neither new events are enqueued nor dequeued. As with the PAUSED state, some events might
+                                    still be replicated after the publisher has switched to this state. WAN sync is enabled.
+                                </xs:documentation>
+                            </xs:annotation>
+                        </xs:element>
+                        <xs:element name="aws" type="aliased-discovery-strategy" minOccurs="0" maxOccurs="1"/>
+                        <xs:element name="gcp" type="aliased-discovery-strategy" minOccurs="0" maxOccurs="1"/>
+                        <xs:element name="azure" type="aliased-discovery-strategy" minOccurs="0" maxOccurs="1"/>
+                        <xs:element name="kubernetes" type="aliased-discovery-strategy" minOccurs="0" maxOccurs="1"/>
+                        <xs:element name="eureka" type="aliased-discovery-strategy" minOccurs="0" maxOccurs="1"/>
                         <xs:element name="discovery-strategies" type="discovery-strategies" minOccurs="0" maxOccurs="1"/>
+                        <xs:element name="wan-sync" type="wan-sync" minOccurs="0">
+                            <xs:annotation>
+                                <xs:documentation>
+                                    Configuration for the WAN sync mechanism.
+                                </xs:documentation>
+                            </xs:annotation>
+                        </xs:element>
                         <xs:element name="properties" type="properties" minOccurs="0" maxOccurs="1"/>
                     </xs:sequence>
                     <xs:attributeGroup ref="class-or-bean-name"/>
                     <xs:attribute name="group-name" use="required">
+                        <xs:annotation>
+                            <xs:documentation>
+                                Sets the group name used as an endpoint group name for authentication
+                                on the target endpoint.
+                                If there is no separate publisher ID property defined, this group name
+                                will also be used as a WAN publisher ID. This ID is then used for
+                                identifying the publisher in a WanReplicationConfig.
+                            </xs:documentation>
+                        </xs:annotation>
+                        <xs:simpleType>
+                            <xs:restriction base="xs:string"/>
+                        </xs:simpleType>
+                    </xs:attribute>
+                    <xs:attribute name="publisher-id">
+                        <xs:annotation>
+                            <xs:documentation>
+                                Sets the publisher ID used for identifying the publisher in a
+                                WanReplicationConfig.
+                                If there is no publisher ID defined (it is empty), the group name will
+                                be used as a publisher ID.
+                            </xs:documentation>
+                        </xs:annotation>
                         <xs:simpleType>
                             <xs:restriction base="xs:string"/>
                         </xs:simpleType>
                     </xs:attribute>
                 </xs:complexType>
             </xs:element>
-            <xs:element name="wan-consumer" minOccurs="0" maxOccurs="1">
+            <xs:element name="wan-consumer" minOccurs="0">
+                <xs:annotation>
+                    <xs:documentation>
+                        Config for processing WAN events received from a target cluster.
+                        You can configure certain behaviour when processing incoming WAN events
+                        or even configure your own implementation for a WAN consumer. A custom
+                        WAN consumer allows you to define custom processing logic and is usually
+                        used in combination with a custom WAN publisher.
+                        A custom consumer is optional and you may simply omit defining it which
+                        will cause the default processing logic to be used.
+                    </xs:documentation>
+                </xs:annotation>
                 <xs:complexType>
                     <xs:sequence>
-                        <xs:element name="properties" type="properties" minOccurs="0" maxOccurs="1"/>
+                        <xs:element name="properties" type="properties" minOccurs="0">
+                            <xs:annotation>
+                                <xs:documentation>
+                                    Properties for the custom WAN consumer. These properties are
+                                    accessible when initalizing the WAN consumer.
+                                </xs:documentation>
+                            </xs:annotation>
+                        </xs:element>
                     </xs:sequence>
-                    <xs:attributeGroup ref="class-or-bean-name"/>
+                    <xs:attributeGroup ref="class-or-bean-name">
+                        <xs:annotation>
+                            <xs:documentation>
+                                Defines a custom WAN consumer (WanReplicationConsumer).
+                                If you don't define a class name or implementation, the default processing
+                                logic for incoming WAN events will be used.
+                            </xs:documentation>
+                        </xs:annotation>
+                    </xs:attributeGroup>
+                    <xs:attribute name="persist-wan-replicated-data" type="parameterized-boolean" default="false">
+                        <xs:annotation>
+                            <xs:documentation>
+                                When true, an incoming event over WAN replication can be persisted to a
+                                database for example, otherwise it will not be persisted. Default value
+                                is false.
+                            </xs:documentation>
+                        </xs:annotation>
+                    </xs:attribute>
                 </xs:complexType>
             </xs:element>
         </xs:sequence>
@@ -3007,10 +3156,15 @@
             <xs:element name="socket-options" type="socket-options" minOccurs="0" maxOccurs="1"/>
             <xs:element name="socket-interceptor" type="socket-interceptor" minOccurs="0" maxOccurs="1"/>
             <xs:element name="ssl" type="ssl" minOccurs="0" maxOccurs="1"/>
-            <xs:element name="aws" type="aws-client" minOccurs="0" maxOccurs="1"/>
+            <xs:element name="aws" type="aliased-discovery-strategy" minOccurs="0" maxOccurs="1"/>
+            <xs:element name="gcp" type="aliased-discovery-strategy" minOccurs="0" maxOccurs="1"/>
+            <xs:element name="azure" type="aliased-discovery-strategy" minOccurs="0" maxOccurs="1"/>
+            <xs:element name="kubernetes" type="aliased-discovery-strategy" minOccurs="0" maxOccurs="1"/>
+            <xs:element name="eureka" type="aliased-discovery-strategy" minOccurs="0" maxOccurs="1"/>
             <xs:element name="discovery-strategies" type="discovery-strategies" minOccurs="0" maxOccurs="1"/>
             <xs:element name="outbound-ports" type="outbound-ports" minOccurs="0" maxOccurs="1"/>
             <xs:element name="icmp-ping" type="icmp-ping-client" minOccurs="0" maxOccurs="1"/>
+            <xs:element name="hazelcast-cloud" type="hazelcast-cloud-client" minOccurs="0" maxOccurs="1"/>
         </xs:sequence>
         <xs:attribute name="smart-routing" use="optional" type="parameterized-boolean" default="true"/>
         <xs:attribute name="redo-operation" use="optional" type="parameterized-boolean" default="false"/>
@@ -3042,6 +3196,14 @@
         </xs:all>
         <xs:attribute name="enabled" type="xs:boolean" default="false"/>
     </xs:complexType>
+
+    <xs:complexType name="hazelcast-cloud-client">
+        <xs:all>
+            <xs:element name="discovery-token" type="xs:string" minOccurs="1" maxOccurs="1"/>
+        </xs:all>
+        <xs:attribute name="enabled" type="xs:boolean" use="required"/>
+    </xs:complexType>
+
     <xs:complexType name="services">
         <xs:sequence>
             <xs:element name="service" type="service" minOccurs="0" maxOccurs="unbounded"/>
@@ -3119,7 +3281,15 @@
     </xs:complexType>
     <xs:complexType name="client-security">
         <xs:sequence>
-            <xs:element name="credentials" type="credentials" minOccurs="1" maxOccurs="1"/>
+            <xs:element name="credentials" type="credentials" minOccurs="0" maxOccurs="1"/>
+            <xs:element name="credentials-factory" minOccurs="0" maxOccurs="1">
+                <xs:complexType>
+                    <xs:sequence>
+                        <xs:element name="properties" type="properties" minOccurs="0" maxOccurs="1"/>
+                    </xs:sequence>
+                    <xs:attributeGroup ref="class-or-bean-name"/>
+                </xs:complexType>
+            </xs:element>
         </xs:sequence>
     </xs:complexType>
     <xs:complexType name="credentials">
@@ -3168,14 +3338,6 @@
                     </xs:simpleType>
                 </xs:attribute>
                 <xs:attribute name="local-update-policy" type="local-update-policy-enum" use="optional" default="INVALIDATE"/>
-            </xs:extension>
-        </xs:complexContent>
-    </xs:complexType>
-
-    <xs:complexType name="aws-client">
-        <xs:complexContent>
-            <xs:extension base="aws">
-                <xs:attribute name="inside-aws" use="optional" type="parameterized-boolean" default="false"/>
             </xs:extension>
         </xs:complexContent>
     </xs:complexType>
@@ -3439,6 +3601,49 @@
         </xs:attribute>
     </xs:complexType>
 
+    <xs:complexType name="client-reliable-topic">
+        <xs:all>
+            <xs:element name="topic-overload-policy" minOccurs="0" default="BLOCK">
+                <xs:annotation>
+                    <xs:documentation>
+                        Policy to deal with an overloaded topic; so topic where there is no place to store new messages.
+                        Options are
+                        DISCARD_OLDEST: Using this policy, a message that has not expired can be overwritten.
+                        No matter the retention period set, the overwrite will just overwrite the item.
+                        DISCARD_NEWEST : The message that was to be published, is discarded.
+                        BLOCK : The caller will wait till there space in the ringbuffer.
+                        ERROR : The publish call immediately fails.(Default Value)
+                    </xs:documentation>
+                </xs:annotation>
+                <xs:simpleType>
+                    <xs:restriction base="xs:string">
+                        <xs:enumeration value="DISCARD_OLDEST"/>
+                        <xs:enumeration value="DISCARD_NEWEST"/>
+                        <xs:enumeration value="BLOCK"/>
+                        <xs:enumeration value="ERROR"/>
+                    </xs:restriction>
+                </xs:simpleType>
+            </xs:element>
+            <xs:element name="read-batch-size" type="xs:int" minOccurs="0" default="10">
+                <xs:annotation>
+                    <xs:documentation>
+                        The maximum number of items to read in a batch.
+                    </xs:documentation>
+                </xs:annotation>
+            </xs:element>
+        </xs:all>
+        <xs:attribute name="name" use="required">
+            <xs:annotation>
+                <xs:documentation>
+                    Name of the Reliable Topic.
+                </xs:documentation>
+            </xs:annotation>
+            <xs:simpleType>
+                <xs:restriction base="xs:string"/>
+            </xs:simpleType>
+        </xs:attribute>
+    </xs:complexType>
+
     <xs:complexType name="predicate">
         <xs:simpleContent>
             <xs:extension base="xs:string">
@@ -3586,11 +3791,59 @@
 
     <xs:complexType name="wan-replication-ref">
         <xs:all>
-            <xs:element name="filters" type="wan-replication-ref-filters" minOccurs="0" maxOccurs="1"/>
+            <xs:element name="filters" type="wan-replication-ref-filters" minOccurs="0">
+                <xs:annotation>
+                    <xs:documentation>
+                        Sets the list of class names implementing the CacheWanEventFilter or
+                        MapWanEventFilter for filtering outbound WAN replication events.
+                    </xs:documentation>
+                </xs:annotation>
+            </xs:element>
         </xs:all>
-        <xs:attribute name="name" use="required" type="xs:string"/>
-        <xs:attribute name="merge-policy" use="required" type="xs:string"/>
-        <xs:attribute name="republishing-enabled" use="optional" type="parameterized-boolean" default="true"/>
+        <xs:attribute name="name" use="required" type="xs:string">
+            <xs:annotation>
+                <xs:documentation>
+                    Name of the wan-replication configuration. IMap or ICache instance uses this wan-replication config.
+                </xs:documentation>
+            </xs:annotation>
+        </xs:attribute>
+        <xs:attribute name="merge-policy" type="xs:string">
+            <xs:annotation>
+                <xs:documentation>
+                    Resolve conflicts that occurred when target cluster already has the replicated
+                    entry key.
+
+                    4 merge policy implementations for IMap and 2 merge policy implementations for
+                    ICache are provided out-of-the-box.
+
+                    IMap has the following merge policies:
+                    com.hazelcast.map.merge.PutIfAbsentMapMergePolicy: Incoming entry merges from the
+                    source map to the target map if it does not exist in the target map.
+                    com.hazelcast.map.merge.HigherHitsMapMergePolicy: Incoming entry merges from the
+                    source map to the target map if the source entry has more hits than the target one.
+                    com.hazelcast.map.merge.PassThroughMergePolicy: Incoming entry merges from the
+                    source map to the target map unless the incoming entry is not null.
+                    com.hazelcast.map.merge.LatestUpdateMapMergePolicy: Incoming entry merges from the
+                    source map to the target map if the source entry has been updated more recently
+                    than the target entry. Please note that this merge policy can only be used when the
+                    clusters' clocks are in sync.
+
+                    ICache has the following merge policies:
+                    com.hazelcast.cache.merge.HigherHitsCacheMergePolicy: Incoming entry merges from
+                    the source cache to the target cache if the source entry has more hits than the
+                    target one.
+                    com.hazelcast.cache.merge.PassThroughCacheMergePolicy: Incoming entry merges from
+                    the source cache to the target cache unless the incoming entry is not null.
+                </xs:documentation>
+            </xs:annotation>
+        </xs:attribute>
+        <xs:attribute name="republishing-enabled" type="parameterized-boolean" default="true">
+            <xs:annotation>
+                <xs:documentation>
+                    When enabled, an incoming event to a member is forwarded to the target cluster of that member.
+                </xs:documentation>
+            </xs:annotation>
+        </xs:attribute>
     </xs:complexType>
     <xs:complexType name="native-memory">
         <xs:all>
@@ -3741,12 +3994,35 @@
         </xs:restriction>
     </xs:simpleType>
 
+    <xs:simpleType name="initial-publisher-state-format-enum">
+        <xs:restriction base="xs:string">
+            <xs:enumeration value="REPLICATING"/>
+            <xs:enumeration value="PAUSED"/>
+            <xs:enumeration value="STOPPED"/>
+        </xs:restriction>
+    </xs:simpleType>
+
+    <xs:simpleType name="consistency-check-strategy-format-enum">
+        <xs:restriction base="xs:string">
+            <xs:enumeration value="NONE"/>
+            <xs:enumeration value="MERKLE_TREES"/>
+        </xs:restriction>
+    </xs:simpleType>
+
     <xs:simpleType name="wan-ack-type">
         <xs:union memberTypes="wan-ack-type-format-enum non-space-string"/>
     </xs:simpleType>
 
     <xs:simpleType name="wan-queue-full-behavior">
         <xs:union memberTypes="wan-queue-full-behavior-format-enum non-space-string"/>
+    </xs:simpleType>
+
+    <xs:simpleType name="initial-publisher-state">
+        <xs:union memberTypes="initial-publisher-state-format-enum non-space-string"/>
+    </xs:simpleType>
+
+    <xs:simpleType name="consistency-check-strategy">
+        <xs:union memberTypes="consistency-check-strategy-format-enum non-space-string"/>
     </xs:simpleType>
 
     <xs:complexType name="crdt-replication">
@@ -3863,8 +4139,23 @@
     </xs:complexType>
 
     <xs:complexType name="connection-strategy">
+        <xs:choice>
+            <xs:element name="connection-retry" type="connection-retry" minOccurs="0"
+                        maxOccurs="1"/>
+        </xs:choice>
         <xs:attribute name="async-start" type="xs:boolean" default="false" use="optional"/>
         <xs:attribute name="reconnect-mode" type="reconnect-mode" default="ON" use="optional"/>
+    </xs:complexType>
+
+    <xs:complexType name="connection-retry">
+        <xs:all>
+            <xs:element name="initial-backoff-millis" type="xs:int" minOccurs="0" maxOccurs="1" default="1000"/>
+            <xs:element name="max-backoff-millis" type="xs:int" minOccurs="0" maxOccurs="1" default="30000"/>
+            <xs:element name="multiplier" type="xs:double" minOccurs="0" maxOccurs="1" default="2"/>
+            <xs:element name="fail-on-max-backoff" type="xs:boolean" minOccurs="0" maxOccurs="1" default="false"/>
+            <xs:element name="jitter" type="xs:double" minOccurs="0" maxOccurs="1" default="0.2"/>
+        </xs:all>
+        <xs:attribute name="enabled" type="xs:boolean" default="false" use="optional"/>
     </xs:complexType>
 
     <xs:simpleType name="reconnect-mode">

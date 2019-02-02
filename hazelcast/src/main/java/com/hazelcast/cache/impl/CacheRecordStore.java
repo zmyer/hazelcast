@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2008-2018, Hazelcast, Inc. All Rights Reserved.
+ * Copyright (c) 2008-2019, Hazelcast, Inc. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,8 +16,8 @@
 
 package com.hazelcast.cache.impl;
 
+import com.hazelcast.cache.impl.operation.KeyBasedCacheOperation;
 import com.hazelcast.cache.impl.record.CacheRecord;
-import com.hazelcast.cache.impl.record.CacheRecordFactory;
 import com.hazelcast.cache.impl.record.CacheRecordHashMap;
 import com.hazelcast.config.EvictionConfig.MaxSizePolicy;
 import com.hazelcast.internal.eviction.EvictionChecker;
@@ -43,24 +43,22 @@ import com.hazelcast.spi.serialization.SerializationService;
  *         cache.get(key, expiryPolicy);
  *         </code>
  *     </pre>
- * See {@link com.hazelcast.cache.impl.operation.AbstractCacheOperation} subclasses for actual examples.
+ * See {@link KeyBasedCacheOperation} subclasses for actual examples.
  * </p>
  *
  * @see com.hazelcast.cache.impl.CachePartitionSegment
  * @see com.hazelcast.cache.impl.CacheService
- * @see com.hazelcast.cache.impl.operation.AbstractCacheOperation
+ * @see KeyBasedCacheOperation
  */
 public class CacheRecordStore
         extends AbstractCacheRecordStore<CacheRecord, CacheRecordHashMap> {
 
     protected SerializationService serializationService;
-    protected CacheRecordFactory cacheRecordFactory;
 
     public CacheRecordStore(String cacheNameWithPrefix, int partitionId, NodeEngine nodeEngine,
                             AbstractCacheService cacheService) {
         super(cacheNameWithPrefix, partitionId, nodeEngine, cacheService);
         this.serializationService = nodeEngine.getSerializationService();
-        this.cacheRecordFactory = createCacheRecordFactory();
     }
 
     /**
@@ -101,15 +99,11 @@ public class CacheRecordStore
         return new CacheEntryProcessorEntry(key, record, this, now, completionId);
     }
 
-    protected CacheRecordFactory createCacheRecordFactory() {
-        return new CacheRecordFactory(cacheConfig.getInMemoryFormat(),
-                nodeEngine.getSerializationService());
-    }
-
     @Override
     protected CacheRecord createRecord(Object value, long creationTime, long expiryTime) {
         evictIfRequired();
 
+        markExpirable(expiryTime);
         return cacheRecordFactory.newRecordWithExpiry(value, creationTime, expiryTime);
     }
 
@@ -167,5 +161,10 @@ public class CacheRecordStore
         } else {
             return serializationService.toData(obj);
         }
+    }
+
+    @Override
+    public void disposeDeferredBlocks() {
+        // NOP
     }
 }

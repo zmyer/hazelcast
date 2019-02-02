@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2008-2018, Hazelcast, Inc. All Rights Reserved.
+ * Copyright (c) 2008-2019, Hazelcast, Inc. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -148,7 +148,7 @@ public abstract class TcpIpConnection_AbstractTransferStressTest extends TcpIpCo
         Channel channel = connection.getChannel();
         if (channel instanceof NioChannel) {
             NioInboundPipeline reader = ((NioChannel) channel).inboundPipeline();
-            return priority ? reader.getPriorityFramesReadCounter().get() : reader.getNormalFramesReadCounter().get();
+            return priority ? reader.priorityFramesRead() : reader.normalFramesRead();
         } else {
             throw new RuntimeException();
         }

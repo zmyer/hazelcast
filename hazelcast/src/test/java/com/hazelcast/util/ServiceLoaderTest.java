@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2008-2018, Hazelcast, Inc. All Rights Reserved.
+ * Copyright (c) 2008-2019, Hazelcast, Inc. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -96,10 +96,10 @@ public class ServiceLoaderTest extends HazelcastTestSupport {
 
     @Test
     public void testHookDeduplication() {
-        ClassLoader parentClassloader = PortableHook.class.getClassLoader();
-
         Class<?> hook = newClassImplementingInterface("com.hazelcast.internal.serialization.SomeHook",
-                PortableHook.class, parentClassloader);
+                PortableHook.class, PortableHook.class.getClassLoader());
+
+        ClassLoader parentClassloader = hook.getClassLoader();
 
         //child classloader delegating everything to its parent
         URLClassLoader childClassloader = new URLClassLoader(new URL[]{}, parentClassloader);

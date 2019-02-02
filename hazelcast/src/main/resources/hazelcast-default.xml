@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!--
-  ~ Copyright (c) 2008-2018, Hazelcast, Inc. All Rights Reserved.
+  ~ Copyright (c) 2008-2019, Hazelcast, Inc. All Rights Reserved.
   ~
   ~ Licensed under the Apache License, Version 2.0 (the "License");
   ~ you may not use this file except in compliance with the License.
@@ -68,6 +68,27 @@
                 <tag-key>type</tag-key>
                 <tag-value>hz-nodes</tag-value>
             </aws>
+            <gcp enabled="false">
+                <zones>us-east1-b,us-east1-c</zones>
+            </gcp>
+            <azure enabled="false">
+                <client-id>CLIENT_ID</client-id>
+                <client-secret>CLIENT_SECRET</client-secret>
+                <tenant-id>TENANT_ID</tenant-id>
+                <subscription-id>SUB_ID</subscription-id>
+                <cluster-id>HZLCAST001</cluster-id>
+                <group-name>GROUP-NAME</group-name>
+            </azure>
+            <kubernetes enabled="false">
+                <namespace>MY-KUBERNETES-NAMESPACE</namespace>
+                <service-name>MY-SERVICE-NAME</service-name>
+                <service-label-name>MY-SERVICE-LABEL-NAME</service-label-name>
+                <service-label-value>MY-SERVICE-LABEL-VALUE</service-label-value>
+            </kubernetes>
+            <eureka enabled="false">
+                <self-registration>true</self-registration>
+                <namespace>hazelcast</namespace>
+            </eureka>
             <discovery-strategies>
             </discovery-strategies>
         </join>
@@ -238,6 +259,17 @@
         <capacity>10000</capacity>
         <time-to-live-seconds>0</time-to-live-seconds>
     </event-journal>
+
+    <!--
+       Configuration for a merkle tree.
+       The merkle tree is a data structure used for efficient comparison of the
+       difference in the contents of large data structures. The precision of
+       such a comparison mechanism is defined by the depth of the merkle tree.
+    -->
+    <merkle-tree enabled="false">
+        <mapName>mapName</mapName>
+        <depth>10</depth>
+    </merkle-tree>
 
     <multimap name="default">
         <backup-count>1</backup-count>

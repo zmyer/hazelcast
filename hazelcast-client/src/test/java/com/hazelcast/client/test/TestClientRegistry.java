@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2008-2018, Hazelcast, Inc. All Rights Reserved.
+ * Copyright (c) 2008-2019, Hazelcast, Inc. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -17,32 +17,25 @@
 package com.hazelcast.client.test;
 
 import com.hazelcast.client.HazelcastClient;
-import com.hazelcast.client.config.ClientAwsConfig;
-import com.hazelcast.client.config.ClientConfig;
 import com.hazelcast.client.connection.AddressProvider;
 import com.hazelcast.client.connection.AddressTranslator;
 import com.hazelcast.client.connection.ClientConnectionManager;
 import com.hazelcast.client.connection.nio.ClientConnection;
 import com.hazelcast.client.connection.nio.ClientConnectionManagerImpl;
-import com.hazelcast.client.impl.ClientConnectionManagerFactory;
-import com.hazelcast.client.impl.HazelcastClientInstanceImpl;
+import com.hazelcast.client.impl.clientside.ClientConnectionManagerFactory;
+import com.hazelcast.client.impl.clientside.HazelcastClientInstanceImpl;
 import com.hazelcast.client.impl.protocol.ClientMessage;
-import com.hazelcast.client.spi.impl.AwsAddressTranslator;
-import com.hazelcast.client.spi.impl.DefaultAddressTranslator;
-import com.hazelcast.client.spi.impl.discovery.DiscoveryAddressTranslator;
-import com.hazelcast.client.spi.properties.ClientProperty;
 import com.hazelcast.client.test.TwoWayBlockableExecutor.LockPair;
 import com.hazelcast.core.HazelcastException;
 import com.hazelcast.core.HazelcastInstance;
 import com.hazelcast.instance.Node;
 import com.hazelcast.instance.NodeState;
 import com.hazelcast.internal.networking.OutboundFrame;
-import com.hazelcast.internal.networking.nio.NioEventLoopGroup;
+import com.hazelcast.internal.networking.nio.NioNetworking;
 import com.hazelcast.logging.ILogger;
 import com.hazelcast.logging.Logger;
 import com.hazelcast.nio.Address;
 import com.hazelcast.nio.ConnectionType;
-import com.hazelcast.spi.discovery.integration.DiscoveryService;
 import com.hazelcast.spi.exception.TargetDisconnectedException;
 import com.hazelcast.spi.impl.NodeEngineImpl;
 import com.hazelcast.test.mocknetwork.MockConnection;
@@ -53,7 +46,6 @@ import java.io.IOException;
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.net.UnknownHostException;
-import java.util.Collection;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -89,25 +81,10 @@ class TestClientRegistry {
         }
 
         @Override
-        public ClientConnectionManager createConnectionManager(ClientConfig config, HazelcastClientInstanceImpl client,
-                                                               DiscoveryService discoveryService,
-                                                               Collection<AddressProvider> addressProviders) {
-            final ClientAwsConfig awsConfig = config.getNetworkConfig().getAwsConfig();
-            AddressTranslator addressTranslator;
-            if (awsConfig != null && awsConfig.isEnabled()) {
-                try {
-                    addressTranslator = new AwsAddressTranslator(awsConfig, client.getLoggingService());
-                } catch (NoClassDefFoundError e) {
-                    LOGGER.warning("hazelcast-aws.jar might be missing!");
-                    throw e;
-                }
-            } else if (discoveryService != null) {
-                addressTranslator = new DiscoveryAddressTranslator(discoveryService,
-                        client.getProperties().getBoolean(ClientProperty.DISCOVERY_SPI_PUBLIC_IP_ENABLED));
-            } else {
-                addressTranslator = new DefaultAddressTranslator();
-            }
-            return new MockClientConnectionManager(client, addressTranslator, addressProviders, host, ports);
+        public ClientConnectionManager createConnectionManager(HazelcastClientInstanceImpl client,
+                                                               AddressTranslator addressTranslator,
+                                                               AddressProvider addressProvider) {
+            return new MockClientConnectionManager(client, addressTranslator, addressProvider, host, ports);
         }
     }
 
@@ -120,24 +97,24 @@ class TestClientRegistry {
         private final AtomicInteger ports;
 
         MockClientConnectionManager(HazelcastClientInstanceImpl client, AddressTranslator addressTranslator,
-                                    Collection<AddressProvider> addressProviders, String host, AtomicInteger ports) {
-            super(client, addressTranslator, addressProviders);
+                                    AddressProvider addressProvider, String host, AtomicInteger ports) {
+            super(client, addressTranslator, addressProvider);
             this.client = client;
             this.host = host;
             this.ports = ports;
         }
 
         @Override
-        protected NioEventLoopGroup initEventLoopGroup(HazelcastClientInstanceImpl client) {
+        protected NioNetworking initNetworking(HazelcastClientInstanceImpl client) {
             return null;
         }
 
         @Override
-        protected void startEventLoopGroup() {
+        protected void startNetworking() {
         }
 
         @Override
-        protected void stopEventLoopGroup() {
+        protected void stopNetworking() {
         }
 
         @Override

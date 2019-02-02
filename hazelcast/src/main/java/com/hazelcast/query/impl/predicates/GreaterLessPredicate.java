@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2008-2018, Hazelcast, Inc. All Rights Reserved.
+ * Copyright (c) 2008-2019, Hazelcast, Inc. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -35,6 +35,8 @@ import java.util.Set;
 @BinaryInterface
 public final class GreaterLessPredicate extends AbstractIndexAwarePredicate implements NegatablePredicate {
 
+    private static final long serialVersionUID = 1L;
+
     protected Comparable value;
     boolean equal;
     boolean less;
@@ -59,7 +61,8 @@ public final class GreaterLessPredicate extends AbstractIndexAwarePredicate impl
         if (attributeValue == null) {
             return false;
         }
-        Comparable givenValue = convert(mapEntry, attributeValue, value);
+        Comparable givenValue = convert(attributeValue, value);
+        attributeValue = (Comparable) convertEnumValue(attributeValue);
         int result = attributeValue.compareTo(givenValue);
         return equal && result == 0 || (less ? (result < 0) : (result > 0));
     }
@@ -112,5 +115,46 @@ public final class GreaterLessPredicate extends AbstractIndexAwarePredicate impl
     @Override
     public int getId() {
         return PredicateDataSerializerHook.GREATERLESS_PREDICATE;
+    }
+
+    @SuppressWarnings({"checkstyle:npathcomplexity"})
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) {
+            return true;
+        }
+        if (!super.equals(o)) {
+            return false;
+        }
+        if (!(o instanceof GreaterLessPredicate)) {
+            return false;
+        }
+
+        GreaterLessPredicate that = (GreaterLessPredicate) o;
+        if (!that.canEqual(this)) {
+            return false;
+        }
+
+        if (equal != that.equal) {
+            return false;
+        }
+        if (less != that.less) {
+            return false;
+        }
+        return value != null ? value.equals(that.value) : that.value == null;
+    }
+
+    @Override
+    public boolean canEqual(Object other) {
+        return (other instanceof GreaterLessPredicate);
+    }
+
+    @Override
+    public int hashCode() {
+        int result = super.hashCode();
+        result = 31 * result + (value != null ? value.hashCode() : 0);
+        result = 31 * result + (equal ? 1 : 0);
+        result = 31 * result + (less ? 1 : 0);
+        return result;
     }
 }

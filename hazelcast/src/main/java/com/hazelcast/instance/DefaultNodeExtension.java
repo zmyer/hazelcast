@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2008-2018, Hazelcast, Inc. All Rights Reserved.
+ * Copyright (c) 2008-2019, Hazelcast, Inc. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -20,6 +20,7 @@ import com.hazelcast.cache.impl.CacheService;
 import com.hazelcast.cache.impl.ICacheService;
 import com.hazelcast.cluster.ClusterState;
 import com.hazelcast.config.Config;
+import com.hazelcast.config.SSLConfig;
 import com.hazelcast.config.SecurityConfig;
 import com.hazelcast.config.SerializationConfig;
 import com.hazelcast.config.SymmetricEncryptionConfig;
@@ -30,6 +31,8 @@ import com.hazelcast.hotrestart.HotRestartService;
 import com.hazelcast.hotrestart.InternalHotRestartService;
 import com.hazelcast.hotrestart.NoOpHotRestartService;
 import com.hazelcast.hotrestart.NoopInternalHotRestartService;
+import com.hazelcast.internal.ascii.TextCommandService;
+import com.hazelcast.internal.ascii.TextCommandServiceImpl;
 import com.hazelcast.internal.cluster.ClusterStateListener;
 import com.hazelcast.internal.cluster.ClusterVersionListener;
 import com.hazelcast.internal.cluster.impl.JoinMessage;
@@ -44,6 +47,7 @@ import com.hazelcast.internal.diagnostics.MemberHeartbeatPlugin;
 import com.hazelcast.internal.diagnostics.MetricsPlugin;
 import com.hazelcast.internal.diagnostics.NetworkingImbalancePlugin;
 import com.hazelcast.internal.diagnostics.OperationHeartbeatPlugin;
+import com.hazelcast.internal.diagnostics.OperationThreadSamplerPlugin;
 import com.hazelcast.internal.diagnostics.OverloadedConnectionsPlugin;
 import com.hazelcast.internal.diagnostics.PendingInvocationsPlugin;
 import com.hazelcast.internal.diagnostics.SlowOperationPlugin;
@@ -52,12 +56,12 @@ import com.hazelcast.internal.diagnostics.SystemLogPlugin;
 import com.hazelcast.internal.diagnostics.SystemPropertiesPlugin;
 import com.hazelcast.internal.dynamicconfig.DynamicConfigListener;
 import com.hazelcast.internal.dynamicconfig.EmptyDynamicConfigListener;
+import com.hazelcast.internal.jmx.ManagementService;
 import com.hazelcast.internal.management.ManagementCenterConnectionFactory;
 import com.hazelcast.internal.management.TimedMemberStateFactory;
-import com.hazelcast.internal.networking.ChannelFactory;
-import com.hazelcast.internal.networking.ChannelInboundHandler;
-import com.hazelcast.internal.networking.ChannelOutboundHandler;
-import com.hazelcast.internal.networking.nio.NioChannelFactory;
+import com.hazelcast.internal.networking.InboundHandler;
+import com.hazelcast.internal.networking.ChannelInitializer;
+import com.hazelcast.internal.networking.OutboundHandler;
 import com.hazelcast.internal.serialization.InternalSerializationService;
 import com.hazelcast.internal.serialization.SerializationServiceBuilder;
 import com.hazelcast.internal.serialization.impl.DefaultSerializationServiceBuilder;
@@ -71,6 +75,7 @@ import com.hazelcast.nio.IOService;
 import com.hazelcast.nio.MemberSocketInterceptor;
 import com.hazelcast.nio.tcp.PacketDecoder;
 import com.hazelcast.nio.tcp.PacketEncoder;
+import com.hazelcast.nio.tcp.PlainChannelInitializer;
 import com.hazelcast.nio.tcp.TcpIpConnection;
 import com.hazelcast.partition.strategy.DefaultPartitioningStrategy;
 import com.hazelcast.security.SecurityContext;
@@ -84,6 +89,7 @@ import com.hazelcast.spi.properties.GroupProperty;
 import com.hazelcast.util.ByteArrayProcessor;
 import com.hazelcast.util.ConstructorFunction;
 import com.hazelcast.util.ExceptionUtil;
+import com.hazelcast.util.PhoneHome;
 import com.hazelcast.util.Preconditions;
 import com.hazelcast.util.UuidUtil;
 import com.hazelcast.util.function.Supplier;
@@ -107,6 +113,7 @@ public class DefaultNodeExtension implements NodeExtension {
     protected final ILogger logger;
     protected final ILogger systemLogger;
     protected final List<ClusterVersionListener> clusterVersionListeners = new CopyOnWriteArrayList<ClusterVersionListener>();
+    protected PhoneHome phoneHome;
 
     private final MemoryStats memoryStats = new DefaultMemoryStats();
 
@@ -115,6 +122,7 @@ public class DefaultNodeExtension implements NodeExtension {
         this.logger = node.getLogger(NodeExtension.class);
         this.systemLogger = node.getLogger("com.hazelcast.system");
         checkSecurityAllowed();
+        createAndSetPhoneHome();
     }
 
     private void checkSecurityAllowed() {
@@ -147,8 +155,8 @@ public class DefaultNodeExtension implements NodeExtension {
         }
         systemLogger.info("Hazelcast " + buildInfo.getVersion()
                 + " (" + build + ") starting at " + node.getThisAddress());
-        systemLogger.info("Copyright (c) 2008-2018, Hazelcast, Inc. All Rights Reserved.");
-        systemLogger.info("Configured Hazelcast Serialization version: " + buildInfo.getSerializationVersion());
+        systemLogger.info("Copyright (c) 2008-2019, Hazelcast, Inc. All Rights Reserved.");
+        systemLogger.fine("Configured Hazelcast Serialization version: " + buildInfo.getSerializationVersion());
     }
 
     @Override
@@ -249,19 +257,27 @@ public class DefaultNodeExtension implements NodeExtension {
     }
 
     @Override
-    public ChannelFactory getChannelFactory() {
-        return new NioChannelFactory();
-    }
-
-    @Override
-    public ChannelInboundHandler createInboundHandler(TcpIpConnection connection, IOService ioService) {
+    public InboundHandler[] createInboundHandlers(TcpIpConnection connection, IOService ioService) {
         NodeEngineImpl nodeEngine = node.nodeEngine;
-        return new PacketDecoder(connection, nodeEngine.getPacketDispatcher());
+        PacketDecoder decoder = new PacketDecoder(connection, nodeEngine.getPacketDispatcher());
+        return new InboundHandler[]{decoder};
     }
 
     @Override
-    public ChannelOutboundHandler createOutboundHandler(TcpIpConnection connection, IOService ioService) {
-        return new PacketEncoder();
+    public OutboundHandler[] createOutboundHandlers(TcpIpConnection connection, IOService ioService) {
+        return new OutboundHandler[]{new PacketEncoder()};
+    }
+
+    @Override
+    public ChannelInitializer createChannelInitializer(IOService ioService) {
+        SSLConfig sslConfig = ioService.getSSLConfig();
+        if (sslConfig != null && sslConfig.isEnabled()) {
+            if (!BuildInfoProvider.getBuildInfo().isEnterprise()) {
+                throw new IllegalStateException("SSL/TLS requires Hazelcast Enterprise Edition");
+            }
+        }
+
+        return new PlainChannelInitializer(ioService);
     }
 
     @Override
@@ -284,6 +300,9 @@ public class DefaultNodeExtension implements NodeExtension {
     @Override
     public void shutdown() {
         logger.info("Destroying node NodeExtension.");
+        if (phoneHome != null) {
+            phoneHome.shutdown();
+        }
     }
 
     @Override
@@ -307,12 +326,20 @@ public class DefaultNodeExtension implements NodeExtension {
     }
 
     @Override
+    public void beforeClusterStateChange(ClusterState currState, ClusterState requestedState, boolean isTransient) {
+    }
+
+    @Override
     public void onClusterStateChange(ClusterState newState, boolean isTransient) {
         ServiceManager serviceManager = node.getNodeEngine().getServiceManager();
         List<ClusterStateListener> listeners = serviceManager.getServices(ClusterStateListener.class);
         for (ClusterStateListener listener : listeners) {
             listener.onClusterStateChange(newState);
         }
+    }
+
+    @Override
+    public void afterClusterStateChange(ClusterState oldState, ClusterState newState, boolean isTransient) {
     }
 
     @Override
@@ -325,8 +352,14 @@ public class DefaultNodeExtension implements NodeExtension {
     }
 
     @Override
+    public void onInitialClusterState(ClusterState initialState) {
+    }
+
+    @Override
     public void onClusterVersionChange(Version newVersion) {
-        systemLogger.info("Cluster version set to " + newVersion);
+        if (!node.getVersion().asVersion().isEqualTo(newVersion)) {
+            systemLogger.info("Cluster version set to " + newVersion);
+        }
         ServiceManager serviceManager = node.getNodeEngine().getServiceManager();
         List<ClusterVersionListener> listeners = serviceManager.getServices(ClusterVersionListener.class);
         for (ClusterVersionListener listener : listeners) {
@@ -430,10 +463,30 @@ public class DefaultNodeExtension implements NodeExtension {
         diagnostics.register(new MemberHeartbeatPlugin(nodeEngine));
         diagnostics.register(new NetworkingImbalancePlugin(nodeEngine));
         diagnostics.register(new OperationHeartbeatPlugin(nodeEngine));
+        diagnostics.register(new OperationThreadSamplerPlugin(nodeEngine));
     }
 
     @Override
     public ManagementCenterConnectionFactory getManagementCenterConnectionFactory() {
         return null;
+    }
+
+    @Override
+    public ManagementService createJMXManagementService(HazelcastInstanceImpl instance) {
+        return new ManagementService(instance);
+    }
+
+    @Override
+    public TextCommandService createTextCommandService() {
+        return new TextCommandServiceImpl(node);
+    }
+
+    @Override
+    public void sendPhoneHome() {
+        phoneHome.check(node);
+    }
+
+    protected void createAndSetPhoneHome() {
+        this.phoneHome = new PhoneHome(node);
     }
 }

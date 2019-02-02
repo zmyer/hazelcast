@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2008-2018, Hazelcast, Inc. All Rights Reserved.
+ * Copyright (c) 2008-2019, Hazelcast, Inc. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -19,6 +19,7 @@ package com.hazelcast.internal.metrics.metricsets;
 import com.hazelcast.cache.CacheStatistics;
 import com.hazelcast.internal.metrics.MetricsRegistry;
 import com.hazelcast.logging.ILogger;
+import com.hazelcast.monitor.LocalIndexStats;
 import com.hazelcast.monitor.LocalInstanceStats;
 import com.hazelcast.monitor.LocalMapStats;
 import com.hazelcast.monitor.NearCacheStats;
@@ -31,6 +32,8 @@ import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
 
+import static com.hazelcast.internal.metrics.ProbeLevel.INFO;
+import static com.hazelcast.util.StringUtil.lowerCaseFirstChar;
 import static java.util.concurrent.TimeUnit.SECONDS;
 
 /**
@@ -58,7 +61,7 @@ public class StatisticsAwareMetricsSet {
     }
 
     public void register(MetricsRegistry metricsRegistry) {
-        metricsRegistry.scheduleAtFixedRate(new Task(metricsRegistry), SCAN_PERIOD_SECONDS, SECONDS);
+        metricsRegistry.scheduleAtFixedRate(new Task(metricsRegistry), SCAN_PERIOD_SECONDS, SECONDS, INFO);
     }
 
     // Periodic task that goes through all StatisticsAwareService asking for stats and registers and if it doesn't exist,
@@ -107,13 +110,26 @@ public class StatisticsAwareMetricsSet {
                     String name = entry.getKey();
 
                     NearCacheStats nearCacheStats = getNearCacheStats(localInstanceStats);
+                    String baseName = localInstanceStats.getClass().getSimpleName()
+                            .replace("Stats", "")
+                            .replace("Local", "")
+                            .replace("Impl", "");
+                    baseName = lowerCaseFirstChar(baseName);
                     if (nearCacheStats != null) {
                         metricsRegistry.scanAndRegister(nearCacheStats,
-                                localInstanceStats.getClass().getSimpleName() + "[" + name + "].nearcache");
+                                baseName + "[" + name + "].nearcache");
+                    }
+
+                    if (localInstanceStats instanceof LocalMapStatsImpl) {
+                        Map<String, LocalIndexStats> indexStats = ((LocalMapStatsImpl) localInstanceStats).getIndexStats();
+                        for (Map.Entry<String, LocalIndexStats> indexEntry : indexStats.entrySet()) {
+                            metricsRegistry.scanAndRegister(indexEntry.getValue(),
+                                    baseName + "[" + name + "].index[" + indexEntry.getKey() + "]");
+                        }
                     }
 
                     metricsRegistry.scanAndRegister(localInstanceStats,
-                            localInstanceStats.getClass().getSimpleName() + "[" + name + "]");
+                            baseName + "[" + name + "]");
                 }
             }
         }

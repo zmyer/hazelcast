@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2008-2018, Hazelcast, Inc. All Rights Reserved.
+ * Copyright (c) 2008-2019, Hazelcast, Inc. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -81,8 +81,18 @@ public class NoLoggerTest extends AbstractLoggerTest {
     }
 
     @Test
+    public void info() {
+        logger.info(MESSAGE, THROWABLE);
+    }
+
+    @Test
     public void info_withMessage() {
         logger.info(MESSAGE);
+    }
+
+    @Test
+    public void info_withThrowable() {
+        logger.info(THROWABLE);
     }
 
     @Test
@@ -123,6 +133,11 @@ public class NoLoggerTest extends AbstractLoggerTest {
     @Test
     public void severe() {
         logger.severe(MESSAGE, THROWABLE);
+    }
+
+    @Test
+    public void isSevereEnabled() {
+        assertFalse(logger.isSevereEnabled());
     }
 
     @Test

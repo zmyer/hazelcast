@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2008-2018, Hazelcast, Inc. All Rights Reserved.
+ * Copyright (c) 2008-2019, Hazelcast, Inc. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -33,13 +33,13 @@ public class JCachePartitionLostListener implements HazelcastInstanceAware, Node
     public static final AtomicBoolean HAZELCAST_INSTANCE_INJECTED = new AtomicBoolean();
     public static final AtomicBoolean NODE_INJECTED = new AtomicBoolean();
 
-    public static JCachePartitionLostListener INSTANCE;
+    public static JCachePartitionLostListener instance;
 
     @Resource(name = "dummy")
     private IJCacheDummyBean dummyBean;
 
     public JCachePartitionLostListener() {
-        INSTANCE = this;
+        instance = this;
     }
 
     @Override

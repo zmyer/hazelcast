@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2008-2018, Hazelcast, Inc. All Rights Reserved.
+ * Copyright (c) 2008-2019, Hazelcast, Inc. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -91,7 +91,7 @@ import static java.util.concurrent.TimeUnit.MILLISECONDS;
  * and we don't wait for the response before publishing the next event. The previously published
  * event can be retransmitted causing it to be received by the target node at a later time.
  */
-@SuppressWarnings("checkstyle:classfanoutcomplexity")
+@SuppressWarnings({"checkstyle:classfanoutcomplexity", "checkstyle:methodcount"})
 public class EventServiceImpl implements InternalEventService, MetricsProvider {
 
     public static final String SERVICE_NAME = "hz:core:eventService";

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2008-2018, Hazelcast, Inc. All Rights Reserved.
+ * Copyright (c) 2008-2019, Hazelcast, Inc. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -233,9 +233,9 @@ public class DistributedObjectTest extends HazelcastTestSupport {
 
         private final AtomicBoolean init = new AtomicBoolean(false);
         private final String name;
-        private volatile boolean error = false;
+        private volatile boolean error;
 
-        protected TestInitializingObject(final String name) {
+        TestInitializingObject(final String name) {
             this.name = name;
         }
 
@@ -319,6 +319,7 @@ public class DistributedObjectTest extends HazelcastTestSupport {
     }
 
     private static class FailingInitializingObjectService implements RemoteService {
+
         static final String NAME = "FailingInitializingObjectService";
 
         @Override

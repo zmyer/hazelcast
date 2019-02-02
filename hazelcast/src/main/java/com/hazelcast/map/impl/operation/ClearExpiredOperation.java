@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2008-2018, Hazelcast, Inc. All Rights Reserved.
+ * Copyright (c) 2008-2019, Hazelcast, Inc. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -21,7 +21,6 @@ import com.hazelcast.map.impl.MapServiceContext;
 import com.hazelcast.map.impl.PartitionContainer;
 import com.hazelcast.map.impl.recordstore.RecordStore;
 import com.hazelcast.nio.Address;
-import com.hazelcast.nio.serialization.IdentifiedDataSerializable;
 import com.hazelcast.spi.AbstractLocalOperation;
 import com.hazelcast.spi.NodeEngine;
 import com.hazelcast.spi.PartitionAwareOperation;
@@ -33,8 +32,7 @@ import java.util.concurrent.ConcurrentMap;
 /**
  * Clears expired records.
  */
-public class ClearExpiredOperation extends AbstractLocalOperation implements PartitionAwareOperation, MutatingOperation,
-        IdentifiedDataSerializable {
+public class ClearExpiredOperation extends AbstractLocalOperation implements PartitionAwareOperation, MutatingOperation {
 
     private int expirationPercentage;
 
@@ -98,7 +96,7 @@ public class ClearExpiredOperation extends AbstractLocalOperation implements Par
 
     @Override
     public boolean returnsResponse() {
-        return true;
+        return false;
     }
 
     @Override

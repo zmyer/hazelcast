@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2008-2018, Hazelcast, Inc. All Rights Reserved.
+ * Copyright (c) 2008-2019, Hazelcast, Inc. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -75,6 +75,10 @@ public class ExtractionInArraySpecTest extends AbstractExtractionTest {
 
     private static final Person HUNT_NULL_LIMB = person("Hunt");
 
+    public ExtractionInArraySpecTest(InMemoryFormat inMemoryFormat, Index index, Multivalue multivalue) {
+        super(inMemoryFormat, index, multivalue);
+    }
+
     protected Configurator getInstanceConfigurator() {
         return new Configurator() {
             @Override
@@ -82,10 +86,6 @@ public class ExtractionInArraySpecTest extends AbstractExtractionTest {
                 config.getSerializationConfig().addPortableFactory(ComplexTestDataStructure.PersonPortableFactory.ID, new ComplexTestDataStructure.PersonPortableFactory());
             }
         };
-    }
-
-    public ExtractionInArraySpecTest(InMemoryFormat inMemoryFormat, Index index, Multivalue multivalue) {
-        super(inMemoryFormat, index, multivalue);
     }
 
     @Test

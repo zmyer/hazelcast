@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2008-2018, Hazelcast, Inc. All Rights Reserved.
+ * Copyright (c) 2008-2019, Hazelcast, Inc. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -242,6 +242,9 @@ public class TcpIpAcceptor implements MetricsProvider {
             Channel channel = null;
             try {
                 SocketChannel socketChannel = serverSocketChannel.accept();
+
+                // todo: problem here because setReceiveBuffer is called after
+                // the socket is accepted; so it is too late.
                 if (socketChannel != null) {
                     channel = connectionManager.createChannel(socketChannel, false);
                 }
@@ -267,7 +270,9 @@ public class TcpIpAcceptor implements MetricsProvider {
 
             if (channel != null) {
                 final Channel theChannel = channel;
-                logger.info("Accepting socket connection from " + theChannel.socket().getRemoteSocketAddress());
+                if (logger.isFineEnabled()) {
+                    logger.fine("Accepting socket connection from " + theChannel.socket().getRemoteSocketAddress());
+                }
                 if (ioService.isSocketInterceptorEnabled()) {
                     ioService.executeAsync(new Runnable() {
                         @Override
@@ -283,7 +288,6 @@ public class TcpIpAcceptor implements MetricsProvider {
 
         private void configureAndAssignSocket(Channel channel) {
             try {
-                ioService.configureSocket(channel.socket());
                 ioService.interceptSocket(channel.socket(), true);
                 connectionManager.newConnection(channel, null);
             } catch (Exception e) {

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2008-2018, Hazelcast, Inc. All Rights Reserved.
+ * Copyright (c) 2008-2019, Hazelcast, Inc. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -20,8 +20,11 @@ import com.hazelcast.config.Config;
 import com.hazelcast.config.JoinConfig;
 import com.hazelcast.config.NetworkConfig;
 import com.hazelcast.config.TcpIpConfig;
-import com.hazelcast.core.Hazelcast;
 import com.hazelcast.core.HazelcastInstance;
+import com.hazelcast.instance.DefaultNodeContext;
+import com.hazelcast.instance.HazelcastInstanceFactory;
+import com.hazelcast.instance.NodeContext;
+import com.hazelcast.internal.jmx.ManagementService;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -37,6 +40,8 @@ import static com.hazelcast.test.HazelcastTestSupport.getAddress;
  * configuration of other members. The instances are kept per test method which allows to terminate them in
  * {@link org.junit.After} methods (see {@link #terminateAll()}). The factory methods also sets custom group name which prevents
  * accidental joins (e.g. dangling members).
+ * <p>
+ * <b>Tests using this factory should not be annotated with {@code ParallelTest} category to avoid runs in multiple JVMs.</b>
  * <p>
  * Usage of {@link com.hazelcast.test.annotation.ParallelTest} is allowed with this instance factory.<br/>
  * Example:
@@ -78,10 +83,19 @@ public class TestAwareInstanceFactory {
     protected final Map<String, List<HazelcastInstance>> perMethodMembers = new ConcurrentHashMap<String, List<HazelcastInstance>>();
 
     /**
-     * Creates new member instance with TCP join configured. The value
-     * {@link com.hazelcast.test.AbstractHazelcastClassRunner#getTestMethodName()} is used as a cluster group name.
+     * Calls {@link #newHazelcastInstance(Config, NodeContext)} using the
+     * {@link DefaultNodeContext}.
      */
     public HazelcastInstance newHazelcastInstance(Config config) {
+        return newHazelcastInstance(config, new DefaultNodeContext());
+    }
+
+    /**
+     * Creates new member instance with TCP join configured. Uses
+     * {@link com.hazelcast.test.AbstractHazelcastClassRunner#getTestMethodName()}
+     * as the cluster group name.
+     */
+    public HazelcastInstance newHazelcastInstance(Config config, NodeContext nodeCtx) {
         if (config == null) {
             config = new Config();
         }
@@ -95,7 +109,8 @@ public class TestAwareInstanceFactory {
         for (HazelcastInstance member : members) {
             tcpIpConfig.addMember("127.0.0.1:" + getPort(member));
         }
-        HazelcastInstance hz = Hazelcast.newHazelcastInstance(config);
+        HazelcastInstance hz = HazelcastInstanceFactory.newHazelcastInstance(
+                config, config.getInstanceName(), nodeCtx);
         members.add(hz);
         int nextPort = getPort(hz) + 1;
         int current;
@@ -115,7 +130,8 @@ public class TestAwareInstanceFactory {
     protected void shutdownInstances(List<HazelcastInstance> listToRemove) {
         if (listToRemove != null) {
             for (HazelcastInstance hz : listToRemove) {
-                hz.shutdown();
+                ManagementService.shutdown(hz.getName());
+                hz.getLifecycleService().terminate();
             }
         }
     }

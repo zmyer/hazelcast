@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2008-2018, Hazelcast, Inc. All Rights Reserved.
+ * Copyright (c) 2008-2019, Hazelcast, Inc. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -29,9 +29,13 @@ import java.util.concurrent.Future;
 
 import static org.junit.Assert.assertEquals;
 
-public class FlakeIdConcurrencyTestUtil {
+public final class FlakeIdConcurrencyTestUtil {
+
     public static final int NUM_THREADS = 4;
     public static final int IDS_IN_THREAD = 100000;
+
+    private FlakeIdConcurrencyTestUtil() {
+    }
 
     public static Set<Long> concurrentlyGenerateIds(final Supplier<Long> generator) throws Exception {
         List<Future<Set<Long>>> futures = new ArrayList<Future<Set<Long>>>();

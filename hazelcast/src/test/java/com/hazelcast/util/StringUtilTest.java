@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2008-2018, Hazelcast, Inc. All Rights Reserved.
+ * Copyright (c) 2008-2019, Hazelcast, Inc. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -96,6 +96,17 @@ public class StringUtilTest extends HazelcastTestSupport {
     }
 
     @Test
+    public void test_lowerCaseFirstChar() {
+        assertEquals("", StringUtil.lowerCaseFirstChar(""));
+        assertEquals(".", StringUtil.lowerCaseFirstChar("."));
+        assertEquals(" ", StringUtil.lowerCaseFirstChar(" "));
+        assertEquals("a", StringUtil.lowerCaseFirstChar("a"));
+        assertEquals("a", StringUtil.lowerCaseFirstChar("A"));
+        assertEquals("aBC", StringUtil.lowerCaseFirstChar("ABC"));
+        assertEquals("abc", StringUtil.lowerCaseFirstChar("Abc"));
+    }
+
+    @Test
     public void testSplitByComma() throws Exception {
         assertNull(StringUtil.splitByComma(null, true));
         assertArrayEquals(arr(""), StringUtil.splitByComma("", true));
@@ -117,12 +128,12 @@ public class StringUtilTest extends HazelcastTestSupport {
 
     @Test
     public void testArraySubraction() throws Exception {
-        assertNull(StringUtil.subraction(null, arr("a", "test", "b", "a")));
-        assertArrayEquals(arr("a", "test", "b", "a"), StringUtil.subraction(arr("a", "test", "b", "a"), null));
-        assertArrayEquals(arr("test"), StringUtil.subraction(arr("a", "test", "b", "a"), arr("a", "b")));
-        assertArrayEquals(arr(), StringUtil.subraction(arr(), arr("a", "b")));
-        assertArrayEquals(arr("a", "b"), StringUtil.subraction(arr("a", "b"), arr()));
-        assertArrayEquals(arr(), StringUtil.subraction(arr("a", "test", "b", "a"), arr("a", "b", "test")));
+        assertNull(StringUtil.subtraction(null, arr("a", "test", "b", "a")));
+        assertArrayEquals(arr("a", "test", "b", "a"), StringUtil.subtraction(arr("a", "test", "b", "a"), null));
+        assertArrayEquals(arr("test"), StringUtil.subtraction(arr("a", "test", "b", "a"), arr("a", "b")));
+        assertArrayEquals(arr(), StringUtil.subtraction(arr(), arr("a", "b")));
+        assertArrayEquals(arr("a", "b"), StringUtil.subtraction(arr("a", "b"), arr()));
+        assertArrayEquals(arr(), StringUtil.subtraction(arr("a", "test", "b", "a"), arr("a", "b", "test")));
     }
 
     @Test

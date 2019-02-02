@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2008-2018, Hazelcast, Inc. All Rights Reserved.
+ * Copyright (c) 2008-2019, Hazelcast, Inc. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -17,7 +17,6 @@
 package com.hazelcast.map.impl.operation;
 
 import com.hazelcast.core.EntryEventType;
-import com.hazelcast.core.EntryView;
 import com.hazelcast.map.impl.MapDataSerializerHook;
 import com.hazelcast.map.impl.MapEntries;
 import com.hazelcast.map.impl.record.Record;
@@ -37,8 +36,8 @@ import java.util.Map;
 
 import static com.hazelcast.core.EntryEventType.ADDED;
 import static com.hazelcast.core.EntryEventType.UPDATED;
-import static com.hazelcast.map.impl.EntryViews.createSimpleEntryView;
 import static com.hazelcast.map.impl.record.Records.buildRecordInfo;
+import static com.hazelcast.map.impl.recordstore.RecordStore.DEFAULT_MAX_IDLE;
 import static com.hazelcast.map.impl.recordstore.RecordStore.DEFAULT_TTL;
 
 /**
@@ -46,7 +45,8 @@ import static com.hazelcast.map.impl.recordstore.RecordStore.DEFAULT_TTL;
  * <p>
  * Used to reduce the number of remote invocations of an {@link com.hazelcast.core.IMap#putAll(Map)} call.
  */
-public class PutAllOperation extends MapOperation implements PartitionAwareOperation, BackupAwareOperation, MutatingOperation {
+public class PutAllOperation extends MapOperation
+        implements PartitionAwareOperation, BackupAwareOperation, MutatingOperation {
 
     private MapEntries mapEntries;
 
@@ -99,12 +99,11 @@ public class PutAllOperation extends MapOperation implements PartitionAwareOpera
             mapEventPublisher.publishEvent(getCallerAddress(), name, eventType, dataKey, oldValue, dataValue);
         }
 
-        Record record = (hasWanReplication || hasBackups) ? recordStore.getRecord(dataKey) : null;
         if (hasWanReplication) {
-            EntryView entryView = createSimpleEntryView(dataKey, dataValue, record);
-            mapEventPublisher.publishWanReplicationUpdate(name, entryView);
+            publishWanUpdate(dataKey, dataValue);
         }
         if (hasBackups) {
+            Record record = recordStore.getRecord(dataKey);
             RecordInfo replicationInfo = buildRecordInfo(record);
             backupRecordInfos.add(replicationInfo);
         }
@@ -122,9 +121,9 @@ public class PutAllOperation extends MapOperation implements PartitionAwareOpera
      */
     private Object putToRecordStore(Data dataKey, Data dataValue) {
         if (hasMapListener) {
-            return recordStore.put(dataKey, dataValue, DEFAULT_TTL);
+            return recordStore.put(dataKey, dataValue, DEFAULT_TTL, DEFAULT_MAX_IDLE);
         }
-        recordStore.set(dataKey, dataValue, DEFAULT_TTL);
+        recordStore.set(dataKey, dataValue, DEFAULT_TTL, DEFAULT_MAX_IDLE);
         return null;
     }
 
@@ -165,7 +164,7 @@ public class PutAllOperation extends MapOperation implements PartitionAwareOpera
 
     @Override
     public Operation getBackupOperation() {
-        return new PutAllBackupOperation(name, mapEntries, backupRecordInfos);
+        return new PutAllBackupOperation(name, mapEntries, backupRecordInfos, false);
     }
 
     @Override

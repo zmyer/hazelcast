@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2008-2018, Hazelcast, Inc. All Rights Reserved.
+ * Copyright (c) 2008-2019, Hazelcast, Inc. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -89,7 +89,7 @@ public class EvictionMaxSizePolicyTest extends HazelcastTestSupport {
         int perNodeMaxSize = 1000;
 
         // eviction takes place if a partitions size exceeds this number
-        // see EvictionChecker#translatePerNodeSizeToPartitionSize
+        // see EvictionChecker#toPerPartitionMaxSize
         double maxPartitionSize = 1D * nodeCount * perNodeMaxSize / PARTITION_COUNT;
 
         String mapName = "testPerNodePolicy_afterGracefulShutdown";
@@ -279,7 +279,7 @@ public class EvictionMaxSizePolicyTest extends HazelcastTestSupport {
         }
     }
 
-    static public void setTestSizeEstimator(IMap map, final long oneEntryHeapCostInBytes) {
+    public static void setTestSizeEstimator(IMap map, final long oneEntryHeapCostInBytes) {
         final MapProxyImpl mapProxy = (MapProxyImpl) map;
         final MapService mapService = (MapService) mapProxy.getService();
         final MapServiceContext mapServiceContext = mapService.getMapServiceContext();
@@ -358,7 +358,7 @@ public class EvictionMaxSizePolicyTest extends HazelcastTestSupport {
 
         MapContainer mapContainer = mapServiceContext.getMapContainer(map.getName());
 
-        MapEvictionPolicy mapEvictionPolicy = mapContainer.getMapConfig().getMapEvictionPolicy();
+        MapEvictionPolicy mapEvictionPolicy = mapContainer.getMapEvictionPolicy();
         EvictionChecker evictionChecker = new EvictionChecker(memoryInfoAccessor, mapServiceContext);
         IPartitionService partitionService = mapServiceContext.getNodeEngine().getPartitionService();
         Evictor evictor = new TestEvictor(mapEvictionPolicy, evictionChecker, partitionService);
@@ -368,7 +368,7 @@ public class EvictionMaxSizePolicyTest extends HazelcastTestSupport {
     private static final class TestEvictor extends EvictorImpl {
 
         TestEvictor(MapEvictionPolicy mapEvictionPolicy, EvictionChecker evictionChecker, IPartitionService partitionService) {
-            super(mapEvictionPolicy, evictionChecker, partitionService);
+            super(mapEvictionPolicy, evictionChecker, partitionService, 1);
         }
 
         @Override

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2008-2018, Hazelcast, Inc. All Rights Reserved.
+ * Copyright (c) 2008-2019, Hazelcast, Inc. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,11 +16,12 @@
 
 package com.hazelcast.internal.management.request;
 
-import com.eclipsesource.json.JsonArray;
-import com.eclipsesource.json.JsonObject;
-import com.eclipsesource.json.JsonValue;
+import com.hazelcast.internal.json.Json;
 import com.hazelcast.internal.management.ManagementCenterService;
 import com.hazelcast.internal.management.operation.ScriptExecutorOperation;
+import com.hazelcast.internal.json.JsonArray;
+import com.hazelcast.internal.json.JsonObject;
+import com.hazelcast.internal.json.JsonValue;
 import com.hazelcast.nio.Address;
 import com.hazelcast.util.AddressUtil;
 import com.hazelcast.util.ExceptionUtil;
@@ -77,7 +78,7 @@ public class ExecuteScriptRequest implements ConsoleRequest {
             try {
                 addSuccessResponse(responseJson, address, prettyPrint(future.get()));
             } catch (ExecutionException e) {
-                addErrorResponse(responseJson, address, e);
+                addErrorResponse(responseJson, address, e.getCause());
             } catch (InterruptedException e) {
                 addErrorResponse(responseJson, address, e);
                 Thread.currentThread().interrupt();
@@ -121,19 +122,18 @@ public class ExecuteScriptRequest implements ConsoleRequest {
     }
 
     private static void addSuccessResponse(JsonObject root, Address address, String result) {
-
-        addResponse(root, address, true, result);
+        addResponse(root, address, true, result, null);
     }
 
-    private static void addErrorResponse(JsonObject root, Address address, Exception e) {
-        addResponse(root, address, false, ExceptionUtil.toString(e));
+    private static void addErrorResponse(JsonObject root, Address address, Throwable e) {
+        addResponse(root, address, false, e.getMessage(), ExceptionUtil.toString(e));
     }
 
-    private static void addResponse(JsonObject root, Address address, boolean success, String result) {
-
+    private static void addResponse(JsonObject root, Address address, boolean success, String result, String stackTrace) {
         JsonObject json = new JsonObject();
         json.add("success", success);
         json.add("result", result);
+        json.add("stackTrace", stackTrace != null ? Json.value(stackTrace) : Json.NULL);
         root.add(address.toString(), json);
     }
 }

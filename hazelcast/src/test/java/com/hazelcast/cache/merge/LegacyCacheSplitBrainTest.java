@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2008-2018, Hazelcast, Inc. All Rights Reserved.
+ * Copyright (c) 2008-2019, Hazelcast, Inc. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -22,6 +22,7 @@ import com.hazelcast.cache.impl.HazelcastServerCachingProvider;
 import com.hazelcast.config.CacheConfig;
 import com.hazelcast.config.InMemoryFormat;
 import com.hazelcast.core.HazelcastInstance;
+import com.hazelcast.instance.HazelcastInstanceImpl;
 import com.hazelcast.test.HazelcastParametersRunnerFactory;
 import com.hazelcast.test.SplitBrainTestSupport;
 import com.hazelcast.test.annotation.ParallelTest;
@@ -56,7 +57,7 @@ public class LegacyCacheSplitBrainTest extends SplitBrainTestSupport {
                 {BINARY, HigherHitsCacheMergePolicy.class},
                 {BINARY, PutIfAbsentCacheMergePolicy.class},
                 {BINARY, PassThroughCacheMergePolicy.class},
-                {BINARY, CustomCacheMergePolicy.class}
+                {BINARY, CustomCacheMergePolicy.class},
         });
     }
 
@@ -213,8 +214,9 @@ public class LegacyCacheSplitBrainTest extends SplitBrainTestSupport {
         assertEquals(1, cache2.get("key"));
     }
 
-    private static Cache createCache(HazelcastInstance hazelcastInstance, CacheConfig cacheConfig) {
-        CachingProvider cachingProvider = HazelcastServerCachingProvider.createCachingProvider(hazelcastInstance);
+    private static Cache createCache(HazelcastInstance hz, CacheConfig cacheConfig) {
+        HazelcastInstanceImpl hazelcastInstanceImpl = getHazelcastInstanceImpl(hz);
+        CachingProvider cachingProvider = HazelcastServerCachingProvider.createCachingProvider(hazelcastInstanceImpl);
         CacheManager cacheManager = cachingProvider.getCacheManager();
         return cacheManager.createCache(cacheConfig.getName(), cacheConfig);
     }

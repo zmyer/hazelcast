@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2008-2018, Hazelcast, Inc. All Rights Reserved.
+ * Copyright (c) 2008-2019, Hazelcast, Inc. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -265,26 +265,6 @@ public class ExtractorHelperTest {
         assertEquals("car.wheel[2].pressure", extractAttributeNameNameWithoutArguments("car.wheel[2].pressure[BAR]"));
     }
 
-    public static class IqExtractor extends ValueExtractor<Object, Object> {
-        @Override
-        public void extract(Object target, Object arguments, ValueCollector collector) {
-        }
-    }
-
-    public static class AccessExceptionExtractor extends NameExtractor {
-        private AccessExceptionExtractor() {
-        }
-    }
-
-    public static abstract class InitExceptionExtractor extends NameExtractor {
-    }
-
-    public static class NameExtractor extends ValueExtractor<Object, Object> {
-        @Override
-        public void extract(Object target, Object arguments, ValueCollector collector) {
-        }
-    }
-
     private ValueExtractor instantiateExtractor(MapAttributeConfig mapAttributeConfig) {
         return ExtractorHelper.instantiateExtractor(mapAttributeConfig,
                 useClassloader ? this.getClass().getClassLoader() : null);
@@ -293,5 +273,28 @@ public class ExtractorHelperTest {
     private Map<String, ValueExtractor> instantiateExtractors(List<MapAttributeConfig> mapAttributeConfigs) {
         return ExtractorHelper.instantiateExtractors(mapAttributeConfigs,
                 useClassloader ? this.getClass().getClassLoader() : null);
+    }
+
+    public abstract class InitExceptionExtractor extends NameExtractor {
+    }
+
+    public static final class IqExtractor extends ValueExtractor<Object, Object> {
+
+        @Override
+        public void extract(Object target, Object arguments, ValueCollector collector) {
+        }
+    }
+
+    public static final class AccessExceptionExtractor extends NameExtractor {
+
+        private AccessExceptionExtractor() {
+        }
+    }
+
+    public static class NameExtractor extends ValueExtractor<Object, Object> {
+
+        @Override
+        public void extract(Object target, Object arguments, ValueCollector collector) {
+        }
     }
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2008-2018, Hazelcast, Inc. All Rights Reserved.
+ * Copyright (c) 2008-2019, Hazelcast, Inc. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,7 +16,7 @@
 
 package com.hazelcast.client.proxy;
 
-import com.hazelcast.client.impl.ClientLockReferenceIdGenerator;
+import com.hazelcast.client.impl.clientside.ClientLockReferenceIdGenerator;
 import com.hazelcast.client.impl.protocol.ClientMessage;
 import com.hazelcast.client.impl.protocol.codec.ConditionAwaitCodec;
 import com.hazelcast.client.impl.protocol.codec.ConditionBeforeAwaitCodec;
@@ -86,7 +86,7 @@ public class ClientConditionProxy extends PartitionSpecificClientProxy implement
         final long timeoutInMillis = unit.toMillis(time);
         ClientMessage request = ConditionAwaitCodec
                 .encodeRequest(conditionId, threadId, timeoutInMillis, name, referenceIdGenerator.getNextReferenceId());
-        ClientMessage response = invokeOnPartition(request);
+        ClientMessage response = invokeOnPartition(request, Long.MAX_VALUE);
         return ConditionAwaitCodec.decodeResponse(response).response;
     }
 

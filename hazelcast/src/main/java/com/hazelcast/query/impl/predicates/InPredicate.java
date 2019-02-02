@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2008-2018, Hazelcast, Inc. All Rights Reserved.
+ * Copyright (c) 2008-2019, Hazelcast, Inc. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -24,6 +24,7 @@ import com.hazelcast.query.impl.QueryContext;
 import com.hazelcast.query.impl.QueryableEntry;
 
 import java.io.IOException;
+import java.util.Arrays;
 import java.util.Map;
 import java.util.Set;
 
@@ -35,8 +36,10 @@ import static com.hazelcast.util.SetUtil.createHashSet;
 @BinaryInterface
 public class InPredicate extends AbstractIndexAwarePredicate {
 
+    private static final long serialVersionUID = 1L;
+
     Comparable[] values;
-    private volatile Set<Comparable> convertedInValues;
+    private transient volatile Set<Comparable> convertedInValues;
 
     public InPredicate() {
     }
@@ -55,11 +58,12 @@ public class InPredicate extends AbstractIndexAwarePredicate {
         if (attributeValue == null) {
             return false;
         }
+        attributeValue = (Comparable) convertEnumValue(attributeValue);
         Set<Comparable> set = convertedInValues;
         if (set == null) {
             set = createHashSet(values.length);
             for (Comparable value : values) {
-                set.add(convert(entry, attributeValue, value));
+                set.add(convert(attributeValue, value));
             }
             convertedInValues = set;
         }
@@ -113,5 +117,37 @@ public class InPredicate extends AbstractIndexAwarePredicate {
     @Override
     public int getId() {
         return PredicateDataSerializerHook.IN_PREDICATE;
+    }
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) {
+            return true;
+        }
+        if (!super.equals(o)) {
+            return false;
+        }
+        if (!(o instanceof InPredicate)) {
+            return false;
+        }
+
+        InPredicate that = (InPredicate) o;
+        if (!that.canEqual(this)) {
+            return false;
+        }
+
+        return Arrays.equals(values, that.values);
+    }
+
+    @Override
+    public boolean canEqual(Object other) {
+        return (other instanceof InPredicate);
+    }
+
+    @Override
+    public int hashCode() {
+        int result = super.hashCode();
+        result = 31 * result + (Arrays.hashCode(values));
+        return result;
     }
 }

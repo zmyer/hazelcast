@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2008-2018, Hazelcast, Inc. All Rights Reserved.
+ * Copyright (c) 2008-2019, Hazelcast, Inc. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -75,7 +75,7 @@ public final class CacheEventContextUtil {
     public static CacheEventContext createCacheUpdatedEvent(Data dataKey, Data dataValue, Data dataOldValue,
                                                             long creationTime, long expirationTime,
                                                             long lastAccessTime, long accessHit,
-                                                            String origin, int completionId) {
+                                                            String origin, int completionId, Data expiryPolicy) {
         CacheEventContext cacheEventContext =
                 createBaseEventContext(CacheEventType.UPDATED, dataKey, dataValue,
                                        expirationTime, origin, completionId);
@@ -84,15 +84,16 @@ public final class CacheEventContextUtil {
         cacheEventContext.setCreationTime(creationTime);
         cacheEventContext.setLastAccessTime(lastAccessTime);
         cacheEventContext.setAccessHit(accessHit);
+        cacheEventContext.setExpiryPolicy(expiryPolicy);
         return cacheEventContext;
     }
 
     public static CacheEventContext createCacheUpdatedEvent(Data dataKey, Data dataValue, Data dataOldValue,
                                                             long creationTime, long expirationTime,
-                                                            long lastAccessTime, long accessHit) {
+                                                            long lastAccessTime, long accessHit, Data expiryPolicy) {
         return createCacheUpdatedEvent(dataKey, dataValue, dataOldValue,
                                        creationTime, expirationTime, lastAccessTime, accessHit,
-                                       null, MutableOperation.IGNORE_COMPLETION);
+                                       null, MutableOperation.IGNORE_COMPLETION, expiryPolicy);
     }
 
     public static CacheEventContext createCacheRemovedEvent(Data dataKey, Data dataValue,

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2008-2018, Hazelcast, Inc. All Rights Reserved.
+ * Copyright (c) 2008-2019, Hazelcast, Inc. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -17,17 +17,24 @@
 package com.hazelcast.spring;
 
 import com.hazelcast.client.HazelcastClient;
-import com.hazelcast.client.config.ClientAwsConfig;
+import com.hazelcast.client.config.ClientAliasedDiscoveryConfigUtils;
+import com.hazelcast.client.config.ClientCloudConfig;
 import com.hazelcast.client.config.ClientConfig;
 import com.hazelcast.client.config.ClientConnectionStrategyConfig;
 import com.hazelcast.client.config.ClientFlakeIdGeneratorConfig;
 import com.hazelcast.client.config.ClientIcmpPingConfig;
 import com.hazelcast.client.config.ClientNetworkConfig;
+import com.hazelcast.client.config.ClientReliableTopicConfig;
+import com.hazelcast.client.config.ClientSecurityConfig;
 import com.hazelcast.client.config.ClientUserCodeDeploymentConfig;
+import com.hazelcast.client.config.ConnectionRetryConfig;
 import com.hazelcast.client.config.ProxyFactoryConfig;
 import com.hazelcast.client.config.SocketOptions;
 import com.hazelcast.client.util.RandomLB;
 import com.hazelcast.client.util.RoundRobinLB;
+import com.hazelcast.config.AliasedDiscoveryConfig;
+import com.hazelcast.config.AliasedDiscoveryConfigUtils;
+import com.hazelcast.config.CredentialsFactoryConfig;
 import com.hazelcast.config.EntryListenerConfig;
 import com.hazelcast.config.GroupConfig;
 import com.hazelcast.config.InMemoryFormat;
@@ -50,8 +57,13 @@ import org.w3c.dom.Node;
 import java.util.ArrayList;
 import java.util.List;
 
+import static com.hazelcast.config.DomConfigHelper.childElements;
+import static com.hazelcast.config.DomConfigHelper.cleanNodeName;
+import static com.hazelcast.config.DomConfigHelper.getBooleanValue;
+import static com.hazelcast.config.DomConfigHelper.getIntegerValue;
 import static com.hazelcast.util.StringUtil.upperCaseInternal;
 import static org.springframework.beans.factory.support.BeanDefinitionBuilder.rootBeanDefinition;
+import static org.springframework.util.Assert.isTrue;
 
 /**
  * BeanDefinitionParser for Hazelcast Client Configuration.
@@ -90,6 +102,7 @@ public class HazelcastClientBeanDefinitionParser extends AbstractHazelcastBeanDe
         private final BeanDefinitionBuilder builder;
         private final ManagedMap<String, BeanDefinition> nearCacheConfigMap = new ManagedMap<String, BeanDefinition>();
         private final ManagedMap<String, BeanDefinition> flakeIdGeneratorConfigMap = new ManagedMap<String, BeanDefinition>();
+        private final ManagedMap<String, BeanDefinition> reliableTopicConfigMap = new ManagedMap<String, BeanDefinition>();
 
         SpringXmlBuilder(ParserContext parserContext) {
             this(parserContext, rootBeanDefinition(HazelcastClient.class)
@@ -104,6 +117,7 @@ public class HazelcastClientBeanDefinitionParser extends AbstractHazelcastBeanDe
             this.configBuilder = rootBeanDefinition(ClientConfig.class);
             configBuilder.addPropertyValue("nearCacheConfigMap", nearCacheConfigMap);
             configBuilder.addPropertyValue("flakeIdGeneratorConfigMap", flakeIdGeneratorConfigMap);
+            configBuilder.addPropertyValue("reliableTopicConfigMap", reliableTopicConfigMap);
         }
 
         @SuppressWarnings("checkstyle:cyclomaticcomplexity")
@@ -136,16 +150,75 @@ public class HazelcastClientBeanDefinitionParser extends AbstractHazelcastBeanDe
                     ManagedMap queryCaches = getQueryCaches(node);
                     configBuilder.addPropertyValue("queryCacheConfigs", queryCaches);
                 } else if ("connection-strategy".equals(nodeName)) {
-                    createAndFillBeanBuilder(node, ClientConnectionStrategyConfig.class, "connectionStrategyConfig",
-                            configBuilder);
+                    handleConnectionStrategy(node);
                 } else if ("user-code-deployment".equals(nodeName)) {
                     handleUserCodeDeployment(node);
                 } else if ("flake-id-generator".equals(nodeName)) {
                     handleFlakeIdGenerator(node);
+                } else if ("reliable-topic".equals(nodeName)) {
+                    handleReliableTopic(node);
+                } else if ("security".equals(nodeName)) {
+                    handleSecurity(node);
+                } else if ("instance-name".equals(nodeName)) {
+                    configBuilder.addPropertyValue("instanceName", getTextContent(node));
+                } else if ("attributes".equals(nodeName)) {
+                    handleAttributes(node);
                 }
             }
             builder.addConstructorArgValue(configBuilder.getBeanDefinition());
             return builder.getBeanDefinition();
+        }
+
+        private void handleSecurity(Node node) {
+            BeanDefinitionBuilder securityConfigBuilder = createBeanBuilder(ClientSecurityConfig.class);
+            AbstractBeanDefinition beanDefinition = securityConfigBuilder.getBeanDefinition();
+            fillAttributeValues(node, securityConfigBuilder);
+            for (Node child : childElements(node)) {
+                String nodeName = cleanNodeName(child);
+                if ("credentials-factory".equals(nodeName)) {
+                    handleCredentialsFactory(child, securityConfigBuilder);
+                } else if ("credentials".equals(nodeName)) {
+                    securityConfigBuilder.addPropertyValue("credentialsClassname", getTextContent(child));
+                }
+            }
+            configBuilder.addPropertyValue("securityConfig", beanDefinition);
+        }
+
+        void handleCredentialsFactory(Node node, BeanDefinitionBuilder securityConfigBuilder) {
+            BeanDefinitionBuilder credentialsConfigBuilder = createBeanBuilder(CredentialsFactoryConfig.class);
+            AbstractBeanDefinition beanDefinition = credentialsConfigBuilder.getBeanDefinition();
+            NamedNodeMap attributes = node.getAttributes();
+            Node classNameNode = attributes.getNamedItem("class-name");
+            String className = classNameNode != null ? getTextContent(classNameNode) : null;
+            Node implNode = attributes.getNamedItem("implementation");
+            String implementation = implNode != null ? getTextContent(implNode) : null;
+            credentialsConfigBuilder.addPropertyValue("className", className);
+            if (implementation != null) {
+                credentialsConfigBuilder.addPropertyReference("implementation", implementation);
+            }
+            isTrue(className != null || implementation != null, "One of 'class-name' or 'implementation'"
+                    + " attributes is required to create CredentialsFactory!");
+            for (Node child : childElements(node)) {
+                String nodeName = cleanNodeName(child);
+                if ("properties".equals(nodeName)) {
+                    handleProperties(child, credentialsConfigBuilder);
+                    break;
+                }
+            }
+            securityConfigBuilder.addPropertyValue("credentialsFactoryConfig", beanDefinition);
+        }
+
+        private void handleConnectionStrategy(Node node) {
+            BeanDefinitionBuilder clientConnectionStrategyConfig = createBeanBuilder(ClientConnectionStrategyConfig.class);
+            fillAttributeValues(node, clientConnectionStrategyConfig);
+            for (Node child : childElements(node)) {
+                String nodeName = cleanNodeName(child);
+                if ("connection-retry".equals(nodeName)) {
+                    createAndFillBeanBuilder(child, ConnectionRetryConfig.class,
+                            "ConnectionRetryConfig", clientConnectionStrategyConfig);
+                }
+            }
+            configBuilder.addPropertyValue("connectionStrategyConfig", clientConnectionStrategyConfig.getBeanDefinition());
         }
 
         private void handleUserCodeDeployment(Node node) {
@@ -207,8 +280,8 @@ public class HazelcastClientBeanDefinitionParser extends AbstractHazelcastBeanDe
                     handleSocketInterceptorConfig(child, clientNetworkConfig);
                 } else if ("ssl".equals(nodeName)) {
                     handleSSLConfig(child, clientNetworkConfig);
-                } else if ("aws".equals(nodeName)) {
-                    handleAws(child, clientNetworkConfig);
+                } else if (AliasedDiscoveryConfigUtils.supports(nodeName)) {
+                    handleAliasedDiscoveryStrategy(child, clientNetworkConfig, nodeName);
                 } else if ("discovery-strategies".equals(nodeName)) {
                     handleDiscoveryStrategies(child, clientNetworkConfig);
                 } else if ("outbound-ports".equals(nodeName)) {
@@ -216,15 +289,20 @@ public class HazelcastClientBeanDefinitionParser extends AbstractHazelcastBeanDe
                 } else if ("icmp-ping".equals(nodeName)) {
                     createAndFillBeanBuilder(child, ClientIcmpPingConfig.class,
                             "clientIcmpPingConfig", clientNetworkConfig);
+                } else if ("hazelcast-cloud".equals(nodeName)) {
+                    createAndFillBeanBuilder(child, ClientCloudConfig.class,
+                            "cloudConfig", clientNetworkConfig);
                 }
+
             }
             clientNetworkConfig.addPropertyValue("addresses", members);
 
             configBuilder.addPropertyValue("networkConfig", clientNetworkConfig.getBeanDefinition());
         }
 
-        private void handleAws(Node node, BeanDefinitionBuilder clientNetworkConfig) {
-            createAndFillBeanBuilder(node, ClientAwsConfig.class, "awsConfig", clientNetworkConfig);
+        private void handleAliasedDiscoveryStrategy(Node node, BeanDefinitionBuilder builder, String name) {
+            AliasedDiscoveryConfig config = ClientAliasedDiscoveryConfigUtils.newAliasedDiscoveryConfig(name);
+            fillAttributesForAliasedDiscoveryStrategy(config, node, builder, name);
         }
 
         private void handleSSLConfig(Node node, BeanDefinitionBuilder networkConfigBuilder) {
@@ -274,6 +352,13 @@ public class HazelcastClientBeanDefinitionParser extends AbstractHazelcastBeanDe
             fillAttributeValues(node, configBuilder);
             String name = getAttribute(node, "name");
             flakeIdGeneratorConfigMap.put(name, configBuilder.getBeanDefinition());
+        }
+
+        private void handleReliableTopic(Node node) {
+            BeanDefinitionBuilder configBuilder = createBeanBuilder(ClientReliableTopicConfig.class);
+            String name = getAttribute(node, "name");
+            fillValues(node, configBuilder);
+            reliableTopicConfigMap.put(name, configBuilder.getBeanDefinition());
         }
 
         private void handleEvictionConfig(Node node, BeanDefinitionBuilder configBuilder) {
@@ -400,6 +485,21 @@ public class HazelcastClientBeanDefinitionParser extends AbstractHazelcastBeanDe
                 }
             }
             networkConfigBuilder.addPropertyValue("outboundPortDefinitions", outboundPorts);
+        }
+
+
+        private void handleAttributes(Node node) {
+            ManagedMap<String, Object> attributes = new ManagedMap<String, Object>();
+            for (Node n : childElements(node)) {
+                String name = cleanNodeName(n);
+                if (!"attribute".equals(name)) {
+                    continue;
+                }
+                String attributeName = getTextContent(n.getAttributes().getNamedItem("name")).trim();
+                String value = getTextContent(n);
+                attributes.put(attributeName, value);
+            }
+            configBuilder.addPropertyValue("attributes", attributes);
         }
     }
 

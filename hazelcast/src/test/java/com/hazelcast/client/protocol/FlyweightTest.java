@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2008-2018, Hazelcast, Inc. All Rights Reserved.
+ * Copyright (c) 2008-2019, Hazelcast, Inc. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -40,7 +40,7 @@ import static org.junit.Assert.assertTrue;
 @Category(QuickTest.class)
 public class FlyweightTest {
 
-    private static byte[] DATA = new byte[]{
+    private static final byte[] DATA = new byte[]{
             (byte) 0x61, (byte) 0x62, (byte) 0x63, (byte) 0xC2, (byte) 0xA9, (byte) 0xE2, (byte) 0x98, (byte) 0xBA,
     };
 

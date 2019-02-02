@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2008-2018, Hazelcast, Inc. All Rights Reserved.
+ * Copyright (c) 2008-2019, Hazelcast, Inc. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -39,7 +39,7 @@ class PublishPartitionRuntimeStateTask implements Runnable {
     public void run() {
         if (node.isMaster()) {
             MigrationManager migrationManager = partitionService.getMigrationManager();
-            boolean migrationAllowed = migrationManager.isMigrationAllowed()
+            boolean migrationAllowed = migrationManager.areMigrationTasksAllowed()
                     && !partitionService.isFetchMostRecentPartitionTableTaskRequired();
             if (!migrationAllowed) {
                 logger.fine("Not publishing partition runtime state since migration is not allowed.");

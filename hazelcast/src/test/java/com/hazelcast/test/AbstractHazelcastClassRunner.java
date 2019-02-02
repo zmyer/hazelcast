@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2008-2018, Hazelcast, Inc. All Rights Reserved.
+ * Copyright (c) 2008-2019, Hazelcast, Inc. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -21,19 +21,16 @@ import com.hazelcast.core.Hazelcast;
 import com.hazelcast.core.HazelcastInstance;
 import com.hazelcast.test.annotation.Repeat;
 import com.hazelcast.test.bounce.BounceMemberRule;
-import net.bytebuddy.agent.ByteBuddyAgent;
-import net.bytebuddy.agent.builder.AgentBuilder;
-import net.bytebuddy.description.type.TypeDescription;
-import net.bytebuddy.dynamic.DynamicType;
-import net.bytebuddy.jar.asm.Opcodes;
-import net.bytebuddy.matcher.ElementMatcher;
-import net.bytebuddy.utility.JavaModule;
+import com.hazelcast.test.compatibility.CompatibilityTestUtils;
+import com.hazelcast.test.starter.ReflectionUtils;
 import org.junit.After;
 import org.junit.AssumptionViolatedException;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.internal.runners.statements.RunAfters;
 import org.junit.internal.runners.statements.RunBefores;
+import org.junit.rules.ExpectedException;
+import org.junit.rules.ExpectedExceptionMatcherBuilderAccessor;
 import org.junit.rules.TestRule;
 import org.junit.runners.model.FrameworkMethod;
 import org.junit.runners.model.InitializationError;
@@ -42,7 +39,6 @@ import org.junit.runners.model.Statement;
 import org.junit.runners.model.TestClass;
 
 import java.lang.annotation.Annotation;
-import java.lang.instrument.Instrumentation;
 import java.lang.management.ManagementFactory;
 import java.lang.management.ThreadInfo;
 import java.lang.management.ThreadMXBean;
@@ -122,7 +118,7 @@ public abstract class AbstractHazelcastClassRunner extends AbstractParameterized
         JsrTestUtil.setSystemProperties();
 
         if (isRunningCompatibilityTest()) {
-            attachFinalRemovalAgent();
+            CompatibilityTestUtils.attachFinalRemovalAgent();
             System.out.println("Running compatibility tests.");
             // Mock network cannot be used for compatibility testing
             System.setProperty(TestEnvironment.HAZELCAST_TEST_USE_NETWORK, "true");
@@ -139,31 +135,6 @@ public abstract class AbstractHazelcastClassRunner extends AbstractParameterized
         System.setProperty("java.net.preferIPv4Stack", "true");
     }
 
-    // When running a compatibility test, all com.hazelcast.* classes are transformed so that none are
-    // loaded with final modifier to allow subclass proxying.
-    private static void attachFinalRemovalAgent() {
-        Instrumentation instrumentation = ByteBuddyAgent.install();
-        new AgentBuilder.Default()
-                .disableClassFormatChanges()
-                .type(new ElementMatcher<TypeDescription>() {
-                    @Override
-                    public boolean matches(TypeDescription target) {
-                        return target.getName().startsWith("com.hazelcast");
-                    }
-                })
-                .transform(new AgentBuilder.Transformer() {
-                    @Override
-                    public DynamicType.Builder<?> transform(DynamicType.Builder<?> builder,
-                                                            TypeDescription typeDescription,
-                                                            ClassLoader classLoader, JavaModule module) {
-                        int actualModifiers = typeDescription.getActualModifiers(false);
-                        // unset final modifier
-                        int nonFinalModifiers = actualModifiers & ~Opcodes.ACC_FINAL;
-                        return builder.modifiers(nonFinalModifiers);
-                    }
-                })
-                .installOn(instrumentation);
-    }
 
     /**
      * Creates a BlockJUnit4ClassRunner to run {@code clazz}
@@ -219,15 +190,19 @@ public abstract class AbstractHazelcastClassRunner extends AbstractParameterized
         List<FrameworkMethod> afters = getTestClass().getAnnotatedMethods(After.class);
         Statement nextStatement = statement;
         List<TestRule> testRules = getTestRules(target);
+        ExpectedException expectedException = null;
         if (!testRules.isEmpty()) {
             for (TestRule rule : testRules) {
                 if (rule instanceof BounceMemberRule) {
                     nextStatement = ((BounceMemberRule) rule).stopBouncing(statement);
                 }
+                if (rule instanceof ExpectedException) {
+                    expectedException = (ExpectedException) rule;
+                }
             }
         }
         if (THREAD_DUMP_ON_FAILURE) {
-            return new ThreadDumpAwareRunAfters(method, nextStatement, afters, target);
+            return new ThreadDumpAwareRunAfters(method, nextStatement, afters, target, expectedException);
         }
         if (afters.isEmpty()) {
             return nextStatement;
@@ -401,12 +376,15 @@ public abstract class AbstractHazelcastClassRunner extends AbstractParameterized
         private final Statement next;
         private final Object target;
         private final List<FrameworkMethod> afters;
+        private final ExpectedException expectedException;
 
-        ThreadDumpAwareRunAfters(FrameworkMethod method, Statement next, List<FrameworkMethod> afters, Object target) {
+        ThreadDumpAwareRunAfters(FrameworkMethod method, Statement next, List<FrameworkMethod> afters, Object target,
+                                 ExpectedException expectedException) {
             this.method = method;
             this.next = next;
             this.afters = afters;
             this.target = target;
+            this.expectedException = expectedException;
         }
 
         @Override
@@ -415,7 +393,7 @@ public abstract class AbstractHazelcastClassRunner extends AbstractParameterized
             try {
                 next.evaluate();
             } catch (Throwable e) {
-                if (!isJUnitAssumeException(e)) {
+                if (!isJUnitAssumeException(e) && !expectsException()) {
                     System.err.println("THREAD DUMP FOR TEST FAILURE: \"" + e.getMessage()
                             + "\" at \"" + method.getName() + "\"\n");
                     try {
@@ -440,6 +418,14 @@ public abstract class AbstractHazelcastClassRunner extends AbstractParameterized
 
         private boolean isJUnitAssumeException(Throwable e) {
             return e instanceof AssumptionViolatedException;
+        }
+
+        private boolean expectsException() throws IllegalAccessException {
+            if (expectedException == null) {
+                return false;
+            }
+            Object exceptionMatcher = ReflectionUtils.getFieldValueReflectively(expectedException, "matcherBuilder");
+            return ExpectedExceptionMatcherBuilderAccessor.expectsThrowable(exceptionMatcher);
         }
     }
 

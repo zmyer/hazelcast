@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2008-2018, Hazelcast, Inc. All Rights Reserved.
+ * Copyright (c) 2008-2019, Hazelcast, Inc. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -20,10 +20,10 @@ import com.hazelcast.client.config.ClientConfig;
 import com.hazelcast.client.config.ClientConnectionStrategyConfig;
 import com.hazelcast.client.config.ClientNetworkConfig;
 import com.hazelcast.client.connection.AddressProvider;
+import com.hazelcast.client.connection.Addresses;
 import com.hazelcast.client.connection.ClientConnectionManager;
-import com.hazelcast.client.impl.ClientConnectionManagerFactory;
-import com.hazelcast.client.impl.HazelcastClientInstanceImpl;
-import com.hazelcast.client.impl.HazelcastClientProxy;
+import com.hazelcast.client.connection.nio.ClientConnectionManagerImpl;
+import com.hazelcast.client.impl.clientside.HazelcastClientInstanceImpl;
 import com.hazelcast.client.spi.properties.ClientProperty;
 import com.hazelcast.client.test.ClientTestSupport;
 import com.hazelcast.client.util.AddressHelper;
@@ -36,7 +36,6 @@ import com.hazelcast.core.IMap;
 import com.hazelcast.core.LifecycleEvent;
 import com.hazelcast.core.LifecycleListener;
 import com.hazelcast.map.listener.EntryAddedListener;
-import com.hazelcast.nio.Address;
 import com.hazelcast.spi.properties.GroupProperty;
 import com.hazelcast.test.AssertTask;
 import com.hazelcast.test.HazelcastSerialClassRunner;
@@ -46,7 +45,6 @@ import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
 
-import java.util.Collection;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -228,7 +226,7 @@ public class ClientRegressionWithRealNetworkTest extends ClientTestSupport {
         final CountDownLatch testFinished = new CountDownLatch(1);
         final AddressProvider addressProvider = new AddressProvider() {
             @Override
-            public Collection<Address> loadAddresses() {
+            public Addresses loadAddresses() {
                 if (waitFlag.get()) {
                     try {
                         testFinished.await();
@@ -241,17 +239,7 @@ public class ClientRegressionWithRealNetworkTest extends ClientTestSupport {
         };
         clientConfig.getNetworkConfig().setConnectionAttemptLimit(Integer.MAX_VALUE);
         clientConfig.setProperty(ClientProperty.INVOCATION_TIMEOUT_SECONDS.getName(), "3");
-        final HazelcastInstance client = HazelcastClientManager.newHazelcastClient(clientConfig, new HazelcastClientFactory() {
-            @Override
-            public HazelcastClientInstanceImpl createHazelcastInstanceClient(ClientConfig config, ClientConnectionManagerFactory factory) {
-                return new HazelcastClientInstanceImpl(config, factory, addressProvider);
-            }
-
-            @Override
-            public HazelcastClientProxy createProxy(HazelcastClientInstanceImpl client) {
-                return new HazelcastClientProxy(client);
-            }
-        });
+        HazelcastInstance client = HazelcastClientUtil.newHazelcastClient(clientConfig, addressProvider);
 
 
         HazelcastInstance instance2 = Hazelcast.newHazelcastInstance();
@@ -271,6 +259,26 @@ public class ClientRegressionWithRealNetworkTest extends ClientTestSupport {
         assertEquals(1, clientMap.get(keyOwnedBy2));
 
         testFinished.countDown();
+
+    }
+
+    @Test
+    public void testNioChannelLeakTest() {
+        ClientConfig config = new ClientConfig();
+        config.getConnectionStrategyConfig().setAsyncStart(true).
+                setReconnectMode(ClientConnectionStrategyConfig.ReconnectMode.ASYNC)
+                .getConnectionRetryConfig().setEnabled(true).setInitialBackoffMillis(1).setMaxBackoffMillis(1000);
+        HazelcastInstance client = HazelcastClient.newHazelcastClient(config);
+        final HazelcastClientInstanceImpl clientInstanceImpl = getHazelcastClientInstanceImpl(client);
+        final ClientConnectionManagerImpl connectionManager = (ClientConnectionManagerImpl) clientInstanceImpl.getConnectionManager();
+        sleepSeconds(2);
+        assertTrueEventually(new AssertTask() {
+            @Override
+            public void run() {
+                assertEquals(0, connectionManager.getNetworking().getChannels().size());
+            }
+        });
+        client.shutdown();
 
     }
 }

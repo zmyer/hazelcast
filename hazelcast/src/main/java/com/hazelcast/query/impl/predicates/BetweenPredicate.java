@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2008-2018, Hazelcast, Inc. All Rights Reserved.
+ * Copyright (c) 2008-2019, Hazelcast, Inc. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -33,6 +33,8 @@ import java.util.Set;
 @BinaryInterface
 public class BetweenPredicate extends AbstractIndexAwarePredicate {
 
+    private static final long serialVersionUID = 1L;
+
     Comparable to;
     Comparable from;
 
@@ -53,11 +55,12 @@ public class BetweenPredicate extends AbstractIndexAwarePredicate {
         if (attributeValue == null) {
             return false;
         }
-        Comparable fromConvertedValue = convert(entry, attributeValue, from);
-        Comparable toConvertedValue = convert(entry, attributeValue, to);
+        Comparable fromConvertedValue = convert(attributeValue, from);
+        Comparable toConvertedValue = convert(attributeValue, to);
         if (fromConvertedValue == null || toConvertedValue == null) {
             return false;
         }
+        attributeValue = (Comparable) convertEnumValue(attributeValue);
         return attributeValue.compareTo(fromConvertedValue) >= 0 && attributeValue.compareTo(toConvertedValue) <= 0;
     }
 
@@ -89,5 +92,42 @@ public class BetweenPredicate extends AbstractIndexAwarePredicate {
     @Override
     public int getId() {
         return PredicateDataSerializerHook.BETWEEN_PREDICATE;
+    }
+
+    @SuppressWarnings({"checkstyle:npathcomplexity"})
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) {
+            return true;
+        }
+        if (!super.equals(o)) {
+            return false;
+        }
+        if (!(o instanceof BetweenPredicate)) {
+            return false;
+        }
+
+        BetweenPredicate that = (BetweenPredicate) o;
+        if (!that.canEqual(this)) {
+            return false;
+        }
+
+        if (to != null ? !to.equals(that.to) : that.to != null) {
+            return false;
+        }
+        return from != null ? from.equals(that.from) : that.from == null;
+    }
+
+    @Override
+    public boolean canEqual(Object other) {
+        return (other instanceof BetweenPredicate);
+    }
+
+    @Override
+    public int hashCode() {
+        int result = super.hashCode();
+        result = 31 * result + (to != null ? to.hashCode() : 0);
+        result = 31 * result + (from != null ? from.hashCode() : 0);
+        return result;
     }
 }

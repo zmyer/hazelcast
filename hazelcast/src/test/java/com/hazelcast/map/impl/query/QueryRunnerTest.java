@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2008-2018, Hazelcast, Inc. All Rights Reserved.
+ * Copyright (c) 2008-2019, Hazelcast, Inc. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -31,8 +31,6 @@ import org.junit.Before;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
-
-import java.util.concurrent.ExecutionException;
 
 import static org.junit.Assert.assertEquals;
 
@@ -75,7 +73,7 @@ public class QueryRunnerTest extends HazelcastTestSupport {
     }
 
     @Test
-    public void runFullQuery() throws ExecutionException, InterruptedException {
+    public void runFullQuery() {
         Predicate predicate = Predicates.equal("this", value);
         Query query = Query.of().mapName(map.getName()).predicate(predicate).iterationType(IterationType.ENTRY).build();
         QueryResult result = (QueryResult) queryRunner.runIndexOrPartitionScanQueryOnOwnedPartitions(query);
@@ -85,7 +83,7 @@ public class QueryRunnerTest extends HazelcastTestSupport {
     }
 
     @Test
-    public void runPartitionScanQueryOnSinglePartition() throws ExecutionException, InterruptedException {
+    public void runPartitionScanQueryOnSinglePartition() {
         Predicate predicate = Predicates.equal("this", value);
         Query query = Query.of().mapName(map.getName()).predicate(predicate).iterationType(IterationType.ENTRY).build();
         QueryResult result = (QueryResult) queryRunner.runPartitionScanQueryOnGivenOwnedPartition(query, partitionId);

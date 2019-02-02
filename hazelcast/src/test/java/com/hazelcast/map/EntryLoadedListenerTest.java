@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2008-2018, Hazelcast, Inc. All Rights Reserved.
+ * Copyright (c) 2008-2019, Hazelcast, Inc. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -64,6 +64,7 @@ public class EntryLoadedListenerTest extends HazelcastTestSupport {
     @BeforeClass
     public static void setUp() {
         Config config = new Config();
+
         MapStoreConfig mapStoreConfig = new MapStoreConfig();
         mapStoreConfig.setEnabled(true);
         mapStoreConfig.setInitialLoadMode(MapStoreConfig.InitialLoadMode.EAGER);
@@ -289,7 +290,7 @@ public class EntryLoadedListenerTest extends HazelcastTestSupport {
     }
 
     @Test
-    public void add_listener_notified_after_loadAll() {
+    public void add_listener_not_notified_after_loadAll() {
         final AtomicInteger addEventCount = new AtomicInteger();
 
         IMap<Integer, Integer> map = node.getMap("add_listener_notified_after_loadAll");
@@ -300,12 +301,12 @@ public class EntryLoadedListenerTest extends HazelcastTestSupport {
 
         map.loadAll(true);
 
-        assertTrueEventually(new AssertTask() {
+        assertTrueAllTheTime(new AssertTask() {
             @Override
             public void run() {
-                assertEquals(5, addEventCount.get());
+                assertEquals(0, addEventCount.get());
             }
-        });
+        }, 5);
     }
 
     static class LoadAndAddListener implements EntryLoadedListener<Integer, Integer>,

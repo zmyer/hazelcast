@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2008-2018, Hazelcast, Inc. All Rights Reserved.
+ * Copyright (c) 2008-2019, Hazelcast, Inc. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,6 +16,7 @@
 
 package com.hazelcast.map.impl;
 
+import com.hazelcast.map.impl.recordstore.DefaultRecordStore;
 import com.hazelcast.map.impl.recordstore.RecordStore;
 import com.hazelcast.map.merge.IgnoreMergingEntryMapMergePolicy;
 import com.hazelcast.spi.impl.merge.AbstractSplitBrainHandlerService;
@@ -47,11 +48,24 @@ class MapSplitBrainHandlerService extends AbstractSplitBrainHandlerService<Recor
         return recordStores.iterator();
     }
 
+    /**
+     * Clears indexes inside partition thread while collecting merge
+     * tasks. Otherwise, if we do this cleanup upon join of merging node,
+     * concurrently running merge and migration operations can cause
+     * inconsistency over shared index objects between record stores.
+     */
+    @Override
+    protected void onStoreCollection(RecordStore recordStore) {
+        assertRunningOnPartitionThread();
+
+        ((DefaultRecordStore) recordStore).clearOtherDataThanStorage(true);
+    }
+
     @Override
     protected void destroyStore(RecordStore store) {
         assertRunningOnPartitionThread();
 
-        store.destroyInternals();
+        ((DefaultRecordStore) store).destroyStorageAfterClear(false, true);
     }
 
     @Override

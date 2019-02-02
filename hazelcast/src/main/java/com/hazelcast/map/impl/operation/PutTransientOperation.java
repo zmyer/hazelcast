@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2008-2018, Hazelcast, Inc. All Rights Reserved.
+ * Copyright (c) 2008-2019, Hazelcast, Inc. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -25,13 +25,13 @@ public class PutTransientOperation extends BasePutOperation implements MutatingO
     public PutTransientOperation() {
     }
 
-    public PutTransientOperation(String name, Data dataKey, Data value, long ttl) {
-        super(name, dataKey, value, ttl);
+    public PutTransientOperation(String name, Data dataKey, Data value, long ttl, long maxIdle) {
+        super(name, dataKey, value, ttl, maxIdle);
     }
 
     @Override
     public void run() {
-        dataOldValue = mapServiceContext.toData(recordStore.putTransient(dataKey, dataValue, ttl));
+        dataOldValue = mapServiceContext.toData(recordStore.putTransient(dataKey, dataValue, ttl, maxIdle));
         putTransient = true;
     }
 

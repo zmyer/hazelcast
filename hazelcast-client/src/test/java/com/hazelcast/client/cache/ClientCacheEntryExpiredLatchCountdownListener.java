@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2008-2018, Hazelcast, Inc. All Rights Reserved.
+ * Copyright (c) 2008-2019, Hazelcast, Inc. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -22,7 +22,7 @@ import java.util.concurrent.CountDownLatch;
 
 public class ClientCacheEntryExpiredLatchCountdownListener<K, V> implements javax.cache.event.CacheEntryExpiredListener<K, V> {
 
-    private transient static final CountDownLatch EXPIRED_LATCH = new CountDownLatch(2);
+    private static final transient CountDownLatch EXPIRED_LATCH = new CountDownLatch(2);
 
     @Override
     public void onExpired(Iterable<CacheEntryEvent<? extends K, ? extends V>> cacheEntryEvents)

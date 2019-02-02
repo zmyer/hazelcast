@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2008-2018, Hazelcast, Inc. All Rights Reserved.
+ * Copyright (c) 2008-2019, Hazelcast, Inc. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -64,6 +64,8 @@ public interface CacheOperationProvider {
                                                  List<CacheMergeTypes>[] mergingEntries,
                                                  SplitBrainMergePolicy<Data, CacheMergeTypes> policy);
 
+    Operation createSetExpiryPolicyOperation(List<Data> keys, Data expiryPolicy);
+
     OperationFactory createGetAllOperationFactory(Set<Data> keySet, ExpiryPolicy policy);
 
     OperationFactory createLoadAllOperationFactory(Set<Data> keySet, boolean replaceExistingValues);
@@ -73,4 +75,5 @@ public interface CacheOperationProvider {
     OperationFactory createRemoveAllOperationFactory(Set<Data> keySet, Integer completionId);
 
     OperationFactory createSizeOperationFactory();
+
 }

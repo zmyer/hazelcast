@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2008-2018, Hazelcast, Inc. All Rights Reserved.
+ * Copyright (c) 2008-2019, Hazelcast, Inc. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -28,7 +28,6 @@ import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.net.Socket;
 import java.net.SocketAddress;
-import java.net.SocketException;
 import java.net.UnknownHostException;
 import java.nio.channels.SocketChannel;
 import java.util.Collection;
@@ -89,7 +88,7 @@ public class TcpIpConnector {
         private final Address address;
         private final boolean silent;
 
-        public ConnectTask(Address address, boolean silent) {
+        ConnectTask(Address address, boolean silent) {
             this.address = address;
             this.silent = silent;
         }
@@ -162,59 +161,45 @@ public class TcpIpConnector {
 
         private void tryToConnect(InetSocketAddress socketAddress, int timeout) throws Exception {
             SocketChannel socketChannel = SocketChannel.open();
-            ioService.configureSocket(socketChannel.socket());
-            if (ioService.isSocketBind()) {
-                bindSocket(socketChannel);
-            }
 
-            Level level = silent ? Level.FINEST : Level.INFO;
-            if (logger.isLoggable(level)) {
-                logger.log(level, "Connecting to " + socketAddress + ", timeout: " + timeout
-                        + ", bind-any: " + ioService.isSocketBindAny());
-            }
-
+            Channel channel = connectionManager.createChannel(socketChannel, true);
             try {
-                socketChannel.configureBlocking(true);
-                connectSocketChannel(socketAddress, timeout, socketChannel);
-                if (logger.isFinestEnabled()) {
-                    logger.finest("Successfully connected to: " + address + " using socket " + socketChannel.socket());
-                }
-                Channel channel = connectionManager.createChannel(socketChannel, true);
-                ioService.interceptSocket(socketChannel.socket(), false);
-                socketChannel.configureBlocking(false);
-                TcpIpConnection connection = connectionManager.newConnection(channel, address);
-                connectionManager.sendBindRequest(connection, address, true);
-            } catch (NullPointerException e) {
-                // Helper piece of code, which will allow to identify rare NPEs in TLS connections
-                // https://github.com/hazelcast/hazelcast-enterprise/issues/2104
-                //TODO remove this catch block once the TLS NPE problem is successfully resolved
-                closeSocket(socketChannel);
-                logger.log(level, "Could not connect to: " + socketAddress + ". Reason: " + e.getClass().getSimpleName()
-                        + "[" + e.getMessage() + "]");
-                logger.log(Level.INFO,
-                        "Add this stacktrace to https://github.com/hazelcast/hazelcast-enterprise/issues/2104 please!", e);
-                throw e;
-            } catch (Exception e) {
-                closeSocket(socketChannel);
-                logger.log(level, "Could not connect to: " + socketAddress + ". Reason: " + e.getClass().getSimpleName()
-                        + "[" + e.getMessage() + "]");
-                throw e;
-            }
-        }
 
-        private void connectSocketChannel(InetSocketAddress address, int timeout, SocketChannel socketChannel)
-                throws IOException {
-            try {
-                if (timeout > 0) {
-                    socketChannel.socket().connect(address, timeout);
-                } else {
-                    socketChannel.connect(address);
+                if (ioService.isSocketBind()) {
+                    bindSocket(socketChannel);
                 }
-            } catch (SocketException ex) {
-                //we want to include the address in the exception.
-                SocketException newEx = new SocketException(ex.getMessage() + " to address " + address);
-                newEx.setStackTrace(ex.getStackTrace());
-                throw newEx;
+
+                Level level = silent ? Level.FINEST : Level.INFO;
+                if (logger.isLoggable(level)) {
+                    logger.log(level, "Connecting to " + socketAddress + ", timeout: " + timeout
+                            + ", bind-any: " + ioService.isSocketBindAny());
+                }
+
+                try {
+                    channel.connect(socketAddress, timeout);
+
+                    ioService.interceptSocket(socketChannel.socket(), false);
+
+                    TcpIpConnection connection = connectionManager.newConnection(channel, address);
+                    connectionManager.sendBindRequest(connection, address, true);
+                } catch (NullPointerException e) {
+                    // Helper piece of code, which will allow to identify rare NPEs in TLS connections
+                    // https://github.com/hazelcast/hazelcast-enterprise/issues/2104
+                    //TODO remove this catch block once the TLS NPE problem is successfully resolved
+                    closeSocket(socketChannel);
+                    logger.log(level, "Could not connect to: " + socketAddress + ". Reason: " + e.getClass().getSimpleName()
+                            + "[" + e.getMessage() + "]");
+                    logger.log(Level.INFO,
+                            "Add this stacktrace to https://github.com/hazelcast/hazelcast-enterprise/issues/2104 please!", e);
+                    throw e;
+                } catch (Exception e) {
+                    closeSocket(socketChannel);
+                    logger.log(level, "Could not connect to: " + socketAddress + ". Reason: " + e.getClass().getSimpleName()
+                            + "[" + e.getMessage() + "]");
+                    throw e;
+                }
+            } finally {
+                connectionManager.removeAcceptedChannel(channel);
             }
         }
 

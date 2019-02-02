@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2008-2018, Hazelcast, Inc. All Rights Reserved.
+ * Copyright (c) 2008-2019, Hazelcast, Inc. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -19,8 +19,6 @@ package com.hazelcast.cache.impl.operation;
 import com.hazelcast.cache.CacheEntryView;
 import com.hazelcast.cache.CacheMergePolicy;
 import com.hazelcast.cache.impl.CacheDataSerializerHook;
-import com.hazelcast.cache.impl.CacheEntryViews;
-import com.hazelcast.cache.impl.event.CacheWanEventPublisher;
 import com.hazelcast.nio.ObjectDataInput;
 import com.hazelcast.nio.ObjectDataOutput;
 import com.hazelcast.nio.serialization.Data;
@@ -31,12 +29,13 @@ import java.io.IOException;
 
 import static com.hazelcast.cache.impl.AbstractCacheRecordStore.SOURCE_NOT_AVAILABLE;
 import static com.hazelcast.cache.impl.operation.MutableOperation.IGNORE_COMPLETION;
+import static com.hazelcast.wan.impl.CallerProvenance.NOT_WAN;
 
 /**
  * Contains a merging entry for split-brain healing with a {@link CacheMergePolicy}.
  */
 public class CacheLegacyMergeOperation
-        extends AbstractCacheOperation
+        extends KeyBasedCacheOperation
         implements BackupAwareOperation {
 
     private CacheMergePolicy mergePolicy;
@@ -45,7 +44,8 @@ public class CacheLegacyMergeOperation
     public CacheLegacyMergeOperation() {
     }
 
-    public CacheLegacyMergeOperation(String name, Data key, CacheEntryView<Data, Data> entryView, CacheMergePolicy policy) {
+    public CacheLegacyMergeOperation(String name, Data key,
+                                     CacheEntryView<Data, Data> entryView, CacheMergePolicy policy) {
         super(name, key);
         mergingEntry = entryView;
         mergePolicy = policy;
@@ -53,18 +53,14 @@ public class CacheLegacyMergeOperation
 
     @Override
     public void run() throws Exception {
-        backupRecord = cache.merge(mergingEntry, mergePolicy, SOURCE_NOT_AVAILABLE, null, IGNORE_COMPLETION);
+        backupRecord = recordStore.merge(mergingEntry, mergePolicy,
+                SOURCE_NOT_AVAILABLE, null, IGNORE_COMPLETION, NOT_WAN);
     }
 
     @Override
     public void afterRun() {
         if (backupRecord != null) {
-            if (cache.isWanReplicationEnabled()) {
-                Data valueData = getNodeEngine().toData(backupRecord.getValue());
-                CacheEntryView<Data, Data> entryView = CacheEntryViews.createDefaultEntryView(key, valueData, backupRecord);
-                CacheWanEventPublisher publisher = cacheService.getCacheWanEventPublisher();
-                publisher.publishWanReplicationUpdate(name, entryView);
-            }
+            publishWanUpdate(key, backupRecord);
         }
     }
 

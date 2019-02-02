@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2008-2018, Hazelcast, Inc. All Rights Reserved.
+ * Copyright (c) 2008-2019, Hazelcast, Inc. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -51,8 +51,8 @@ public class DefaultMapOperationProvider implements MapOperationProvider {
     }
 
     @Override
-    public MapOperation createPutOperation(String name, Data key, Data value, long ttl) {
-        return new PutOperation(name, key, value, ttl);
+    public MapOperation createPutOperation(String name, Data key, Data value, long ttl, long maxIdle) {
+        return new PutOperation(name, key, value, ttl, maxIdle);
     }
 
     @Override
@@ -61,23 +61,28 @@ public class DefaultMapOperationProvider implements MapOperationProvider {
     }
 
     @Override
-    public MapOperation createSetOperation(String name, Data dataKey, Data value, long ttl) {
-        return new SetOperation(name, dataKey, value, ttl);
+    public MapOperation createSetOperation(String name, Data dataKey, Data value, long ttl, long maxIdle) {
+        return new SetOperation(name, dataKey, value, ttl, maxIdle);
     }
 
     @Override
-    public MapOperation createPutIfAbsentOperation(String name, Data key, Data value, long ttl) {
-        return new PutIfAbsentOperation(name, key, value, ttl);
+    public MapOperation createPutIfAbsentOperation(String name, Data key, Data value, long ttl, long maxIdle) {
+        return new PutIfAbsentOperation(name, key, value, ttl, maxIdle);
     }
 
     @Override
-    public MapOperation createPutTransientOperation(String name, Data key, Data value, long ttl) {
-        return new PutTransientOperation(name, key, value, ttl);
+    public MapOperation createPutTransientOperation(String name, Data key, Data value, long ttl, long maxIdle) {
+        return new PutTransientOperation(name, key, value, ttl, maxIdle);
     }
 
     @Override
     public MapOperation createRemoveOperation(String name, Data key, boolean disableWanReplicationEvent) {
         return new RemoveOperation(name, key, disableWanReplicationEvent);
+    }
+
+    @Override
+    public MapOperation createSetTtlOperation(String name, Data key, long ttl) {
+        return new SetTtlOperation(name, key, ttl);
     }
 
     @Override

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2008-2018, Hazelcast, Inc. All Rights Reserved.
+ * Copyright (c) 2008-2019, Hazelcast, Inc. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -21,7 +21,7 @@ import java.util.Random;
 
 public class Employee implements Serializable, Comparable<Employee> {
 
-    public static final long serialVersionUID = 5850489412220165243l;
+    public static final long serialVersionUID = 5850489412220165243L;
 
     public static final int MAX_AGE = 75;
     public static final double MAX_SALARY = 1000.0;
@@ -69,6 +69,10 @@ public class Employee implements Serializable, Comparable<Employee> {
         return age;
     }
 
+    public void setAge(int age) {
+        this.age = age;
+    }
+
     public double getSalary() {
         return salary;
     }
@@ -95,32 +99,26 @@ public class Employee implements Serializable, Comparable<Employee> {
 
     @Override
     public boolean equals(Object o) {
-        if (this == o){
+        if (this == o) {
             return true;
         }
-
         if (o == null || getClass() != o.getClass()) {
             return false;
         }
 
         Employee employee = (Employee) o;
-
         if (id != employee.id) {
             return false;
         }
-
         if (age != employee.age) {
             return false;
         }
-
         if (active != employee.active) {
             return false;
         }
-
         if (Double.compare(employee.salary, salary) != 0) {
             return false;
         }
-
         return name.equals(employee.name);
     }
 

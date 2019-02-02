@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2008-2018, Hazelcast, Inc. All Rights Reserved.
+ * Copyright (c) 2008-2019, Hazelcast, Inc. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -48,19 +48,18 @@ import static org.junit.Assert.assertTrue;
 @Category({QuickTest.class, ParallelTest.class})
 public class Invocation_OnBackupLeftTest extends HazelcastTestSupport {
 
-    private final static Set<String> backupRunning = newSetFromMap(new ConcurrentHashMap<String, Boolean>());
+    private static final Set<String> backupRunning = newSetFromMap(new ConcurrentHashMap<String, Boolean>());
 
-    // We use 20 seconds so we don't get spurious build failures.
-    public static final int COMPLETION_TIMEOUT_SECONDS = 20;
+    // we use 20 seconds so we don't get spurious build failures
+    private static final int COMPLETION_TIMEOUT_SECONDS = 20;
 
     private OperationServiceImpl localOperationService;
     private HazelcastInstance remote;
-    private TestHazelcastInstanceFactory instanceFactory;
     private HazelcastInstance local;
 
     @Before
     public void setup() {
-        instanceFactory = createHazelcastInstanceFactory();
+        TestHazelcastInstanceFactory instanceFactory = createHazelcastInstanceFactory();
         Config config = new Config()
                 // a long timeout is configured to verify that the fast timeout is kicking in
                 .setProperty(GroupProperty.OPERATION_BACKUP_TIMEOUT_MILLIS.getName(), "100000")
@@ -124,6 +123,7 @@ public class Invocation_OnBackupLeftTest extends HazelcastTestSupport {
     }
 
     static class PrimaryOperation extends Operation implements BackupAwareOperation {
+
         private String backupId;
         private int primaryResponseDelaySeconds;
 

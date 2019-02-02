@@ -1,5 +1,5 @@
 <!--
-  ~ Copyright (c) 2008-2018, Hazelcast, Inc. All Rights Reserved.
+  ~ Copyright (c) 2008-2019, Hazelcast, Inc. All Rights Reserved.
   ~
   ~ Licensed under the Apache License, Version 2.0 (the "License");
   ~ you may not use this file except in compliance with the License.
@@ -26,7 +26,7 @@
     <parent>
         <groupId>com.hazelcast</groupId>
         <artifactId>hazelcast-root</artifactId>
-        <version>3.11-SNAPSHOT</version>
+        <version>3.12-SNAPSHOT</version>
         <relativePath>../pom.xml</relativePath>
     </parent>
 
@@ -125,7 +125,6 @@
                                 <Import-Package>
                                     !org.junit,
                                     !com.hazelcast.*,
-                                    !com.eclipsesource.json,
                                     sun.misc;resolution:=optional,
                                     javax.cache;resolution:=optional,
                                     javax.cache.*;resolution:=optional,
@@ -159,6 +158,9 @@
                             <addDefaultSpecificationEntries>true</addDefaultSpecificationEntries>
                         </manifest>
                         <manifestFile>${project.build.outputDirectory}/META-INF/MANIFEST.MF</manifestFile>
+                        <manifestEntries>
+                            <Automatic-Module-Name>com.hazelcast.core</Automatic-Module-Name>
+                        </manifestEntries>
                     </archive>
                     <excludes>
                         <exclude>**/*.html</exclude>
@@ -216,16 +218,9 @@
                             <shadeTestJar>true</shadeTestJar>
                             <artifactSet>
                                 <includes>
-                                    <include>com.eclipsesource.minimal-json:minimal-json</include>
                                     <include>com.hazelcast:hazelcast-client-protocol</include>
                                 </includes>
                             </artifactSet>
-                            <relocations>
-                                <relocation>
-                                    <pattern>com.eclipsesource.json</pattern>
-                                    <shadedPattern>com.hazelcast.com.eclipsesource.json</shadedPattern>
-                                </relocation>
-                            </relocations>
                         </configuration>
                     </execution>
                 </executions>
@@ -285,6 +280,13 @@
     </build>
 
     <dependencies>
+        <dependency>
+            <groupId>com.fasterxml.jackson.core</groupId>
+            <artifactId>jackson-core</artifactId>
+            <version>2.9.7</version>
+            <scope>provided</scope>
+            <optional>true</optional>
+        </dependency>
         <dependency>
             <groupId>org.hamcrest</groupId>
             <artifactId>hamcrest-library</artifactId>
@@ -357,13 +359,6 @@
         </dependency>
 
         <dependency>
-            <groupId>com.eclipsesource.minimal-json</groupId>
-            <artifactId>minimal-json</artifactId>
-            <version>0.9.4</version>
-            <scope>compile</scope>
-        </dependency>
-
-        <dependency>
             <groupId>com.hazelcast</groupId>
             <artifactId>hazelcast-client-protocol</artifactId>
             <version>${client.protocol.version}</version>
@@ -371,33 +366,16 @@
         </dependency>
 
         <dependency>
-            <groupId>javax.servlet.jsp</groupId>
-            <artifactId>javax.servlet.jsp-api</artifactId>
-            <version>${jsp.api.version}</version>
+            <groupId>org.nanohttpd</groupId>
+            <artifactId>nanohttpd</artifactId>
+            <version>2.3.1</version>
             <scope>test</scope>
         </dependency>
-        <dependency>
-            <groupId>javax.servlet</groupId>
-            <artifactId>javax.servlet-api</artifactId>
-            <version>${servlet.api.version}</version>
-            <scope>test</scope>
-        </dependency>
-        <dependency>
-            <groupId>org.eclipse.jetty</groupId>
-            <artifactId>jetty-server</artifactId>
-            <version>8.1.16.v20140903</version>
-            <scope>test</scope>
-        </dependency>
-        <dependency>
-            <groupId>org.eclipse.jetty</groupId>
-            <artifactId>jetty-webapp</artifactId>
-            <version>8.1.16.v20140903</version>
-            <scope>test</scope>
-        </dependency>
+
         <dependency>
             <groupId>org.apache.httpcomponents</groupId>
             <artifactId>httpclient</artifactId>
-            <version>4.3.1</version>
+            <version>${http.components.version}</version>
             <scope>test</scope>
         </dependency>
 
@@ -454,22 +432,6 @@
             <artifactId>javax.inject</artifactId>
             <version>${javax.inject.version}</version>
             <scope>test</scope>
-        </dependency>
-        <dependency>
-            <groupId>org.reflections</groupId>
-            <artifactId>reflections</artifactId>
-            <version>0.9.10</version>
-            <scope>test</scope>
-            <exclusions>
-                <exclusion>
-                    <groupId>org.slf4j</groupId>
-                    <artifactId>slf4j-api</artifactId>
-                </exclusion>
-                <exclusion>
-                    <groupId>org.slf4j</groupId>
-                    <artifactId>slf4j-simple</artifactId>
-                </exclusion>
-            </exclusions>
         </dependency>
         <!-- HyperLogLog testing -->
         <dependency>

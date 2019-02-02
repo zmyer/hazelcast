@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2008-2018, Hazelcast, Inc. All Rights Reserved.
+ * Copyright (c) 2008-2019, Hazelcast, Inc. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -37,17 +37,17 @@ import static org.mockito.Mockito.when;
 @RunWith(HazelcastParallelClassRunner.class)
 @Category({QuickTest.class, ParallelTest.class})
 public class LatencyTrackingRingbufferStoreTest extends HazelcastTestSupport {
-    private static final String NAME = "somerb";
+
+    private static final String NAME = "LatencyTrackingRingbufferStoreTest";
     private static final ObjectNamespace NAMESPACE = RingbufferService.getRingbufferNamespace(NAME);
 
-    private HazelcastInstance hz;
     private StoreLatencyPlugin plugin;
     private RingbufferStore<String> delegate;
     private LatencyTrackingRingbufferStore<String> ringbufferStore;
 
     @Before
     public void setup() {
-        hz = createHazelcastInstance();
+        HazelcastInstance hz = createHazelcastInstance();
         plugin = new StoreLatencyPlugin(getNodeEngineImpl(hz));
         delegate = mock(RingbufferStore.class);
         ringbufferStore = new LatencyTrackingRingbufferStore<String>(delegate, plugin,
@@ -57,7 +57,7 @@ public class LatencyTrackingRingbufferStoreTest extends HazelcastTestSupport {
     @Test
     public void load() {
         long sequence = 1L;
-        String value = "somevalue";
+        String value = "someValue";
 
         when(delegate.load(sequence)).thenReturn(value);
 

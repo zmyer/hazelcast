@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2008-2018, Hazelcast, Inc. All Rights Reserved.
+ * Copyright (c) 2008-2019, Hazelcast, Inc. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -65,6 +65,21 @@ public class EventJournalCacheDataStructureAdapter<K, V>
     @Override
     public V put(K key, V value, long ttl, TimeUnit timeunit) {
         return cache.getAndPut(key, value, new HazelcastExpiryPolicy(ttl, ttl, ttl, timeunit));
+    }
+
+    @Override
+    public void putAll(Map<K, V> map) {
+        cache.putAll(map);
+    }
+
+    @Override
+    public void load(K key) {
+        throw new UnsupportedOperationException();
+    }
+
+    @Override
+    public void loadAll(Set<K> keys) {
+        throw new UnsupportedOperationException();
     }
 
     @Override

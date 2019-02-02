@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2008-2018, Hazelcast, Inc. All Rights Reserved.
+ * Copyright (c) 2008-2019, Hazelcast, Inc. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -393,26 +393,26 @@ public interface IMap<K, V> extends ConcurrentMap<K, V>, LegacyAsyncMap<K, V> {
     /**
      * Removes all entries which match with the supplied predicate.
      * <p>
-     * If this map has index, matching entries will be found via index search,
-     * otherwise they will be found by full-scan.
+     * If this map has index, matching entries will be found via
+     * index search, otherwise they will be found by full-scan.
      * <p>
-     * Note that calling this method also removes all entries from callers Near Cache.
-     *
+     * Note that calling this method also removes all entries from
+     * caller's Near Cache.
      *
      * <p><b>Interactions with the map store</b>
      * <p>
-     * If write-through persistence mode is configured, before a value
-     * is removed from the memory, {@link MapStore#delete(Object)} is
-     * called to remove the value from the map store. Exceptions thrown
-     * by delete fail the operation and are propagated to the caller.
+     * If write-through persistence mode is configured, before a value is
+     * removed from the memory, {@link MapStore#delete(Object)} is called to
+     * remove the value from the map store. Exceptions thrown by delete fail
+     * the operation and are propagated to the caller.
      * <p>
-     * If write-behind persistence mode is configured with
-     * write-coalescing turned off,
-     * {@link com.hazelcast.map.ReachedMaxSizeException} may be thrown
-     * if the write-behind queue has reached its per-node maximum
+     * If write-behind persistence mode is configured with write-coalescing
+     * turned off, {@link com.hazelcast.map.ReachedMaxSizeException} may be
+     * thrown if the write-behind queue has reached its per-node maximum
      * capacity.
      *
-     * @param predicate matching entries with this predicate will be removed from this map
+     * @param predicate matching entries with this predicate will be removed
+     *                  from this map
      * @throws NullPointerException if the specified predicate is null
      */
     void removeAll(Predicate<K, V> predicate);
@@ -760,13 +760,103 @@ public interface IMap<K, V> extends ConcurrentMap<K, V>, LegacyAsyncMap<K, V> {
      * @param key      the key of the map entry
      * @param value    the new value of the map entry
      * @param ttl      maximum time for this entry to stay in the map (0 means infinite, negative means map config default)
-     * @param timeunit time unit for the TTL
+     * @param ttlUnit time unit for the TTL
      * @return ICompletableFuture from which the old value of the key can be retrieved
      * @throws NullPointerException if the specified key or value is null
      * @see ICompletableFuture
      * @see #setAsync(Object, Object, long, TimeUnit)
      */
-    ICompletableFuture<V> putAsync(K key, V value, long ttl, TimeUnit timeunit);
+    ICompletableFuture<V> putAsync(K key, V value, long ttl, TimeUnit ttlUnit);
+
+    /**
+     * Asynchronously puts the given key and value into this map with a given TTL (time to live) value and max idle time value.
+     * <p>
+     * The entry will expire and get evicted after the TTL. If the TTL is 0,
+     * then the entry lives forever. If the TTL is negative, then the TTL
+     * from the map configuration will be used (default: forever).
+     * <p>
+     * The entry will expire and get evicted after the Max Idle time. If the MaxIdle is 0,
+     * then the entry lives forever. If the MaxIdle is negative, then the MaxIdle
+     * from the map configuration will be used (default: forever).
+     * <pre>
+     *   ICompletableFuture future = map.putAsync(key, value, ttl, timeunit);
+     *   // do some other stuff, when ready get the result
+     *   Object oldValue = future.get();
+     * </pre>
+     * ICompletableFuture.get() will block until the actual map.put() completes.
+     * If your application requires a timely response,
+     * then you can use Future.get(timeout, timeunit).
+     * <pre>
+     *   try {
+     *     ICompletableFuture future = map.putAsync(key, newValue, ttl, timeunit);
+     *     Object oldValue = future.get(40, TimeUnit.MILLISECOND);
+     *   } catch (TimeoutException t) {
+     *     // time wasn't enough
+     *   }
+     * </pre>
+     * The client can schedule an {@link ExecutionCallback} to be invoked upon
+     * completion of the {@code ICompletableFuture} via {@link ICompletableFuture#andThen(ExecutionCallback)} or
+     * {@link ICompletableFuture#andThen(ExecutionCallback, Executor)}:
+     * <pre>{@code
+     *   // assuming an IMap<String, String>
+     *   ICompletableFuture<String> future = map.putAsync("a", "b", 5, TimeUnit.MINUTES);
+     *   future.andThen(new ExecutionCallback<String>() {
+     *     public void onResponse(String response) {
+     *       // do something with old value returned by put operation
+     *     }
+     *
+     *     public void onFailure(Throwable t) {
+     *       // handle failure
+     *     }
+     *   });
+     * }</pre>
+     * ExecutionException is never thrown.
+     * <p>
+     * <b>Warning 1:</b>
+     * <p>
+     * This method uses {@code hashCode} and {@code equals} of the binary form of
+     * the {@code key}, not the actual implementations of {@code hashCode} and {@code equals}
+     * defined in the {@code key}'s class.
+     * <p>
+     * <b>Warning 2:</b>
+     * <p>
+     * Time resolution for TTL is seconds. The given TTL value is rounded to the next closest second value.
+     * <p>
+     * <p><b>Note:</b>
+     * Use {@link #setAsync(Object, Object, long, TimeUnit)} if you don't need the return value, it's slightly
+     * more efficient.
+     *
+     * <p><b>Interactions with the map store</b>
+     * <p>
+     * If no value is found with {@code key} in memory,
+     * {@link MapLoader#load(Object)} is invoked to load the value from
+     * the map store backing the map. Exceptions thrown by load fail
+     * the operation and are propagated to the caller.
+     * <p>
+     * If write-through persistence mode is configured, before the value
+     * is stored in memory, {@link MapStore#store(Object, Object)} is
+     * called to write the value into the map store. Exceptions thrown
+     * by the store fail the operation and are propagated to the caller.
+     * <p>
+     * If write-behind persistence mode is configured with
+     * write-coalescing turned off,
+     * {@link com.hazelcast.map.ReachedMaxSizeException} may be thrown
+     * if the write-behind queue has reached its per-node maximum
+     * capacity.
+     *
+     * @param key         the key of the map entry
+     * @param value       the new value of the map entry
+     * @param ttl         maximum time for this entry to stay in the map (0 means infinite, negative means map config default)
+     * @param ttlUnit     time unit for the TTL
+     * @param maxIdle     maximum time for this entry to stay idle in the map.
+     *                    (0 means infinite, negative means map config default)
+     * @param maxIdleUnit time unit for the Max-Idle
+     * @return ICompletableFuture from which the old value of the key can be retrieved
+     * @throws NullPointerException if the specified key, value, ttlUnit or maxIdleUnit are null
+     * @see ICompletableFuture
+     * @see #setAsync(Object, Object, long, TimeUnit)
+     */
+    ICompletableFuture<V> putAsync(K key, V value, long ttl, TimeUnit ttlUnit, long maxIdle, TimeUnit maxIdleUnit);
 
     /**
      * Asynchronously puts the given key and value.
@@ -841,6 +931,10 @@ public interface IMap<K, V> extends ConcurrentMap<K, V>, LegacyAsyncMap<K, V> {
      * The entry will expire and get evicted after the TTL. If the TTL is 0,
      * then the entry lives forever. If the TTL is negative, then the TTL
      * from the map configuration will be used (default: forever).
+     * <p>
+     * The entry will expire and get evicted after the Max Idle time. If the MaxIdle is 0,
+     * then the entry lives forever. If the MaxIdle is negative, then the MaxIdle
+     * from the map configuration will be used (default: forever).
      * <pre>
      *   ICompletableFuture&lt;Void&gt; future = map.setAsync(key, value, ttl, timeunit);
      *   // do some other stuff, when you want to make sure set operation is complete:
@@ -900,13 +994,94 @@ public interface IMap<K, V> extends ConcurrentMap<K, V>, LegacyAsyncMap<K, V> {
      * @param key      the key of the map entry
      * @param value    the new value of the map entry
      * @param ttl      maximum time for this entry to stay in the map (0 means infinite, negative means map config default)
-     * @param timeunit time unit for the TTL
+     * @param ttlUnit  time unit for the TTL
      * @return ICompletableFuture on which client code can block waiting for the operation to complete
      * or provide an {@link ExecutionCallback} to be invoked upon set operation completion
-     * @throws NullPointerException if the specified key or value is null
+     * @throws NullPointerException if the specified key, value, ttlUnit
      * @see ICompletableFuture
      */
-    ICompletableFuture<Void> setAsync(K key, V value, long ttl, TimeUnit timeunit);
+    ICompletableFuture<Void> setAsync(K key, V value, long ttl, TimeUnit ttlUnit);
+
+    /**
+     * Asynchronously puts an entry into this map with a given TTL (time to live) value and max idle time value.
+     * without returning the old value (which is more efficient than {@code put()}).
+     * <p>
+     * The entry will expire and get evicted after the TTL. If the TTL is 0,
+     * then the entry lives forever. If the TTL is negative, then the TTL
+     * from the map configuration will be used (default: forever).
+     * <p>
+     * The entry will expire and get evicted after the Max Idle time. If the MaxIdle is 0,
+     * then the entry lives forever. If the MaxIdle is negative, then the MaxIdle
+     * from the map configuration will be used (default: forever).
+     * <pre>
+     *   ICompletableFuture&lt;Void&gt; future = map.setAsync(key, value, ttl, timeunit);
+     *   // do some other stuff, when you want to make sure set operation is complete:
+     *   future.get();
+     * </pre>
+     * ICompletableFuture.get() will block until the actual map set operation completes.
+     * If your application requires a timely response,
+     * then you can use {@link ICompletableFuture#get(long, TimeUnit)}.
+     * <pre>
+     *   try {
+     *     ICompletableFuture<Void> future = map.setAsync(key, newValue, ttl, timeunit);
+     *     future.get(40, TimeUnit.MILLISECOND);
+     *   } catch (TimeoutException t) {
+     *     // time wasn't enough
+     *   }
+     * </pre>
+     * You can also schedule an {@link ExecutionCallback} to be invoked upon
+     * completion of the {@code ICompletableFuture} via {@link ICompletableFuture#andThen(ExecutionCallback)} or
+     * {@link ICompletableFuture#andThen(ExecutionCallback, Executor)}:
+     * <pre>
+     *   ICompletableFuture&lt;Void&gt; future = map.setAsync("a", "b", 5, TimeUnit.MINUTES);
+     *   future.andThen(new ExecutionCallback&lt;String&gt;() {
+     *     public void onResponse(Void response) {
+     *       // Set operation was completed
+     *     }
+     *
+     *     public void onFailure(Throwable t) {
+     *       // handle failure
+     *     }
+     *   });
+     * </pre>
+     * ExecutionException is never thrown.
+     * <p>
+     * <b>Warning 1:</b>
+     * <p>
+     * This method uses {@code hashCode} and {@code equals} of the binary form of
+     * the {@code key}, not the actual implementations of {@code hashCode} and {@code equals}
+     * defined in the {@code key}'s class.
+     * <p>
+     * <b>Warning 2:</b>
+     * <p>
+     * Time resolution for TTL is seconds. The given TTL value is rounded to the next closest second value.
+     *
+     * <p><b>Interactions with the map store</b>
+     * <p>
+     * If write-through persistence mode is configured, before the value
+     * is stored in memory, {@link MapStore#store(Object, Object)} is
+     * called to write the value into the map store. Exceptions thrown
+     * by the store fail the operation and are propagated to the caller..
+     * <p>
+     * If write-behind persistence mode is configured with
+     * write-coalescing turned off,
+     * {@link com.hazelcast.map.ReachedMaxSizeException} may be thrown
+     * if the write-behind queue has reached its per-node maximum
+     * capacity.
+     *
+     * @param key         the key of the map entry
+     * @param value       the new value of the map entry
+     * @param ttl         maximum time for this entry to stay in the map (0 means infinite, negative means map config default)
+     * @param ttlUnit     time unit for the TTL
+     * @param maxIdle     maximum time for this entry to stay idle in the map.
+     *                    (0 means infinite, negative means map config default)
+     * @param maxIdleUnit time unit for the Max-Idle
+     * @return ICompletableFuture on which client code can block waiting for the operation to complete
+     * or provide an {@link ExecutionCallback} to be invoked upon set operation completion
+     * @throws NullPointerException if the specified key, value, ttlUnit or maxIdleUnit are null
+     * @see ICompletableFuture
+     */
+    ICompletableFuture<Void> setAsync(K key, V value, long ttl, TimeUnit ttlUnit, long maxIdle, TimeUnit maxIdleUnit);
 
     /**
      * Asynchronously removes the given key, returning an {@link ICompletableFuture} on which
@@ -1059,11 +1234,70 @@ public interface IMap<K, V> extends ConcurrentMap<K, V>, LegacyAsyncMap<K, V> {
      * @param key      key of the entry
      * @param value    value of the entry
      * @param ttl      maximum time for this entry to stay in the map (0 means infinite, negative means map config default)
-     * @param timeunit time unit for the TTL
+     * @param ttlUnit  time unit for the TTL
      * @return old value of the entry
      * @throws NullPointerException if the specified key or value is null
      */
-    V put(K key, V value, long ttl, TimeUnit timeunit);
+    V put(K key, V value, long ttl, TimeUnit ttlUnit);
+
+    /**
+     * Puts an entry into this map with a given TTL (time to live) value and max idle time value.
+     * <p>
+     * The entry will expire and get evicted after the TTL. If the TTL is 0,
+     * then the entry lives forever. If the TTL is negative, then the TTL
+     * from the map configuration will be used (default: forever).
+     * <p>
+     * The entry will expire and get evicted after the Max Idle time. If the MaxIdle is 0,
+     * then the entry lives forever. If the MaxIdle is negative, then the MaxIdle
+     * from the map configuration will be used (default: forever).
+     * <p>
+     * <b>Warning 1:</b>
+     * <p>
+     * This method uses {@code hashCode} and {@code equals} of the binary form of
+     * the {@code key}, not the actual implementations of {@code hashCode} and {@code equals}
+     * defined in the {@code key}'s class.
+     * <p>
+     * <b>Warning 2:</b>
+     * <p>
+     * This method returns a clone of the previous value, not the original (identically equal) value
+     * previously put into the map.
+     * <p>
+     * <b>Warning 3:</b>
+     * <p>
+     * Time resolution for TTL is seconds. The given TTL value is rounded to the next closest second value.
+     * <p>
+     * <p><b>Note:</b>
+     * Use {@link #set(Object, Object, long, TimeUnit)} if you don't need the return value, it's slightly more efficient.
+     * <p>
+     * <p><b>Interactions with the map store</b>
+     * <p>
+     * If no value is found with {@code key} in memory,
+     * {@link MapLoader#load(Object)} is invoked to load the value from
+     * the map store backing the map. Exceptions thrown by load fail
+     * the operation and are propagated to the caller.
+     * <p>
+     * If write-through persistence mode is configured, before the value
+     * is stored in memory, {@link MapStore#store(Object, Object)} is
+     * called to write the value into the map store. Exceptions thrown
+     * by the store fail the operation and are propagated to the caller.
+     * <p>
+     * If write-behind persistence mode is configured with
+     * write-coalescing turned off,
+     * {@link com.hazelcast.map.ReachedMaxSizeException} may be thrown
+     * if the write-behind queue has reached its per-node maximum
+     * capacity.
+     *
+     * @param key         key of the entry
+     * @param value       value of the entry
+     * @param ttl         maximum time for this entry to stay in the map (0 means infinite, negative means map config default)
+     * @param ttlUnit     time unit for the TTL
+     * @param maxIdle     maximum time for this entry to stay idle in the map.
+     *                    (0 means infinite, negative means map config default)
+     * @param maxIdleUnit time unit for the Max-Idle
+     * @return old value of the entry
+     * @throws NullPointerException if the specified key, value, ttlUnit or maxIdleUnit are null
+     */
+    V put(K key, V value, long ttl, TimeUnit ttlUnit, long maxIdle, TimeUnit maxIdleUnit);
 
     /**
      * Same as {@link #put(K, V, long, java.util.concurrent.TimeUnit)}
@@ -1087,10 +1321,44 @@ public interface IMap<K, V> extends ConcurrentMap<K, V>, LegacyAsyncMap<K, V> {
      * @param key      key of the entry
      * @param value    value of the entry
      * @param ttl      maximum time for this entry to stay in the map (0 means infinite, negative means map config default)
-     * @param timeunit time unit for the TTL
+     * @param ttlUnit  time unit for the TTL
      * @throws NullPointerException if the specified key or value is null
      */
-    void putTransient(K key, V value, long ttl, TimeUnit timeunit);
+    void putTransient(K key, V value, long ttl, TimeUnit ttlUnit);
+
+    /**
+     * Same as {@link #put(K, V, long, java.util.concurrent.TimeUnit)}
+     * except that the map store, if defined, will not be called to
+     * load/store/persist the entry.
+     * <p>
+     * The entry will expire and get evicted after the TTL. If the TTL is 0,
+     * then the entry lives forever. If the TTL is negative, then the TTL
+     * from the map configuration will be used (default: forever).
+     * <p>
+     * The entry will expire and get evicted after the Max Idle time. If the MaxIdle is 0,
+     * then the entry lives forever. If the MaxIdle is negative, then the MaxIdle
+     * from the map configuration will be used (default: forever).
+     * <p>
+     * <b>Warning 1:</b>
+     * <p>
+     * This method uses {@code hashCode} and {@code equals} of the binary form of
+     * the {@code key}, not the actual implementations of {@code hashCode} and {@code equals}
+     * defined in the {@code key}'s class.
+     * <p>
+     * <b>Warning 2:</b>
+     * <p>
+     * Time resolution for TTL is seconds. The given TTL value is rounded to next closest second value.
+     *
+     * @param key         key of the entry
+     * @param value       value of the entry
+     * @param ttl         maximum time for this entry to stay in the map (0 means infinite, negative means map config default)
+     * @param ttlUnit     time unit for the TTL
+     * @param maxIdle     maximum time for this entry to stay idle in the map.
+     *                    (0 means infinite, negative means map config default)
+     * @param maxIdleUnit time unit for the Max-Idle
+     * @throws NullPointerException if the specified key, value, ttlUnit or maxIdleUnit are null
+     */
+    void putTransient(K key, V value, long ttl, TimeUnit ttlUnit, long maxIdle, TimeUnit maxIdleUnit);
 
     /**
      * {@inheritDoc}
@@ -1171,12 +1439,68 @@ public interface IMap<K, V> extends ConcurrentMap<K, V>, LegacyAsyncMap<K, V> {
      * @param key      key of the entry
      * @param value    value of the entry
      * @param ttl      maximum time for this entry to stay in the map (0 means infinite, negative means map config default)
-     * @param timeunit time unit for the TTL
+     * @param ttlUnit time unit for the TTL
      * @return old value of the entry
      * @throws NullPointerException if the specified key or value is null
      */
-    V putIfAbsent(K key, V value, long ttl, TimeUnit timeunit);
+    V putIfAbsent(K key, V value, long ttl, TimeUnit ttlUnit);
 
+    /**
+     * Puts an entry into this map with a given TTL (time to live) value and max idle time value.
+     * if the specified key is not already associated with a value.
+     * <p>
+     * The entry will expire and get evicted after the TTL. If the TTL is 0,
+     * then the entry lives forever. If the TTL is negative, then the TTL
+     * from the map configuration will be used (default: forever).
+     * <p>
+     * The entry will expire and get evicted after the Max Idle time. If the MaxIdle is 0,
+     * then the entry lives forever. If the MaxIdle is negative, then the MaxIdle
+     * from the map configuration will be used (default: forever).
+     * <p>
+     * <b>Warning 1:</b>
+     * <p>
+     * This method uses {@code hashCode} and {@code equals} of the binary form of
+     * the {@code key}, not the actual implementations of {@code hashCode} and {@code equals}
+     * defined in the {@code key}'s class.
+     * <p>
+     * <b>Warning 2:</b>
+     * <p>
+     * This method returns a clone of the previous value, not the original (identically equal) value
+     * previously put into the map.
+     * <p>
+     * <b>Warning 3:</b>
+     * <p>
+     * Time resolution for TTL is seconds. The given TTL value is rounded to the next closest second value.
+     *
+     * <p><b>Interactions with the map store</b>
+     * <p>
+     * If no value is found with {@code key} in memory,
+     * {@link MapLoader#load(Object)} is invoked to load the value from
+     * the map store backing the map. Exceptions thrown by load fail
+     * the operation and are propagated to the caller.
+     * <p>
+     * If write-through persistence mode is configured, before the value
+     * is stored in memory, {@link MapStore#store(Object, Object)} is
+     * called to write the value into the map store. Exceptions thrown
+     * by the store fail the operation and are propagated to the caller.
+     * <p>
+     * If write-behind persistence mode is configured with
+     * write-coalescing turned off,
+     * {@link com.hazelcast.map.ReachedMaxSizeException} may be thrown
+     * if the write-behind queue has reached its per-node maximum
+     * capacity.
+     *
+     * @param key         key of the entry
+     * @param value       value of the entry
+     * @param ttl         maximum time for this entry to stay in the map (0 means infinite, negative means map config default)
+     * @param ttlUnit     time unit for the TTL
+     * @param maxIdle     maximum time for this entry to stay idle in the map.
+     *                    (0 means infinite, negative means map config default)
+     * @param maxIdleUnit time unit for the Max-Idle
+     * @return old value of the entry
+     * @throws NullPointerException if the specified key, value, ttlUnit or maxIdleUnit are null
+     */
+    V putIfAbsent(K key, V value, long ttl, TimeUnit ttlUnit, long maxIdle, TimeUnit maxIdleUnit);
     /**
      * {@inheritDoc}
      * <p>
@@ -1312,10 +1636,56 @@ public interface IMap<K, V> extends ConcurrentMap<K, V>, LegacyAsyncMap<K, V> {
      * @param key      key of the entry
      * @param value    value of the entry
      * @param ttl      maximum time for this entry to stay in the map (0 means infinite, negative means map config default)
-     * @param timeunit time unit for the TTL
+     * @param ttlUnit  time unit for the TTL
      * @throws NullPointerException if the specified key or value is null
      */
-    void set(K key, V value, long ttl, TimeUnit timeunit);
+    void set(K key, V value, long ttl, TimeUnit ttlUnit);
+
+    /**
+     * Puts an entry into this map with a given TTL (time to live) value and max idle time value.
+     * without returning the old value (which is more efficient than {@code put()}).
+     * <p>
+     * The entry will expire and get evicted after the TTL. If the TTL is 0,
+     * then the entry lives forever. If the TTL is negative, then the TTL
+     * from the map configuration will be used (default: forever).
+     * <p>
+     * The entry will expire and get evicted after the Max Idle time. If the MaxIdle is 0,
+     * then the entry lives forever. If the MaxIdle is negative, then the MaxIdle
+     * from the map configuration will be used (default: forever).
+     * <p>
+     * <b>Warning 1:</b>
+     * <p>
+     * This method uses {@code hashCode} and {@code equals} of the binary form of
+     * the {@code key}, not the actual implementations of {@code hashCode} and {@code equals}
+     * defined in the {@code key}'s class.
+     * <p>
+     * <b>Warning 2:</b>
+     * <p>
+     * Time resolution for TTL is seconds. The given TTL value is rounded to the next closest second value.
+     *
+     * <p><b>Interactions with the map store</b>
+     * <p>
+     * If write-through persistence mode is configured, before the value
+     * is stored in memory, {@link MapStore#store(Object, Object)} is
+     * called to write the value into the map store. Exceptions thrown
+     * by the store fail the operation and are propagated to the caller.
+     * <p>
+     * If write-behind persistence mode is configured with
+     * write-coalescing turned off,
+     * {@link com.hazelcast.map.ReachedMaxSizeException} may be thrown
+     * if the write-behind queue has reached its per-node maximum
+     * capacity.
+     *
+     * @param key         key of the entry
+     * @param value       value of the entry
+     * @param ttl         maximum time for this entry to stay in the map (0 means infinite, negative means map config default)
+     * @param ttlUnit     time unit for the TTL
+     * @param maxIdle     maximum time for this entry to stay idle in the map.
+     *                    (0 means infinite, negative means map config default)
+     * @param maxIdleUnit time unit for the Max-Idle
+     * @throws NullPointerException if the specified key, value, ttlUnit or maxIdleUnit are null
+     */
+    void set(K key, V value, long ttl, TimeUnit ttlUnit, long maxIdle, TimeUnit maxIdleUnit);
 
     /**
      * Acquires the lock for the specified key.
@@ -2098,6 +2468,11 @@ public interface IMap<K, V> extends ConcurrentMap<K, V>, LegacyAsyncMap<K, V> {
      * Since this stats are only for the local portion of this map, if you
      * need the cluster-wide MapStats then you need to get the LocalMapStats
      * from all members of the cluster and combine them.
+     * <p>
+     * It's guaranteed that the returned {@link LocalMapStats} instance contains
+     * an up-to-date statistics. But over the time some parts of the returned
+     * instance may become stale while others may be updated. To obtain a fresh
+     * up-to-date instance invoke the method one more time.
      *
      * @return this map's local statistics
      */
@@ -2109,8 +2484,8 @@ public interface IMap<K, V> extends ConcurrentMap<K, V>, LegacyAsyncMap<K, V> {
      * <p>
      * The {@code EntryProcessor} may implement the {@link Offloadable} and {@link ReadOnly} interfaces.
      * <p>
-     * If the EntryProcessor implements the {@link Offloadable} interface the processing will be offloaded to the given
-     * ExecutorService allowing unblocking of the partition-thread, which means that other partition-operations
+     * If the EntryProcessor implements the {@link Offloadable} interface, the processing will be offloaded to the given
+     * ExecutorService, allowing unblocking of the partition-thread, which means that other partition-operations
      * may proceed. The key will be locked for the time-span of the processing in order to not generate a write-conflict.
      * In this case the threading looks as follows:
      * <ol>
@@ -2118,51 +2493,51 @@ public interface IMap<K, V> extends ConcurrentMap<K, V>, LegacyAsyncMap<K, V> {
      * <li>execution-thread (process)</li>
      * <li>partition-thread (set & unlock, or just unlock if no changes)</li>
      * </ol>
-     * If the EntryProcessor implements the Offloadable and ReadOnly interfaces the processing will be offloaded to the
+     * If the EntryProcessor implements the Offloadable and ReadOnly interfaces, the processing will be offloaded to the
      * given ExecutorService allowing unblocking the partition-thread. Since the EntryProcessor is not supposed to do
-     * any changes to the Entry the key will NOT be locked for the time-span of the processing. In this case the threading
+     * any changes to the Entry, the key will NOT be locked for the time-span of the processing. In this case the threading
      * looks as follows:
      * <ol>
-     * <li>partition-thread (fetch & lock)</li>
+     * <li>partition-thread (fetch)</li>
      * <li>execution-thread (process)</li>
      * </ol>
-     * In this case the EntryProcessor.getBackupProcessor() has to return null; otherwise an IllegalArgumentException
+     * In this case, the EntryProcessor.getBackupProcessor() has to return null; otherwise an IllegalArgumentException
      * exception is thrown.
      * <p>
-     * If the EntryProcessor implements only ReadOnly without implementing Offloadable the processing unit will not
+     * If the EntryProcessor implements only ReadOnly without implementing Offloadable, the processing unit will not
      * be offloaded, however, the EntryProcessor will not wait for the lock to be acquired, since the EP will not
      * do any modifications.
      * <p>
      * Using offloading is useful if the EntryProcessor encompasses heavy logic that may stall the partition-thread.
      * <p>
-     * If the EntryProcessor implements ReadOnly and modifies the entry it is processing an UnsupportedOperationException
+     * If the EntryProcessor implements ReadOnly and modifies the entry it is processing, an UnsupportedOperationException
      * will be thrown.
      * <p>
      * Offloading will not be applied to backup partitions. It is possible to initialize the EntryBackupProcessor
      * with some input provided by the EntryProcessor in the EntryProcessor.getBackupProcessor() method.
-     * The input allows providing context to the EntryBackupProcessor - for example the "delta"
+     * The input allows providing context to the EntryBackupProcessor, for example the "delta",
      * so that the EntryBackupProcessor does not have to calculate the "delta" but it may just apply it.
      * <p>
      * See {@link #submitToKey(Object, EntryProcessor)} for an async version of this method.
      *
      * <p><b>Interactions with the map store</b>
      * <p>
-     * If value with {@code key} is not found in memory
+     * If value with {@code key} is not found in memory,
      * {@link MapLoader#load(Object)} is invoked to load the value from
-     * the map store backing the map. Exceptions thrown by load fail
-     * the operation and are propagated to the caller.
+     * the map store backing the map.
      * <p>
      * If the entryProcessor updates the entry and write-through
      * persistence mode is configured, before the value is stored
      * in memory, {@link MapStore#store(Object, Object)} is called to
-     * write the value into the map store. Exceptions thrown by store
-     * fail the operation are propagated to the caller.
+     * write the value into the map store.
      * <p>
      * If the entryProcessor updates the entry's value to null value and
      * write-through persistence mode is configured, before the value is
      * removed from the memory, {@link MapStore#delete(Object)} is
-     * called to delete the value from the map store. Exceptions thrown
-     * by delete fail the operation are propagated to the caller.
+     * called to delete the value from the map store.
+     * <p>
+     * Any exceptions thrown by the map store fail the operation and are
+     * propagated to the caller.
      * <p>
      * If write-behind persistence mode is configured with
      * write-coalescing turned off,
@@ -2187,30 +2562,50 @@ public interface IMap<K, V> extends ConcurrentMap<K, V>, LegacyAsyncMap<K, V> {
      * <p>
      * For each entry not found in memory {@link MapLoader#load(Object)}
      * is invoked to load the value from the map store backing the map.
-     * Exceptions thrown by load fail the operation and are propagated
-     * to the caller.
      * <p>
      * If write-through persistence mode is configured, for each entry
      * updated by the entryProcessor, before the updated value is stored
      * in memory, {@link MapStore#store(Object, Object)} is called to
-     * write the value into the map store. Exceptions thrown by store
-     * fail the operation and are propagated to the caller.
+     * write the value into the map store.
      * <p>
      * If write-through persistence mode is configured, for each entry
      * updated to null value, before the value is removed from the
      * memory, {@link MapStore#delete(Object)} is called to delete the
-     * value from the map store. Exceptions thrown by delete fail the
-     * operation and are propagated to the caller.
+     * value from the map store.
      * <p>
-     * If write-behind persistence mode is configured with
-     * write-coalescing turned off,
+     * Any exceptions thrown by the map store fail the operation and are
+     * propagated to the caller. If an exception happened, the operation might
+     * already succeeded on some of the keys.
+     * <p>
+     * If write-behind persistence mode is
+     * configured with write-coalescing turned off,
      * {@link com.hazelcast.map.ReachedMaxSizeException} may be thrown
      * if the write-behind queue has reached its per-node maximum
      * capacity.
      *
+     * <h4>Performance note</h4>
+     * <p>Keep the state of {@code entryProcessor}
+     * small, it will be serialized and one copy will be sent to each member.
+     * Additionally, the {@linkplain EntryProcessor#getBackupProcessor() backup
+     * processor} will also be serialized once for each affected partition and
+     * sent to each backup. For example, in this usage the entire {@code
+     * additions} map will be duplicated once for each member and once for each
+     * partition and backup:
+     * <pre>{@code
+     *   HashMap additions = ...;
+     *   iMap.executeOnKeys(map.keySet(), new AbstractEntryProcessor<Integer, Integer>() {
+     *             public Object process(Entry<Integer, Integer> entry) {
+     *                 Integer updateBy = additions.get(entry.getKey());
+     *                 entry.setValue(entry.getValue() + updateBy);
+     *                 return null;
+     *             }
+     *         });
+     * }</pre>
+     *
+     * @param keys The keys to execute the entry processor on. Can be empty, in
+     *             that case it's a local no-op
      * @return results of {@link EntryProcessor#process(Entry)}
-     * @throws NullPointerException     if the specified key is {@code null}
-     * @throws IllegalArgumentException if the specified {@code keys} set is empty
+     * @throws NullPointerException if there's null element in {@code keys}
      */
     Map<K, Object> executeOnKeys(Set<K> keys, EntryProcessor entryProcessor);
 
@@ -2260,23 +2655,21 @@ public interface IMap<K, V> extends ConcurrentMap<K, V>, LegacyAsyncMap<K, V> {
      * <p>
      * If value with {@code key} is not found in memory
      * {@link MapLoader#load(Object)} is invoked to load the value from
-     * the map store backing the map. Exceptions thrown by load fail
-     * the operation and are propagated to the provided callback via
-     * {@link ExecutionCallback#onFailure(Throwable)}.
+     * the map store backing the map.
      * <p>
      * If the entryProcessor updates the entry and write-through
      * persistence mode is configured, before the value is stored
      * in memory, {@link MapStore#store(Object, Object)} is called to
-     * write the value into the map store. Exceptions thrown by store
-     * fail the operation and are propagated to the provided callback via
-     * {@link ExecutionCallback#onFailure(Throwable)}.
+     * write the value into the map store.
      * <p>
      * If the entryProcessor updates the entry's value to null value and
      * write-through persistence mode is configured, before the value is
      * removed from the memory, {@link MapStore#delete(Object)} is
-     * called to delete the value from the map store. Exceptions thrown
-     * by delete fail the operation and are propagated to the provided
-     * callback via {@link ExecutionCallback#onFailure(Throwable)}.
+     * called to delete the value from the map store.
+     * <p>
+     * Any exception thrown by the map store fail the operation and are
+     * propagated to the provided callback via {@link
+     * ExecutionCallback#onFailure(Throwable)}.
      * <p>
      * If write-behind persistence mode is configured with
      * write-coalescing turned off,
@@ -2341,20 +2734,21 @@ public interface IMap<K, V> extends ConcurrentMap<K, V>, LegacyAsyncMap<K, V> {
      * <p>
      * If value with {@code key} is not found in memory
      * {@link MapLoader#load(Object)} is invoked to load the value from
-     * the map store backing the map. Exceptions thrown by load fail
-     * the operation and are propagated to the caller.
+     * the map store backing the map.
      * <p>
      * If the entryProcessor updates the entry and write-through
      * persistence mode is configured, before the value is stored
      * in memory, {@link MapStore#store(Object, Object)} is called to
-     * write the value into the map store. Exceptions thrown by store
-     * fail the operation are propagated to the caller.
+     * write the value into the map store.
      * <p>
      * If the entryProcessor updates the entry's value to null value and
      * write-through persistence mode is configured, before the value is
      * removed from the memory, {@link MapStore#delete(Object)} is
-     * called to delete the value from the map store. Exceptions thrown
-     * by delete fail the operation are propagated to the caller.
+     * called to delete the value from the map store.
+     * <p>
+     * Any exception thrown by the map store fail the operation and are
+     * propagated to the provided callback via {@link
+     * ExecutionCallback#onFailure(Throwable)}.
      * <p>
      * If write-behind persistence mode is configured with
      * write-coalescing turned off,
@@ -2382,20 +2776,20 @@ public interface IMap<K, V> extends ConcurrentMap<K, V>, LegacyAsyncMap<K, V> {
      * <p>
      * For each entry not found in memory {@link MapLoader#load(Object)}
      * is invoked to load the value from the map store backing the map.
-     * Exceptions thrown by load fail the operation and are propagated
-     * to the caller.
      * <p>
      * If write-through persistence mode is configured, for each entry
      * updated by the entryProcessor, before the updated value is stored
      * in memory, {@link MapStore#store(Object, Object)} is called to
-     * write the value into the map store. Exceptions thrown by store
-     * fail the operation and are propagated to the caller.
+     * write the value into the map store.
      * <p>
      * If write-through persistence mode is configured, for each entry
      * updated to null value, before the value is removed from the
      * memory, {@link MapStore#delete(Object)} is called to delete the
-     * value from the map store. Exceptions thrown by delete fail the
-     * operation and are propagated to the caller.
+     * value from the map store.
+     * <p>
+     * Any exceptions thrown by the map store fail the operation and are
+     * propagated to the caller. If an exception happened, the operation might
+     * already succeeded on some of the keys.
      * <p>
      * If write-behind persistence mode is configured with
      * write-coalescing turned off,
@@ -2416,20 +2810,20 @@ public interface IMap<K, V> extends ConcurrentMap<K, V>, LegacyAsyncMap<K, V> {
      * <p>
      * For each entry not found in memory {@link MapLoader#load(Object)}
      * is invoked to load the value from the map store backing the map.
-     * Exceptions thrown by load fail the operation and are propagated
-     * to the caller.
      * <p>
      * If write-through persistence mode is configured, for each entry
      * updated by the entryProcessor, before the updated value is stored
      * in memory, {@link MapStore#store(Object, Object)} is called to
-     * write the value into the map store. Exceptions thrown by store
-     * fail the operation and are propagated to the caller.
+     * write the value into the map store.
      * <p>
      * If write-through persistence mode is configured, for each entry
      * updated to null value, before the value is removed from the
      * memory, {@link MapStore#delete(Object)} is called to delete the
-     * value from the map store. Exceptions thrown by delete fail the
-     * operation and are propagated to the caller.
+     * value from the map store.
+     * <p>
+     * Any exceptions thrown by the map store fail the operation and are
+     * propagated to the caller. If an exception happened, the operation might
+     * already succeeded on some of the keys.
      * <p>
      * If write-behind persistence mode is configured with
      * write-coalescing turned off,
@@ -2588,4 +2982,29 @@ public interface IMap<K, V> extends ConcurrentMap<K, V>, LegacyAsyncMap<K, V> {
      */
     @Beta
     QueryCache<K, V> getQueryCache(String name, MapListener listener, Predicate<K, V> predicate, boolean includeValue);
+
+    /**
+     * Updates TTL (time to live) value of the entry specified by {@code key} with a new TTL value.
+     * New TTL value is valid starting from the time this operation is invoked, not since the time the entry was created.
+     * If the entry does not exist or is already expired, this call has no effect.
+     * <p>
+     * The entry will expire and get evicted after the TTL. If the TTL is 0,
+     * then the entry lives forever. If the TTL is negative, then the TTL
+     * from the map configuration will be used (default: forever).
+     *
+     * If there is no entry with key {@code key} or is already expired, this call makes no changes to entries stored in
+     * this map.
+     *
+     * <b>Warning:</b>
+     * <p>
+     * Time resolution for TTL is seconds. The given TTL value is rounded to the next closest second value.
+     *
+     * @param key      the key of the map entry
+     * @param ttl      maximum time for this entry to stay in the map (0 means infinite, negative means map config default)
+     * @param timeunit time unit for the TTL
+     * @return {@code true} if the entry exists and its ttl value is changed, {@code false} otherwise
+     * @throws NullPointerException if the specified {@code key} or {@code timeunit} is null.
+     * @since 3.11
+     */
+    boolean setTtl(K key, long ttl, TimeUnit timeunit);
 }

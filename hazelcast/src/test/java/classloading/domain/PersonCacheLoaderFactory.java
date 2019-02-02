@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2008-2018, Hazelcast, Inc. All Rights Reserved.
+ * Copyright (c) 2008-2019, Hazelcast, Inc. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -36,7 +36,7 @@ public class PersonCacheLoaderFactory implements Factory<CacheLoader<String, Per
             @Override
             public Map<String, Person> loadAll(Iterable<? extends String> itrbl) throws CacheLoaderException {
                 Map<String, Person> rv = new HashMap<String, Person>();
-                for(String it : itrbl) {
+                for (String it : itrbl) {
                     rv.put(it, load(it));
                 }
                 return rv;

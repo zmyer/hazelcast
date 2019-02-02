@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2008-2018, Hazelcast, Inc. All Rights Reserved.
+ * Copyright (c) 2008-2019, Hazelcast, Inc. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -18,6 +18,7 @@ package com.hazelcast.cache.impl;
 
 import com.hazelcast.config.CacheConfig;
 import com.hazelcast.core.ICompletableFuture;
+import com.hazelcast.internal.cluster.Versions;
 import com.hazelcast.map.impl.MapEntries;
 import com.hazelcast.nio.serialization.Data;
 import com.hazelcast.spi.InternalCompletableFuture;
@@ -26,12 +27,14 @@ import com.hazelcast.spi.Operation;
 import com.hazelcast.spi.OperationFactory;
 import com.hazelcast.spi.OperationService;
 import com.hazelcast.spi.partition.IPartitionService;
+import com.hazelcast.util.FutureUtil;
 
 import javax.cache.CacheException;
 import javax.cache.expiry.ExpiryPolicy;
 import java.util.AbstractMap;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
@@ -56,6 +59,7 @@ import static java.util.Collections.emptyMap;
  * @see com.hazelcast.cache.impl.CacheProxy
  * @see com.hazelcast.cache.ICache
  */
+@SuppressWarnings("checkstyle:methodcount")
 abstract class AbstractCacheProxy<K, V>
         extends AbstractInternalCacheProxy<K, V> {
 
@@ -229,6 +233,68 @@ abstract class AbstractCacheProxy<K, V>
         }
     }
 
+    @Override
+    public boolean setExpiryPolicy(K key, ExpiryPolicy expiryPolicy) {
+        if (isClusterVersionLessThan(Versions.V3_11)) {
+            throw new UnsupportedOperationException("setExpiryPolicy operation is available"
+                    + "when cluster version is 3.11 or higher");
+        }
+        try {
+            ensureOpen();
+            validateNotNull(key);
+            validateNotNull(expiryPolicy);
+
+            Data keyData = serializationService.toData(key);
+            Data expiryPolicyData = serializationService.toData(expiryPolicy);
+            List<Data> list = Collections.singletonList(keyData);
+            Operation operation = operationProvider.createSetExpiryPolicyOperation(list, expiryPolicyData);
+            Future<Boolean> future = invoke(operation, keyData, true);
+            return future.get();
+        } catch (Throwable e) {
+            throw rethrowAllowedTypeFirst(e, CacheException.class);
+        }
+    }
+
+    @Override
+    public void setExpiryPolicy(Set<? extends K> keys, ExpiryPolicy expiryPolicy) {
+        if (isClusterVersionLessThan(Versions.V3_11)) {
+            throw new UnsupportedOperationException("setExpiryPolicy operation is available"
+                    + "when cluster version is 3.11 or higher");
+        }
+        ensureOpen();
+        validateNotNull(keys);
+        validateNotNull(expiryPolicy);
+
+        try {
+            int partitionCount = partitionService.getPartitionCount();
+            List<Data>[] keysPerPartition = groupDataToPartitions(keys, partitionCount);
+            setTTLAllPartitionsAndWaitForCompletion(keysPerPartition, serializationService.toData(expiryPolicy));
+        } catch (Exception e) {
+            rethrow(e);
+        }
+    }
+
+    private List<Data>[] groupDataToPartitions(Collection<? extends K> keys, int partitionCount) {
+        List<Data>[] keysPerPartition = new ArrayList[partitionCount];
+
+        for (K key: keys) {
+            validateNotNull(key);
+
+            Data dataKey = serializationService.toData(key);
+
+            int partitionId = partitionService.getPartitionId(dataKey);
+
+            List<Data> partition = keysPerPartition[partitionId];
+            if (partition == null) {
+                partition = new ArrayList<Data>();
+                keysPerPartition[partitionId] = partition;
+            }
+            partition.add(dataKey);
+        }
+
+        return keysPerPartition;
+    }
+
     @SuppressWarnings("unchecked")
     private List<Map.Entry<Data, Data>>[] groupDataToPartitions(Map<? extends K, ? extends V> map, int partitionCount) {
         List<Map.Entry<Data, Data>>[] entriesPerPartition = new List[partitionCount];
@@ -294,6 +360,23 @@ abstract class AbstractCacheProxy<K, V>
              * So as a result, we only throw the first exception and others are suppressed by only logging.
              */
             throw rethrow(error);
+        }
+    }
+
+    private void setTTLAllPartitionsAndWaitForCompletion(List<Data>[] keysPerPartition, Data expiryPolicy) {
+        List<Future> futures = new ArrayList<Future>(keysPerPartition.length);
+        for (int partitionId = 0; partitionId < keysPerPartition.length; partitionId++) {
+            List<Data> keys = keysPerPartition[partitionId];
+            if (keys != null) {
+                Operation operation = operationProvider.createSetExpiryPolicyOperation(keys, expiryPolicy);
+                futures.add(invoke(operation, partitionId, true));
+            }
+        }
+
+        List<Throwable> throwables = FutureUtil.waitUntilAllResponded(futures);
+
+        if (throwables.size() > 0) {
+            throw rethrow(throwables.get(0));
         }
     }
 

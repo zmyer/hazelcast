@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2008-2018, Hazelcast, Inc. All Rights Reserved.
+ * Copyright (c) 2008-2019, Hazelcast, Inc. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -20,7 +20,6 @@ import com.hazelcast.config.InMemoryFormat;
 import com.hazelcast.map.impl.EntryCostEstimator;
 import com.hazelcast.map.impl.iterator.MapEntriesWithCursor;
 import com.hazelcast.map.impl.iterator.MapKeysWithCursor;
-import com.hazelcast.map.impl.record.AbstractRecord;
 import com.hazelcast.map.impl.record.Record;
 import com.hazelcast.map.impl.record.RecordFactory;
 import com.hazelcast.nio.serialization.Data;
@@ -74,7 +73,7 @@ public class StorageImpl<R extends Record> implements Storage<Data, R> {
     @Override
     public void put(Data key, R record) {
 
-        ((AbstractRecord) record).setKey(key);
+        record.setKey(key);
 
         R previousRecord = records.put(key, record);
 

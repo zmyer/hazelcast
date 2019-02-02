@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2008-2018, Hazelcast, Inc. All Rights Reserved.
+ * Copyright (c) 2008-2019, Hazelcast, Inc. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -393,7 +393,9 @@ public class DiscoverySpiTest extends HazelcastTestSupport {
 
         DiscoveryServiceProvider discoveryServiceProvider = new DiscoveryServiceProvider() {
             public DiscoveryService newDiscoveryService(DiscoveryServiceSettings arg0) {
-                return mock(DiscoveryService.class);
+                DiscoveryService mocked = mock(DiscoveryService.class);
+                when(mocked.discoverNodes()).thenReturn(null);
+                return mocked;
             }
         };
         config.getNetworkConfig().getJoin().getDiscoveryConfig().setDiscoveryServiceProvider(discoveryServiceProvider);

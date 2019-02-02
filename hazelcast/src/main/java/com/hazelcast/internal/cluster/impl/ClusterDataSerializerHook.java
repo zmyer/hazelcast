@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2008-2018, Hazelcast, Inc. All Rights Reserved.
+ * Copyright (c) 2008-2019, Hazelcast, Inc. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -33,7 +33,6 @@ import com.hazelcast.internal.cluster.impl.operations.HeartbeatOp;
 import com.hazelcast.internal.cluster.impl.operations.JoinMastershipClaimOp;
 import com.hazelcast.internal.cluster.impl.operations.JoinRequestOp;
 import com.hazelcast.internal.cluster.impl.operations.LockClusterStateOp;
-import com.hazelcast.internal.cluster.impl.operations.MasterConfirmationOp;
 import com.hazelcast.internal.cluster.impl.operations.MasterResponseOp;
 import com.hazelcast.internal.cluster.impl.operations.MemberAttributeChangedOp;
 import com.hazelcast.internal.cluster.impl.operations.MembersUpdateOp;
@@ -78,7 +77,7 @@ public final class ClusterDataSerializerHook implements DataSerializerHook {
     public static final int JOIN_REQUEST_OP = 14;
     public static final int LOCK_CLUSTER_STATE = 15;
     public static final int MASTER_CLAIM = 16;
-    public static final int MASTER_CONFIRM = 17;
+    // MasterConfirmationOp was assigned to 17th index. Now it is gone.
     public static final int WHOIS_MASTER = 18;
     public static final int MEMBER_ATTR_CHANGED = 19;
     // MemberRemoveOperation was assigned to 20th index. Now it is gone.
@@ -200,11 +199,6 @@ public final class ClusterDataSerializerHook implements DataSerializerHook {
         constructors[MASTER_CLAIM] = new ConstructorFunction<Integer, IdentifiedDataSerializable>() {
             public IdentifiedDataSerializable createNew(Integer arg) {
                 return new JoinMastershipClaimOp();
-            }
-        };
-        constructors[MASTER_CONFIRM] = new ConstructorFunction<Integer, IdentifiedDataSerializable>() {
-            public IdentifiedDataSerializable createNew(Integer arg) {
-                return new MasterConfirmationOp();
             }
         };
         constructors[WHOIS_MASTER] = new ConstructorFunction<Integer, IdentifiedDataSerializable>() {

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2008-2018, Hazelcast, Inc. All Rights Reserved.
+ * Copyright (c) 2008-2019, Hazelcast, Inc. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -346,8 +346,9 @@ public class ClientPagingPredicateTest extends HazelcastTestSupport {
             set = map.entrySet(pagingPredicate);
             for (Map.Entry<Integer, Employee> entry : set) {
                 Employee e = entry.getValue();
-                QueryEntry qe = new QueryEntry((InternalSerializationService) serializationService,
-                        serializationService.toData(e.getId()), e, Extractors.empty());
+                InternalSerializationService ss = (InternalSerializationService) serializationService;
+                QueryEntry qe = new QueryEntry(ss,
+                        ss.toData(e.getId()), e, Extractors.newBuilder(ss).build());
                 assertTrue(predicate.apply(qe));
                 results.add(e);
             }
@@ -365,9 +366,7 @@ public class ClientPagingPredicateTest extends HazelcastTestSupport {
         final int START_ID_FOR_QUERY = 0;
         final int FINISH_ID_FOR_QUERY = 50;
         final int queriedElementCount = FINISH_ID_FOR_QUERY - START_ID_FOR_QUERY + 1;
-        final int expectedPageCount =
-                (queriedElementCount / PAGE_SIZE) +
-                        (queriedElementCount % PAGE_SIZE == 0 ? 0 : 1);
+        final int expectedPageCount = (queriedElementCount / PAGE_SIZE) + (queriedElementCount % PAGE_SIZE == 0 ? 0 : 1);
 
         for (int i = 0; i < 1000; i++) {
             map.put(i, new Employee(i));
@@ -381,12 +380,12 @@ public class ClientPagingPredicateTest extends HazelcastTestSupport {
         Collection<Employee> values;
         int passedPageCount = 0;
 
-        for (values = map.values(predicate); !values.isEmpty() &&
-                passedPageCount <= expectedPageCount; // To prevent from infinite loop
-             values = map.values(predicate)) {
+        do {
             predicate.nextPage();
             passedPageCount++;
-        }
+            values = map.values(predicate);
+            // to prevent infinite loop
+        } while (!values.isEmpty() && passedPageCount <= expectedPageCount);
 
         assertEquals(expectedPageCount, passedPageCount);
     }
@@ -410,8 +409,7 @@ public class ClientPagingPredicateTest extends HazelcastTestSupport {
         PagingPredicate<Integer, Employee> predicate = new PagingPredicate<Integer, Employee>(pred, PAGE_SIZE);
         Collection<BaseEmployee> values;
 
-        for (values = map.values(predicate); !values.isEmpty() &&
-                values != null;
+        for (values = map.values(predicate); !values.isEmpty() && values != null;
              values = map.values(predicate)) {
             predicate.nextPage();
         }
@@ -420,10 +418,20 @@ public class ClientPagingPredicateTest extends HazelcastTestSupport {
     @Test
     public void testLargePageSizeIsNotCausingIndexOutBoundsExceptions() {
         final int[] pageSizesToCheck = new int[]{
-                Integer.MAX_VALUE / 2, Integer.MAX_VALUE - 1000, Integer.MAX_VALUE - 1, Integer.MAX_VALUE};
+                Integer.MAX_VALUE / 2,
+                Integer.MAX_VALUE - 1000,
+                Integer.MAX_VALUE - 1,
+                Integer.MAX_VALUE,
+        };
 
-        final int[] pagesToCheck = {1, 1000,
-                                    Integer.MAX_VALUE / 2, Integer.MAX_VALUE - 1000, Integer.MAX_VALUE - 1, Integer.MAX_VALUE};
+        final int[] pagesToCheck = new int[]{
+                1,
+                1000,
+                Integer.MAX_VALUE / 2,
+                Integer.MAX_VALUE - 1000,
+                Integer.MAX_VALUE - 1,
+                Integer.MAX_VALUE,
+        };
 
         for (int pageSize : pageSizesToCheck) {
             final PagingPredicate<Integer, Integer> predicate = new PagingPredicate<Integer, Integer>(pageSize);
@@ -539,13 +547,13 @@ public class ClientPagingPredicateTest extends HazelcastTestSupport {
 
         @Override
         public String toString() {
-            return "Employee{" +
-                    "id=" + id +
-                    ", name='" + name + '\'' +
-                    ", age=" + age +
-                    ", active=" + active +
-                    ", salary=" + salary +
-                    '}';
+            return "Employee{"
+                    + "id=" + id
+                    + ", name='" + name + '\''
+                    + ", age=" + age
+                    + ", active=" + active
+                    + ", salary=" + salary
+                    + '}';
         }
 
     }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2008-2018, Hazelcast, Inc. All Rights Reserved.
+ * Copyright (c) 2008-2019, Hazelcast, Inc. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -116,7 +116,7 @@ public final class ClientQueueProxy<E> extends PartitionSpecificClientProxy impl
         }
 
         @Override
-        public void handle(Data dataItem, String uuid, int eventType) {
+        public void handleItemEventV10(Data dataItem, String uuid, int eventType) {
             Member member = getContext().getClusterService().getMember(uuid);
             ItemEvent<E> itemEvent = new DataAwareItemEvent(name, ItemEventType.getByType(eventType),
                     dataItem, member, getSerializationService());

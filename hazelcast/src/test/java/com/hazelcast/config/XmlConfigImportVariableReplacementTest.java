@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2008-2018, Hazelcast, Inc. All Rights Reserved.
+ * Copyright (c) 2008-2019, Hazelcast, Inc. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -415,7 +415,7 @@ public class XmlConfigImportVariableReplacementTest {
                 + "    </group>\n"
                 + HAZELCAST_END_TAG;
         GroupConfig groupConfig = buildConfig(xml, System.getProperties()).getGroupConfig();
-        assertEquals(System.getProperty("java.version")+ " dev", groupConfig.getName());
+        assertEquals(System.getProperty("java.version") + " dev", groupConfig.getName());
         assertEquals("My very secret secret", groupConfig.getPassword());
     }
 
@@ -555,7 +555,7 @@ public class XmlConfigImportVariableReplacementTest {
         public void init(Properties properties) {
         }
     }
-    
+
     public static class TestReplacer extends PropertyReplacer {
         @Override
         public String getPrefix() {

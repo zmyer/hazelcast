@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2008-2018, Hazelcast, Inc. All Rights Reserved.
+ * Copyright (c) 2008-2019, Hazelcast, Inc. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -42,17 +42,6 @@ class ClientCacheInvalidationListener
     }
 
     @Override
-    public void handle(String name, Data key, String sourceUuid, UUID partitionUuid, long sequence) {
-        invalidationCount.incrementAndGet();
-    }
-
-    @Override
-    public void handle(String name, Collection<Data> keys, Collection<String> sourceUuids, Collection<UUID> partitionUuids,
-                       Collection<Long> sequences) {
-        invalidationCount.addAndGet(keys.size());
-    }
-
-    @Override
     public void beforeListenerRegister() {
     }
 
@@ -65,5 +54,26 @@ class ClientCacheInvalidationListener
         ((NearCachedClientCacheProxy) clientCache).addNearCacheInvalidationListener(invalidationListener);
 
         return invalidationListener;
+    }
+
+    @Override
+    public void handleCacheInvalidationEventV10(String name, Data key, String sourceUuid) {
+        invalidationCount.incrementAndGet();
+    }
+
+    @Override
+    public void handleCacheInvalidationEventV14(String name, Data key, String sourceUuid, UUID partitionUuid, long sequence) {
+        invalidationCount.incrementAndGet();
+    }
+
+    @Override
+    public void handleCacheBatchInvalidationEventV10(String name, Collection<Data> keys, Collection<String> sourceUuids) {
+        invalidationCount.addAndGet(keys.size());
+    }
+
+    @Override
+    public void handleCacheBatchInvalidationEventV14(String name, Collection<Data> keys, Collection<String> sourceUuids,
+                                                     Collection<UUID> partitionUuids, Collection<Long> sequences) {
+        invalidationCount.addAndGet(keys.size());
     }
 }

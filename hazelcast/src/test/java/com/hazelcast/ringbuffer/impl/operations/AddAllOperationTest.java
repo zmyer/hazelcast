@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2008-2018, Hazelcast, Inc. All Rights Reserved.
+ * Copyright (c) 2008-2019, Hazelcast, Inc. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -43,7 +43,6 @@ import static org.junit.Assert.assertTrue;
 @Category(QuickTest.class)
 public class AddAllOperationTest extends HazelcastTestSupport {
 
-    private HazelcastInstance hz;
     private NodeEngineImpl nodeEngine;
     private SerializationService serializationService;
     private Ringbuffer<Object> ringbuffer;
@@ -55,7 +54,7 @@ public class AddAllOperationTest extends HazelcastTestSupport {
 
         Config config = new Config().addRingBufferConfig(rbConfig);
 
-        hz = createHazelcastInstance(config);
+        HazelcastInstance hz = createHazelcastInstance(config);
         nodeEngine = getNodeEngineImpl(hz);
         serializationService = getSerializationService(hz);
         ringbuffer = hz.getRingbuffer(rbConfig.getName());

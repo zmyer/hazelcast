@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2008-2018, Hazelcast, Inc. All Rights Reserved.
+ * Copyright (c) 2008-2019, Hazelcast, Inc. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -51,7 +51,7 @@ public class HazelcastClientStarter {
                     = (Class<HazelcastClient>) classloader.loadClass("com.hazelcast.client.HazelcastClient");
             System.out.println(hazelcastClass + " loaded by " + hazelcastClass.getClassLoader());
             Class<?> configClass = classloader.loadClass("com.hazelcast.client.config.ClientConfig");
-            Object config = getConfig(clientConfig, classloader, configClass);
+            Object config = getConfig(classloader, configClass, clientConfig);
 
             Method newHazelcastInstanceMethod = hazelcastClass.getMethod("newHazelcastClient", configClass);
             Object delegate = newHazelcastInstanceMethod.invoke(null, config);

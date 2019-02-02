@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2008-2018, Hazelcast, Inc. All Rights Reserved.
+ * Copyright (c) 2008-2019, Hazelcast, Inc. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -83,7 +83,7 @@ public class ClientTopicProxy<E> extends PartitionSpecificClientProxy implements
         }
 
         @Override
-        public void handle(Data item, long publishTime, String uuid) {
+        public void handleTopicEventV10(Data item, long publishTime, String uuid) {
             Member member = getContext().getClusterService().getMember(uuid);
             Message message = new DataAwareMessage(name, item, publishTime, member, getSerializationService());
             listener.onMessage(message);

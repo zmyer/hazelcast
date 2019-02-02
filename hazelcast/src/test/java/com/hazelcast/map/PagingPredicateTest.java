@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2008-2018, Hazelcast, Inc. All Rights Reserved.
+ * Copyright (c) 2008-2019, Hazelcast, Inc. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -268,10 +268,20 @@ public class PagingPredicateTest extends HazelcastTestSupport {
     @Test
     public void testLargePageSizeIsNotCausingIndexOutBoundsExceptions() {
         final int[] pageSizesToCheck = new int[]{
-                Integer.MAX_VALUE / 2, Integer.MAX_VALUE - 1000, Integer.MAX_VALUE - 1, Integer.MAX_VALUE};
+                Integer.MAX_VALUE / 2,
+                Integer.MAX_VALUE - 1000,
+                Integer.MAX_VALUE - 1,
+                Integer.MAX_VALUE,
+        };
 
-        final int[] pagesToCheck = {1, 1000,
-                                    Integer.MAX_VALUE / 2, Integer.MAX_VALUE - 1000, Integer.MAX_VALUE - 1, Integer.MAX_VALUE};
+        final int[] pagesToCheck = new int[]{
+                1,
+                1000,
+                Integer.MAX_VALUE / 2,
+                Integer.MAX_VALUE - 1000,
+                Integer.MAX_VALUE - 1,
+                Integer.MAX_VALUE,
+        };
 
         for (int pageSize : pageSizesToCheck) {
             final PagingPredicate<Integer, Integer> predicate = new PagingPredicate<Integer, Integer>(pageSize);

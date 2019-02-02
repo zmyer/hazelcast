@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2008-2018, Hazelcast, Inc. All Rights Reserved.
+ * Copyright (c) 2008-2019, Hazelcast, Inc. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -31,7 +31,6 @@ import org.junit.runner.RunWith;
 import java.nio.ByteBuffer;
 
 import static org.mockito.Matchers.any;
-import static org.mockito.Matchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 
@@ -51,7 +50,7 @@ public class ClientMessageDecoderTest {
         counter = SwCounter.newSwCounter();
         connection = mock(Connection.class);
         decoder = new ClientMessageDecoder(connection, messageConsumer);
-        decoder.setNormalPacketsRead(counter);
+        //decoder.setNormalPacketsRead(counter);
     }
 
     @Test
@@ -62,11 +61,11 @@ public class ClientMessageDecoderTest {
                 .setCorrelationId(1)
                 .addFlag(ClientMessage.BEGIN_AND_END_FLAGS);
 
-        ByteBuffer bb = ByteBuffer.allocate(1000);
-        message.writeTo(bb);
-        bb.flip();
+        ByteBuffer src = ByteBuffer.allocate(1000);
+        message.writeTo(src);
 
-        decoder.onRead(bb);
+        decoder.src(src);
+        decoder.onRead();
 
         verify(messageConsumer).accept(any(ClientMessage.class));
     }

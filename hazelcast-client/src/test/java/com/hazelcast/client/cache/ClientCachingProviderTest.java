@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2008-2018, Hazelcast, Inc. All Rights Reserved.
+ * Copyright (c) 2008-2019, Hazelcast, Inc. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -18,7 +18,6 @@ package com.hazelcast.client.cache;
 
 import com.hazelcast.cache.CachingProviderTest;
 import com.hazelcast.client.HazelcastClient;
-import com.hazelcast.client.HazelcastClientManager;
 import com.hazelcast.client.cache.impl.HazelcastClientCachingProvider;
 import com.hazelcast.client.config.ClientConfig;
 import com.hazelcast.client.config.XmlClientConfigBuilder;
@@ -60,11 +59,9 @@ public class ClientCachingProviderTest extends CachingProviderTest {
         instance1 = createHazelcastInstance(INSTANCE_1_NAME);
         instance2 = createHazelcastInstance(INSTANCE_2_NAME);
         try {
-            instance3 = HazelcastClient.newHazelcastClient(
-                    new XmlClientConfigBuilder(CONFIG_CLASSPATH_LOCATION).build());
+            instance3 = HazelcastClient.newHazelcastClient(new XmlClientConfigBuilder(CONFIG_CLASSPATH_LOCATION).build());
         } catch (IOException e) {
-            throw new AssertionError("Could not construct named hazelcast client instance: " +
-                    e.getMessage());
+            throw new AssertionError("Could not construct named hazelcast client instance: " + e.getMessage());
         }
         instances.add(instance3);
         cachingProvider = createCachingProvider(instance1);
@@ -117,7 +114,7 @@ public class ClientCachingProviderTest extends CachingProviderTest {
                 iter.remove();
             }
         }
-        HazelcastClientManager.shutdownAll();
+        HazelcastClient.shutdownAll();
     }
 
 }

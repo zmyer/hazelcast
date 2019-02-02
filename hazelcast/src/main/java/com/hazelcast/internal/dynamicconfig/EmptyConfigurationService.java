@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2008-2018, Hazelcast, Inc. All Rights Reserved.
+ * Copyright (c) 2008-2019, Hazelcast, Inc. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -28,6 +28,7 @@ import com.hazelcast.config.FlakeIdGeneratorConfig;
 import com.hazelcast.config.ListConfig;
 import com.hazelcast.config.LockConfig;
 import com.hazelcast.config.MapConfig;
+import com.hazelcast.config.MerkleTreeConfig;
 import com.hazelcast.config.MultiMapConfig;
 import com.hazelcast.config.PNCounterConfig;
 import com.hazelcast.config.QueueConfig;
@@ -171,7 +172,17 @@ class EmptyConfigurationService implements ConfigurationService {
     }
 
     @Override
+    public MerkleTreeConfig findMapMerkleTreeConfig(String baseName) {
+        return null;
+    }
+
+    @Override
     public Map<String, EventJournalConfig> getMapEventJournalConfigs() {
+        return emptyMap();
+    }
+
+    @Override
+    public Map<String, MerkleTreeConfig> getMapMerkleTreeConfigs() {
         return emptyMap();
     }
 

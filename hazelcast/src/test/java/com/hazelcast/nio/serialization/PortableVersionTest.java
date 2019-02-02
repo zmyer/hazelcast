@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2008-2018, Hazelcast, Inc. All Rights Reserved.
+ * Copyright (c) 2008-2019, Hazelcast, Inc. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -51,7 +51,6 @@ public class PortableVersionTest {
             }
         });
         SerializationService ss1 = builder1.build();
-
 
         SerializationServiceBuilder builder2 = new DefaultSerializationServiceBuilder();
         builder2.setPortableVersion(6);
@@ -112,11 +111,14 @@ public class PortableVersionTest {
 
         @Override
         public boolean equals(Object o) {
-            if (this == o) return true;
-            if (o == null || getClass() != o.getClass()) return false;
+            if (this == o) {
+                return true;
+            }
+            if (o == null || getClass() != o.getClass()) {
+                return false;
+            }
 
             Child child = (Child) o;
-
             return name != null ? name.equals(child.name) : child.name == null;
         }
 
@@ -159,11 +161,14 @@ public class PortableVersionTest {
 
         @Override
         public boolean equals(Object o) {
-            if (this == o) return true;
-            if (o == null || getClass() != o.getClass()) return false;
+            if (this == o) {
+                return true;
+            }
+            if (o == null || getClass() != o.getClass()) {
+                return false;
+            }
 
             Parent parent = (Parent) o;
-
             return child != null ? child.equals(parent.child) : parent.child == null;
         }
 
@@ -172,6 +177,4 @@ public class PortableVersionTest {
             return child != null ? child.hashCode() : 0;
         }
     }
-
-
 }

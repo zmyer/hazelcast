@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2008-2018, Hazelcast, Inc. All Rights Reserved.
+ * Copyright (c) 2008-2019, Hazelcast, Inc. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -29,6 +29,7 @@ import com.hazelcast.logging.ILogger;
 import com.hazelcast.nio.Address;
 import com.hazelcast.nio.ObjectDataInput;
 import com.hazelcast.nio.ObjectDataOutput;
+import com.hazelcast.nio.serialization.impl.Versioned;
 import com.hazelcast.spi.CallStatus;
 import com.hazelcast.spi.ExceptionAction;
 import com.hazelcast.spi.NodeEngine;
@@ -51,7 +52,7 @@ import java.util.concurrent.atomic.AtomicInteger;
  * {@link BeforePromotionOperation}s for every promoted partition. After all operations return it will reschedule itself
  * and finalize the promotions by sending {@link FinalizePromotionOperation} for every promotion.
  */
-public class PromotionCommitOperation extends AbstractPartitionOperation implements MigrationCycleOperation {
+public class PromotionCommitOperation extends AbstractPartitionOperation implements MigrationCycleOperation, Versioned {
 
     private PartitionRuntimeState partitionState;
 
@@ -158,7 +159,7 @@ public class PromotionCommitOperation extends AbstractPartitionOperation impleme
         InternalPartitionServiceImpl partitionService = getService();
         OperationService operationService = nodeEngine.getOperationService();
 
-        partitionState.setEndpoint(getCallerAddress());
+        partitionState.setMaster(getCallerAddress());
         success = partitionService.processPartitionRuntimeState(partitionState);
 
         ILogger logger = getLogger();

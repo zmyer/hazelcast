@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2008-2018, Hazelcast, Inc. All Rights Reserved.
+ * Copyright (c) 2008-2019, Hazelcast, Inc. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -21,6 +21,7 @@ import com.hazelcast.core.HazelcastException;
 import com.hazelcast.core.HazelcastInstance;
 import com.hazelcast.instance.MemberImpl;
 import com.hazelcast.instance.Node;
+import com.hazelcast.instance.NodeExtension;
 import com.hazelcast.internal.cluster.ClusterService;
 import com.hazelcast.internal.diagnostics.Diagnostics;
 import com.hazelcast.internal.dynamicconfig.ClusterWideConfigurationService;
@@ -77,6 +78,7 @@ import com.hazelcast.util.function.Consumer;
 import com.hazelcast.version.MemberVersion;
 import com.hazelcast.wan.WanReplicationService;
 
+import javax.annotation.Nonnull;
 import java.util.Collection;
 import java.util.LinkedList;
 
@@ -95,7 +97,7 @@ import static java.lang.System.currentTimeMillis;
  * But the crucial thing is that we don't want to leak concrete dependencies to the outside. For example
  * we don't leak {@link com.hazelcast.spi.impl.operationservice.impl.OperationServiceImpl} to the outside.
  */
-@SuppressWarnings("checkstyle:classdataabstractioncoupling")
+@SuppressWarnings({"checkstyle:classdataabstractioncoupling", "checkstyle:classfanoutcomplexity", "checkstyle:methodcount"})
 public class NodeEngineImpl implements NodeEngine {
 
     private static final String JET_SERVICE_NAME = "hz:impl:jetService";
@@ -149,7 +151,7 @@ public class NodeEngineImpl implements NodeEngine {
                     operationService.getInvocationMonitor(),
                     eventService,
                     new ConnectionManagerPacketConsumer(),
-                    new JetPacketConsumer());
+                    getJetPacketConsumer(node.getNodeExtension()));
             this.quorumService = new QuorumServiceImpl(this);
             this.diagnostics = newDiagnostics();
             this.splitBrainMergePolicyProvider = new SplitBrainMergePolicyProvider(this);
@@ -202,7 +204,7 @@ public class NodeEngineImpl implements NodeEngine {
         if (node.getProperties().getBoolean(METRICS_DISTRIBUTED_DATASTRUCTURES)) {
             new StatisticsAwareMetricsSet(serviceManager, this).register(metricsRegistry);
         }
-
+        metricsRegistry.scanAndRegister(node.getNodeExtension().getMemoryStats(), "memory");
         metricsRegistry.collectMetrics(operationService, proxyService, eventService, operationParker);
 
         serviceManager.start();
@@ -411,7 +413,7 @@ public class NodeEngineImpl implements NodeEngine {
     }
 
     public void onPartitionMigrate(MigrationInfo migrationInfo) {
-        operationParker.onPartitionMigrate(getThisAddress(), migrationInfo);
+        operationParker.onPartitionMigrate(migrationInfo);
     }
 
     /**
@@ -505,28 +507,27 @@ public class NodeEngineImpl implements NodeEngine {
     private class ConnectionManagerPacketConsumer implements Consumer<Packet> {
 
         @Override
-        public void accept(Packet packet)  {
+        public void accept(Packet packet) {
             // ConnectionManager is only available after the NodeEngineImpl is available
             Consumer<Packet> packetConsumer = (Consumer<Packet>) node.getConnectionManager();
             packetConsumer.accept(packet);
         }
     }
 
-    private class JetPacketConsumer implements Consumer<Packet> {
+    public interface JetPacketConsumer extends Consumer<Packet> {
+    }
 
-        private volatile Consumer<Packet> packetConsumer;
-
-        @Override
-        public void accept(Packet packet)  {
-            // currently service registration is done after the creation of the packet dispatcher,
-            // hence we need to lazily initialize the JetPacketConsumer
-            if (packetConsumer == null) {
-                packetConsumer = serviceManager.getService(JET_SERVICE_NAME);
-                if (packetConsumer == null) {
+    @Nonnull
+    private Consumer<Packet> getJetPacketConsumer(NodeExtension nodeExtension) {
+        if (nodeExtension instanceof JetPacketConsumer) {
+            return (JetPacketConsumer) nodeExtension;
+        } else {
+            return new JetPacketConsumer() {
+                @Override
+                public void accept(Packet packet) {
                     throw new UnsupportedOperationException("Jet is not registered on this node");
                 }
-            }
-            packetConsumer.accept(packet);
+            };
         }
     }
 }

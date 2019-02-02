@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2008-2018, Hazelcast, Inc. All Rights Reserved.
+ * Copyright (c) 2008-2019, Hazelcast, Inc. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,7 +16,6 @@
 
 package com.hazelcast.internal.management.request;
 
-import com.eclipsesource.json.JsonObject;
 import com.hazelcast.cache.CacheEntryView;
 import com.hazelcast.cache.ICache;
 import com.hazelcast.cache.impl.CacheDataSerializerHook;
@@ -26,15 +25,19 @@ import com.hazelcast.core.ReadOnly;
 import com.hazelcast.instance.HazelcastInstanceCacheManager;
 import com.hazelcast.internal.management.ManagementCenterService;
 import com.hazelcast.internal.serialization.InternalSerializationService;
+import com.hazelcast.internal.json.JsonObject;
 import com.hazelcast.nio.ObjectDataInput;
 import com.hazelcast.nio.ObjectDataOutput;
 import com.hazelcast.nio.serialization.IdentifiedDataSerializable;
+import com.hazelcast.nio.serialization.impl.Versioned;
 
+import javax.cache.expiry.ExpiryPolicy;
 import javax.cache.processor.EntryProcessor;
 import javax.cache.processor.EntryProcessorException;
 import javax.cache.processor.MutableEntry;
 import java.io.IOException;
 
+import static com.hazelcast.cache.impl.record.AbstractCacheRecord.EXPIRY_POLICY_VERSION;
 import static com.hazelcast.util.JsonUtil.getString;
 
 /**
@@ -126,12 +129,13 @@ public class GetCacheEntryRequest implements ConsoleRequest {
         }
     }
 
-    public static class CacheBrowserEntryView implements CacheEntryView<Object, Object>, IdentifiedDataSerializable {
+    public static class CacheBrowserEntryView implements CacheEntryView<Object, Object>, IdentifiedDataSerializable, Versioned {
         private Object value;
         private long expirationTime;
         private long creationTime;
         private long lastAccessTime;
         private long accessHit;
+        private ExpiryPolicy expiryPolicy;
 
         public CacheBrowserEntryView() {
         }
@@ -139,11 +143,12 @@ public class GetCacheEntryRequest implements ConsoleRequest {
         CacheBrowserEntryView(CacheEntryProcessorEntry entry) {
             this.value = entry.getValue();
 
-            CacheRecord record = entry.getRecord();
+            CacheRecord<Object, ExpiryPolicy> record = entry.getRecord();
             this.expirationTime = record.getExpirationTime();
             this.creationTime = record.getCreationTime();
             this.lastAccessTime = record.getLastAccessTime();
             this.accessHit = record.getAccessHit();
+            this.expiryPolicy = record.getExpiryPolicy();
         }
 
         @Override
@@ -177,6 +182,11 @@ public class GetCacheEntryRequest implements ConsoleRequest {
         }
 
         @Override
+        public ExpiryPolicy getExpiryPolicy() {
+            return expiryPolicy;
+        }
+
+        @Override
         public int getFactoryId() {
             return CacheDataSerializerHook.F_ID;
         }
@@ -193,6 +203,9 @@ public class GetCacheEntryRequest implements ConsoleRequest {
             out.writeLong(creationTime);
             out.writeLong(lastAccessTime);
             out.writeLong(accessHit);
+            if (out.getVersion().isGreaterOrEqual(EXPIRY_POLICY_VERSION)) {
+                out.writeObject(expiryPolicy);
+            }
         }
 
         @Override
@@ -202,6 +215,9 @@ public class GetCacheEntryRequest implements ConsoleRequest {
             creationTime = in.readLong();
             lastAccessTime = in.readLong();
             accessHit = in.readLong();
+            if (in.getVersion().isGreaterOrEqual(EXPIRY_POLICY_VERSION)) {
+                expiryPolicy = in.readObject();
+            }
         }
     }
 }

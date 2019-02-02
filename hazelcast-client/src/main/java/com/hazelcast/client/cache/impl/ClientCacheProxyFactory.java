@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2008-2018, Hazelcast, Inc. All Rights Reserved.
+ * Copyright (c) 2008-2019, Hazelcast, Inc. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -18,7 +18,7 @@ package com.hazelcast.client.cache.impl;
 
 import com.hazelcast.cache.CacheNotExistsException;
 import com.hazelcast.cache.HazelcastCacheManager;
-import com.hazelcast.client.impl.HazelcastClientInstanceImpl;
+import com.hazelcast.client.impl.clientside.HazelcastClientInstanceImpl;
 import com.hazelcast.client.spi.ClientContext;
 import com.hazelcast.client.spi.ClientProxy;
 import com.hazelcast.client.spi.impl.ClientProxyFactoryWithContext;
@@ -51,6 +51,12 @@ public class ClientCacheProxyFactory extends ClientProxyFactoryWithContext {
             return new NearCachedClientCacheProxy(cacheConfig, context);
         }
         return new ClientCacheProxy(cacheConfig, context);
+    }
+
+    public void recreateCachesOnCluster() {
+        for (CacheConfig cacheConfig : configs.values()) {
+            ClientCacheHelper.createCacheConfig(client, cacheConfig);
+        }
     }
 
     @SuppressFBWarnings("RV_RETURN_VALUE_OF_PUTIFABSENT_IGNORED")

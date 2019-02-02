@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2008-2018, Hazelcast, Inc. All Rights Reserved.
+ * Copyright (c) 2008-2019, Hazelcast, Inc. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,6 +16,7 @@
 
 package com.hazelcast.internal.networking.nio;
 
+import com.hazelcast.internal.networking.Channel;
 import com.hazelcast.internal.networking.ChannelErrorHandler;
 import com.hazelcast.logging.ILogger;
 import com.hazelcast.logging.Logger;
@@ -39,8 +40,9 @@ import java.util.concurrent.TimeUnit;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
-import static org.mockito.Matchers.any;
-import static org.mockito.Matchers.isA;
+import static org.mockito.ArgumentMatchers.isNull;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.isA;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
@@ -90,7 +92,7 @@ public abstract class NioThreadAbstractTest extends HazelcastTestSupport {
     }
 
     @Test
-    public void whenValidSelectionKey_thenHandlerCalled() throws Exception {
+    public void whenValidSelectionKey_thenHandlerCalled() {
         startThread();
 
         SelectionKey selectionKey = mock(SelectionKey.class);
@@ -110,7 +112,7 @@ public abstract class NioThreadAbstractTest extends HazelcastTestSupport {
     }
 
     @Test
-    public void whenInvalidSelectionKey_thenHandlerOnFailureCalledWithCancelledKeyException() throws Exception {
+    public void whenInvalidSelectionKey_thenHandlerOnFailureCalledWithCancelledKeyException() {
         startThread();
 
         SelectionKey selectionKey = mock(SelectionKey.class);
@@ -120,7 +122,7 @@ public abstract class NioThreadAbstractTest extends HazelcastTestSupport {
 
         assertTrueEventually(new AssertTask() {
             @Override
-            public void run() throws Exception {
+            public void run() {
                 verify(handler).onError(isA(CancelledKeyException.class));
             }
         });
@@ -140,7 +142,7 @@ public abstract class NioThreadAbstractTest extends HazelcastTestSupport {
 
         assertTrueEventually(new AssertTask() {
             @Override
-            public void run() throws Exception {
+            public void run() {
                 verify(handler).onError(isA(ExpectedRuntimeException.class));
             }
         });
@@ -164,12 +166,12 @@ public abstract class NioThreadAbstractTest extends HazelcastTestSupport {
 
         assertTrueEventually(new AssertTask() {
             @Override
-            public void run() throws Exception {
+            public void run() {
                 assertFalse(thread.isAlive());
             }
         });
 
-        verify(errorHandler).onError(any(NioChannel.class), any(OutOfMemoryError.class));
+        verify(errorHandler).onError((Channel) isNull(), any(OutOfMemoryError.class));
     }
 
     @Test
@@ -272,7 +274,7 @@ public abstract class NioThreadAbstractTest extends HazelcastTestSupport {
         }
 
         @Override
-        public int select() throws IOException {
+        public int select() {
             // not needed for the time being.
             throw new UnsupportedOperationException();
         }
@@ -284,13 +286,15 @@ public abstract class NioThreadAbstractTest extends HazelcastTestSupport {
         }
 
         @Override
-        public void close() throws IOException {
+        public void close() {
         }
     }
 
     static class SelectorAction {
+
         final Set<SelectionKey> keys = new HashSet<SelectionKey>();
-        boolean selectThrowsIOException = false;
-        boolean selectThrowsOOME = false;
+
+        boolean selectThrowsIOException;
+        boolean selectThrowsOOME;
     }
 }

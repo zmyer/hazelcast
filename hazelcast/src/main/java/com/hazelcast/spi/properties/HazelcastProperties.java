@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2008-2018, Hazelcast, Inc. All Rights Reserved.
+ * Copyright (c) 2008-2019, Hazelcast, Inc. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -213,6 +213,33 @@ public class HazelcastProperties {
         TimeUnit timeUnit = property.getTimeUnit();
         return timeUnit.toMillis(getLong(property));
     }
+
+    /**
+     * Returns the configured value of a {@link HazelcastProperty} converted to milliseconds if
+     * it is positive, otherwise returns its default value.
+     *
+     * @param property the {@link HazelcastProperty} to get the value from
+     * @return the value in milliseconds if it is positive, otherwise its default value.
+     * @throws IllegalArgumentException if the {@link HazelcastProperty} has no {@link TimeUnit}
+     */
+    public long getPositiveMillisOrDefault(HazelcastProperty property) {
+        return getPositiveMillisOrDefault(property, Long.parseLong(property.getDefaultValue()));
+    }
+
+    /**
+     * Returns the configured value of a {@link HazelcastProperty} converted to milliseconds if
+     * it is positive, otherwise returns the passed default value.
+     *
+     * @param property the {@link HazelcastProperty} to get the value from
+     * @param defaultValue the default value to return if property has non positive value.
+     * @return the value in milliseconds if it is positive, otherwise the passed default value.
+     * @throws IllegalArgumentException if the {@link HazelcastProperty} has no {@link TimeUnit}
+     */
+    public long getPositiveMillisOrDefault(HazelcastProperty property, long defaultValue) {
+        long millis = getMillis(property);
+        return millis > 0 ? millis : defaultValue;
+    }
+
 
     /**
      * Returns the configured value of a {@link HazelcastProperty} converted to seconds.

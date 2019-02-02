@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2008-2018, Hazelcast, Inc. All Rights Reserved.
+ * Copyright (c) 2008-2019, Hazelcast, Inc. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,6 +16,7 @@
 
 package com.hazelcast.map.impl.querycache.subscriber;
 
+import com.hazelcast.config.QueryCacheConfig;
 import com.hazelcast.core.IMap;
 import com.hazelcast.map.impl.querycache.QueryCacheContext;
 import com.hazelcast.util.ConcurrencyUtil;
@@ -45,8 +46,9 @@ public class QueryCacheFactory {
             String cacheName = request.getCacheName();
             IMap delegate = request.getMap();
             QueryCacheContext context = request.getContext();
+            QueryCacheConfig queryCacheConfig = request.getQueryCacheConfig();
 
-            return new DefaultQueryCache(cacheId, cacheName, delegate, context);
+            return new DefaultQueryCache(cacheId, cacheName, queryCacheConfig, delegate, context);
         }
     }
 

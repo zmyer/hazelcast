@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2008-2018, Hazelcast, Inc. All Rights Reserved.
+ * Copyright (c) 2008-2019, Hazelcast, Inc. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -238,7 +238,8 @@ public class CacheDestroyTest extends CacheTestSupport {
                 .registerListener(ICacheService.SERVICE_NAME, name, cacheEventListener);
     }
 
-    public static abstract class CacheTask implements Runnable {
+    public abstract static class CacheTask implements Runnable {
+
         protected final AtomicBoolean running = new AtomicBoolean(true);
         protected final String cacheName;
         protected final CacheManager cacheManager;

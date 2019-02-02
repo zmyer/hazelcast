@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2008-2018, Hazelcast, Inc. All Rights Reserved.
+ * Copyright (c) 2008-2019, Hazelcast, Inc. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -23,6 +23,7 @@ import com.hazelcast.collection.impl.queue.QueueService;
 import com.hazelcast.config.CacheConfig;
 import com.hazelcast.config.Config;
 import com.hazelcast.config.GroupConfig;
+import com.hazelcast.config.ManagementCenterConfig;
 import com.hazelcast.config.SSLConfig;
 import com.hazelcast.config.SocketInterceptorConfig;
 import com.hazelcast.core.Client;
@@ -50,7 +51,6 @@ import com.hazelcast.monitor.LocalQueueStats;
 import com.hazelcast.monitor.LocalReplicatedMapStats;
 import com.hazelcast.monitor.LocalTopicStats;
 import com.hazelcast.monitor.LocalWanStats;
-import com.hazelcast.monitor.TimedMemberState;
 import com.hazelcast.monitor.WanSyncState;
 import com.hazelcast.monitor.impl.HotRestartStateImpl;
 import com.hazelcast.monitor.impl.LocalCacheStatsImpl;
@@ -77,11 +77,10 @@ import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
 
-import static com.hazelcast.spi.properties.GroupProperty.MC_MAX_VISIBLE_INSTANCE_COUNT;
 import static com.hazelcast.util.SetUtil.createHashSet;
 
 /**
- * A Factory for creating {@link com.hazelcast.monitor.TimedMemberState} instances.
+ * A Factory for creating {@link TimedMemberState} instances.
  */
 public class TimedMemberStateFactory {
 
@@ -89,7 +88,6 @@ public class TimedMemberStateFactory {
     private static final int PARTITION_SAFETY_CHECK_PERIOD = 60;
 
     protected final HazelcastInstanceImpl instance;
-    private final int maxVisibleInstanceCount;
     private final boolean cacheServiceEnabled;
 
     private volatile boolean memberStateSafe = true;
@@ -97,11 +95,10 @@ public class TimedMemberStateFactory {
     public TimedMemberStateFactory(HazelcastInstanceImpl instance) {
         this.instance = instance;
 
-        if (instance.node.getProperties().get(MC_MAX_VISIBLE_INSTANCE_COUNT.getName()) != null) {
-            instance.node.loggingService.getLogger(getClass()).warning(MC_MAX_VISIBLE_INSTANCE_COUNT.getName()
-                    + " property is deprecated and will be removed in a future release.");
+        if (instance.node.getProperties().get("hazelcast.mc.max.visible.instance.count") != null) {
+            instance.node.loggingService.getLogger(getClass())
+                    .warning("hazelcast.mc.max.visible.instance.count property is removed.");
         }
-        maxVisibleInstanceCount = instance.node.getProperties().getInteger(MC_MAX_VISIBLE_INSTANCE_COUNT);
         cacheServiceEnabled = isCacheServiceEnabled();
     }
 
@@ -145,6 +142,9 @@ public class TimedMemberStateFactory {
 
         SocketInterceptorConfig interceptorConfig = instance.getConfig().getNetworkConfig().getSocketInterceptorConfig();
         timedMemberState.setSocketInterceptorEnabled(interceptorConfig != null && interceptorConfig.isEnabled());
+
+        ManagementCenterConfig managementCenterConfig = instance.node.getConfig().getManagementCenterConfig();
+        timedMemberState.setScriptingEnabled(managementCenterConfig.isScriptingEnabled());
 
         return timedMemberState;
     }
@@ -201,7 +201,9 @@ public class TimedMemberStateFactory {
     private void createHotRestartState(MemberStateImpl memberState) {
         final HotRestartService hotRestartService = instance.node.getNodeExtension().getHotRestartService();
         boolean hotBackupEnabled = hotRestartService.isHotBackupEnabled();
-        final HotRestartStateImpl state = new HotRestartStateImpl(hotRestartService.getBackupTaskStatus(), hotBackupEnabled);
+        String hotBackupDirectory = hotRestartService.getBackupDirectory();
+        final HotRestartStateImpl state = new HotRestartStateImpl(hotRestartService.getBackupTaskStatus(),
+                hotBackupEnabled, hotBackupDirectory);
 
         memberState.setHotRestartState(state);
     }
@@ -233,29 +235,27 @@ public class TimedMemberStateFactory {
         int count = 0;
         Config config = instance.getConfig();
         for (StatisticsAwareService service : services) {
-            if (count < maxVisibleInstanceCount) {
-                if (service instanceof MapService) {
-                    count = handleMap(memberState, count, config, ((MapService) service).getStats());
-                } else if (service instanceof MultiMapService) {
-                    count = handleMultimap(memberState, count, config, ((MultiMapService) service).getStats());
-                } else if (service instanceof QueueService) {
-                    count = handleQueue(memberState, count, config, ((QueueService) service).getStats());
-                } else if (service instanceof TopicService) {
-                    count = handleTopic(memberState, count, config, ((TopicService) service).getStats());
-                } else if (service instanceof ReliableTopicService) {
-                    count = handleReliableTopic(memberState, count, config,
-                            ((ReliableTopicService) service).getStats());
-                } else if (service instanceof DistributedExecutorService) {
-                    count = handleExecutorService(memberState, count, config,
-                            ((DistributedExecutorService) service).getStats());
-                } else if (service instanceof ReplicatedMapService) {
-                    count = handleReplicatedMap(memberState, count, config, ((ReplicatedMapService) service).getStats());
-                } else if (service instanceof PNCounterService) {
-                    count = handlePNCounter(memberState, count, config, ((PNCounterService) service).getStats());
-                } else if (service instanceof FlakeIdGeneratorService) {
-                    count = handleFlakeIdGenerator(memberState, count, config,
-                            ((FlakeIdGeneratorService) service).getStats());
-                }
+            if (service instanceof MapService) {
+                count = handleMap(memberState, count, config, ((MapService) service).getStats());
+            } else if (service instanceof MultiMapService) {
+                count = handleMultimap(memberState, count, config, ((MultiMapService) service).getStats());
+            } else if (service instanceof QueueService) {
+                count = handleQueue(memberState, count, config, ((QueueService) service).getStats());
+            } else if (service instanceof TopicService) {
+                count = handleTopic(memberState, count, config, ((TopicService) service).getStats());
+            } else if (service instanceof ReliableTopicService) {
+                count = handleReliableTopic(memberState, count, config,
+                        ((ReliableTopicService) service).getStats());
+            } else if (service instanceof DistributedExecutorService) {
+                count = handleExecutorService(memberState, count, config,
+                        ((DistributedExecutorService) service).getStats());
+            } else if (service instanceof ReplicatedMapService) {
+                count = handleReplicatedMap(memberState, count, config, ((ReplicatedMapService) service).getStats());
+            } else if (service instanceof PNCounterService) {
+                count = handlePNCounter(memberState, count, config, ((PNCounterService) service).getStats());
+            } else if (service instanceof FlakeIdGeneratorService) {
+                count = handleFlakeIdGenerator(memberState, count, config,
+                        ((FlakeIdGeneratorService) service).getStats());
             }
         }
 
@@ -268,7 +268,7 @@ public class TimedMemberStateFactory {
         if (cacheServiceEnabled) {
             ICacheService cacheService = getCacheService();
             for (CacheConfig cacheConfig : cacheService.getCacheConfigs()) {
-                if (cacheConfig.isStatisticsEnabled() && count < maxVisibleInstanceCount) {
+                if (cacheConfig.isStatisticsEnabled()) {
                     CacheStatistics statistics = cacheService.getStatistics(cacheConfig.getNameWithPrefix());
                     //Statistics can be null for a short period of time since config is created at first then stats map
                     //is filled.git
@@ -284,9 +284,7 @@ public class TimedMemberStateFactory {
             Map<String, LocalFlakeIdGeneratorStats> flakeIdstats) {
         for (Map.Entry<String, LocalFlakeIdGeneratorStats> entry : flakeIdstats.entrySet()) {
             String name = entry.getKey();
-            if (count >= maxVisibleInstanceCount) {
-                break;
-            } else if (config.findFlakeIdGeneratorConfig(name).isStatisticsEnabled()) {
+            if (config.findFlakeIdGeneratorConfig(name).isStatisticsEnabled()) {
                 LocalFlakeIdGeneratorStats stats = entry.getValue();
                 memberState.putLocalFlakeIdStats(name, stats);
                 ++count;
@@ -300,9 +298,7 @@ public class TimedMemberStateFactory {
 
         for (Map.Entry<String, LocalExecutorStats> entry : executorServices.entrySet()) {
             String name = entry.getKey();
-            if (count >= maxVisibleInstanceCount) {
-                break;
-            } else if (config.findExecutorConfig(name).isStatisticsEnabled()) {
+            if (config.findExecutorConfig(name).isStatisticsEnabled()) {
                 LocalExecutorStats stats = entry.getValue();
                 memberState.putLocalExecutorStats(name, stats);
                 ++count;
@@ -314,9 +310,7 @@ public class TimedMemberStateFactory {
     private int handleMultimap(MemberStateImpl memberState, int count, Config config, Map<String, LocalMultiMapStats> multiMaps) {
         for (Map.Entry<String, LocalMultiMapStats> entry : multiMaps.entrySet()) {
             String name = entry.getKey();
-            if (count >= maxVisibleInstanceCount) {
-                break;
-            } else if (config.findMultiMapConfig(name).isStatisticsEnabled()) {
+            if (config.findMultiMapConfig(name).isStatisticsEnabled()) {
                 LocalMultiMapStats stats = entry.getValue();
                 memberState.putLocalMultiMapStats(name, stats);
                 ++count;
@@ -329,9 +323,7 @@ public class TimedMemberStateFactory {
             config, Map<String, LocalReplicatedMapStats> replicatedMaps) {
         for (Map.Entry<String, LocalReplicatedMapStats> entry : replicatedMaps.entrySet()) {
             String name = entry.getKey();
-            if (count >= maxVisibleInstanceCount) {
-                break;
-            } else if (config.findReplicatedMapConfig(name).isStatisticsEnabled()) {
+            if (config.findReplicatedMapConfig(name).isStatisticsEnabled()) {
                 LocalReplicatedMapStats stats = entry.getValue();
                 memberState.putLocalReplicatedMapStats(name, stats);
                 ++count;
@@ -344,9 +336,7 @@ public class TimedMemberStateFactory {
                                 Map<String, LocalPNCounterStats> counters) {
         for (Map.Entry<String, LocalPNCounterStats> entry : counters.entrySet()) {
             String name = entry.getKey();
-            if (count >= maxVisibleInstanceCount) {
-                break;
-            } else if (config.findPNCounterConfig(name).isStatisticsEnabled()) {
+            if (config.findPNCounterConfig(name).isStatisticsEnabled()) {
                 LocalPNCounterStats stats = entry.getValue();
                 memberState.putLocalPNCounterStats(name, stats);
                 ++count;
@@ -358,9 +348,7 @@ public class TimedMemberStateFactory {
     private int handleReliableTopic(MemberStateImpl memberState, int count, Config config, Map<String, LocalTopicStats> topics) {
         for (Map.Entry<String, LocalTopicStats> entry : topics.entrySet()) {
             String name = entry.getKey();
-            if (count >= maxVisibleInstanceCount) {
-                break;
-            } else if (config.findReliableTopicConfig(name).isStatisticsEnabled()) {
+            if (config.findReliableTopicConfig(name).isStatisticsEnabled()) {
                 LocalTopicStats stats = entry.getValue();
                 memberState.putLocalReliableTopicStats(name, stats);
                 ++count;
@@ -372,9 +360,7 @@ public class TimedMemberStateFactory {
     private int handleTopic(MemberStateImpl memberState, int count, Config config, Map<String, LocalTopicStats> topics) {
         for (Map.Entry<String, LocalTopicStats> entry : topics.entrySet()) {
             String name = entry.getKey();
-            if (count >= maxVisibleInstanceCount) {
-                break;
-            } else if (config.findTopicConfig(name).isStatisticsEnabled()) {
+            if (config.findTopicConfig(name).isStatisticsEnabled()) {
                 LocalTopicStats stats = entry.getValue();
                 memberState.putLocalTopicStats(name, stats);
                 ++count;
@@ -386,9 +372,7 @@ public class TimedMemberStateFactory {
     private int handleQueue(MemberStateImpl memberState, int count, Config config, Map<String, LocalQueueStats> queues) {
         for (Map.Entry<String, LocalQueueStats> entry : queues.entrySet()) {
             String name = entry.getKey();
-            if (count >= maxVisibleInstanceCount) {
-                break;
-            } else if (config.findQueueConfig(name).isStatisticsEnabled()) {
+            if (config.findQueueConfig(name).isStatisticsEnabled()) {
                 LocalQueueStats stats = entry.getValue();
                 memberState.putLocalQueueStats(name, stats);
                 ++count;
@@ -400,9 +384,7 @@ public class TimedMemberStateFactory {
     private int handleMap(MemberStateImpl memberState, int count, Config config, Map<String, LocalMapStats> maps) {
         for (Map.Entry<String, LocalMapStats> entry : maps.entrySet()) {
             String name = entry.getKey();
-            if (count >= maxVisibleInstanceCount) {
-                break;
-            } else if (config.findMapConfig(name).isStatisticsEnabled()) {
+            if (config.findMapConfig(name).isStatisticsEnabled()) {
                 LocalMapStats stats = entry.getValue();
                 memberState.putLocalMapStats(name, stats);
                 ++count;

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2008-2018, Hazelcast, Inc. All Rights Reserved.
+ * Copyright (c) 2008-2019, Hazelcast, Inc. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -64,6 +64,8 @@ public interface DataStructureAdapter<K, V> {
 
     ICompletableFuture<Boolean> putIfAbsentAsync(K key, V value);
 
+    void setTtl(K key, long duration, TimeUnit timeUnit);
+
     V replace(K key, V newValue);
 
     boolean replace(K key, V oldValue, V newValue);
@@ -117,6 +119,10 @@ public interface DataStructureAdapter<K, V> {
 
     void destroy();
 
+    void setExpiryPolicy(Set<K> keys, ExpiryPolicy expiryPolicy);
+
+    boolean setExpiryPolicy(K key, ExpiryPolicy expiryPolicy);
+
     LocalMapStats getLocalMapStats();
 
     /**
@@ -163,7 +169,10 @@ public interface DataStructureAdapter<K, V> {
         CLEAR("clear"),
         CLOSE("close"),
         DESTROY("destroy"),
-        GET_LOCAL_MAP_STATS("getLocalMapStats");
+        GET_LOCAL_MAP_STATS("getLocalMapStats"),
+        SET_TTL("setTtl", Object.class, long.class, TimeUnit.class),
+        SET_EXPIRY_POLICY_MULTI_KEY("setExpiryPolicy", Set.class, ExpiryPolicy.class),
+        SET_EXPIRY_POLICY("setExpiryPolicy", Object.class, ExpiryPolicy.class);
 
         private final String methodName;
         private final Class<?>[] parameterTypes;

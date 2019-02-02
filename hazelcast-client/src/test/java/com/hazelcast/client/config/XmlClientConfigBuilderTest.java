@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2008-2018, Hazelcast, Inc. All Rights Reserved.
+ * Copyright (c) 2008-2019, Hazelcast, Inc. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,6 +16,10 @@
 
 package com.hazelcast.client.config;
 
+import com.hazelcast.config.AwsConfig;
+import com.hazelcast.config.CredentialsFactoryConfig;
+import com.hazelcast.config.DiscoveryConfig;
+import com.hazelcast.config.DiscoveryStrategyConfig;
 import com.hazelcast.config.EntryListenerConfig;
 import com.hazelcast.config.EvictionConfig;
 import com.hazelcast.config.EvictionPolicy;
@@ -37,6 +41,7 @@ import com.hazelcast.internal.cluster.Versions;
 import com.hazelcast.test.HazelcastSerialClassRunner;
 import com.hazelcast.test.HazelcastTestSupport;
 import com.hazelcast.test.annotation.QuickTest;
+import com.hazelcast.topic.TopicOverloadPolicy;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -176,6 +181,19 @@ public class XmlClientConfigBuilderTest extends HazelcastTestSupport {
     }
 
     @Test
+    public void testAttributes() {
+        Map<String, String> attributes = fullClientConfig.getAttributes();
+        assertEquals(2, attributes.size());
+        assertEquals("bar", attributes.get("foo"));
+        assertEquals("admin", attributes.get("role"));
+    }
+
+    @Test
+    public void testInstanceName() {
+        assertEquals("CLIENT_NAME", fullClientConfig.getInstanceName());
+    }
+
+    @Test
     public void testNetworkConfig() {
         final ClientNetworkConfig networkConfig = fullClientConfig.getNetworkConfig();
         assertEquals(2, networkConfig.getConnectionAttemptLimit());
@@ -196,17 +214,19 @@ public class XmlClientConfigBuilderTest extends HazelcastTestSupport {
         assertEquals("com.hazelcast.examples.MySocketInterceptor", socketInterceptorConfig.getClassName());
         assertEquals("bar", socketInterceptorConfig.getProperty("foo"));
 
-        final ClientAwsConfig awsConfig = networkConfig.getAwsConfig();
+        AwsConfig awsConfig = networkConfig.getAwsConfig();
         assertTrue(awsConfig.isEnabled());
-        assertTrue(awsConfig.isInsideAws());
-        assertEquals("TEST_ACCESS_KEY", awsConfig.getAccessKey());
-        assertEquals("TEST_ACCESS_KEY", awsConfig.getAccessKey());
-        assertEquals("TEST_SECRET_KEY", awsConfig.getSecretKey());
-        assertEquals("us-east-1", awsConfig.getRegion());
-        assertEquals("ec2.amazonaws.com", awsConfig.getHostHeader());
-        assertEquals("type", awsConfig.getTagKey());
-        assertEquals("hz-nodes", awsConfig.getTagValue());
-        assertEquals(11, awsConfig.getConnectionTimeoutSeconds());
+        assertEquals("TEST_ACCESS_KEY", awsConfig.getProperty("access-key"));
+        assertEquals("TEST_SECRET_KEY", awsConfig.getProperty("secret-key"));
+        assertEquals("us-east-1", awsConfig.getProperty("region"));
+        assertEquals("ec2.amazonaws.com", awsConfig.getProperty("host-header"));
+        assertEquals("type", awsConfig.getProperty("tag-key"));
+        assertEquals("hz-nodes", awsConfig.getProperty("tag-value"));
+        assertEquals("11", awsConfig.getProperty("connection-timeout-seconds"));
+        assertFalse(networkConfig.getGcpConfig().isEnabled());
+        assertFalse(networkConfig.getAzureConfig().isEnabled());
+        assertFalse(networkConfig.getKubernetesConfig().isEnabled());
+        assertFalse(networkConfig.getEurekaConfig().isEnabled());
     }
 
     @Test
@@ -271,9 +291,15 @@ public class XmlClientConfigBuilderTest extends HazelcastTestSupport {
         assertNotNull(sslConfig);
         assertFalse(sslConfig.isEnabled());
 
-        assertEquals("com.hazelcast.examples.MySslFactory", sslConfig.getFactoryClassName());
-        assertEquals(1, sslConfig.getProperties().size());
-        assertEquals("TLS", sslConfig.getProperties().get("protocol"));
+        assertEquals("com.hazelcast.nio.ssl.BasicSSLContextFactory", sslConfig.getFactoryClassName());
+        assertEquals(7, sslConfig.getProperties().size());
+        assertEquals("TLS", sslConfig.getProperty("protocol"));
+        assertEquals("/opt/hazelcast-client.truststore", sslConfig.getProperty("trustStore"));
+        assertEquals("secret.123456", sslConfig.getProperty("trustStorePassword"));
+        assertEquals("JKS", sslConfig.getProperty("trustStoreType"));
+        assertEquals("/opt/hazelcast-client.keystore", sslConfig.getProperty("keyStore"));
+        assertEquals("keystorePassword123", sslConfig.getProperty("keyStorePassword"));
+        assertEquals("JKS", sslConfig.getProperty("keyStoreType"));
     }
 
     @Test
@@ -353,13 +379,68 @@ public class XmlClientConfigBuilderTest extends HazelcastTestSupport {
     }
 
     @Test
+    public void testConnectionStrategyConfig_defaults() {
+        ClientConnectionStrategyConfig connectionStrategyConfig = defaultClientConfig.getConnectionStrategyConfig();
+        assertFalse(connectionStrategyConfig.isAsyncStart());
+        assertEquals(ClientConnectionStrategyConfig.ReconnectMode.ON, connectionStrategyConfig.getReconnectMode());
+    }
+
+    @Test
+    public void testExponentialConnectionRetryConfig() {
+        ClientConnectionStrategyConfig connectionStrategyConfig = fullClientConfig.getConnectionStrategyConfig();
+        ConnectionRetryConfig exponentialRetryConfig = connectionStrategyConfig.getConnectionRetryConfig();
+        assertTrue(exponentialRetryConfig.isEnabled());
+        assertTrue(exponentialRetryConfig.isFailOnMaxBackoff());
+        assertEquals(0.5, exponentialRetryConfig.getJitter(), 0);
+        assertEquals(2000, exponentialRetryConfig.getInitialBackoffMillis());
+        assertEquals(60000, exponentialRetryConfig.getMaxBackoffMillis());
+        assertEquals(3, exponentialRetryConfig.getMultiplier(), 0);
+    }
+
+    @Test
+    public void testExponentialConnectionRetryConfig_defaults() {
+        ClientConnectionStrategyConfig connectionStrategyConfig = defaultClientConfig.getConnectionStrategyConfig();
+        ConnectionRetryConfig exponentialRetryConfig = connectionStrategyConfig.getConnectionRetryConfig();
+        assertFalse(exponentialRetryConfig.isEnabled());
+        assertFalse(exponentialRetryConfig.isFailOnMaxBackoff());
+        assertEquals(0.2, exponentialRetryConfig.getJitter(), 0);
+        assertEquals(1000, exponentialRetryConfig.getInitialBackoffMillis());
+        assertEquals(30000, exponentialRetryConfig.getMaxBackoffMillis());
+        assertEquals(2, exponentialRetryConfig.getMultiplier(), 0);
+    }
+
+    @Test
+    public void testSecurityConfig() {
+        ClientSecurityConfig securityConfig = fullClientConfig.getSecurityConfig();
+        assertEquals("com.hazelcast.security.UsernamePasswordCredentials", securityConfig.getCredentialsClassname());
+        CredentialsFactoryConfig credentialsFactoryConfig = securityConfig.getCredentialsFactoryConfig();
+        assertEquals("com.hazelcast.examples.MyCredentialsFactory", credentialsFactoryConfig.getClassName());
+        Properties properties = credentialsFactoryConfig.getProperties();
+        assertEquals("value", properties.getProperty("property"));
+    }
+
+    @Test
+    public void testSecurityConfig_onlyFactory() {
+        String xml = HAZELCAST_CLIENT_START_TAG
+                + "  <security>\n"
+                + "        <credentials-factory class-name=\"com.hazelcast.examples.MyCredentialsFactory\">\n"
+                + "            <properties>\n"
+                + "                <property name=\"property\">value</property>\n"
+                + "            </properties>\n"
+                + "        </credentials-factory>\n"
+                + "    </security>"
+                + HAZELCAST_CLIENT_END_TAG;
+        ClientConfig config = buildConfig(xml);
+        ClientSecurityConfig securityConfig = config.getSecurityConfig();
+        CredentialsFactoryConfig credentialsFactoryConfig = securityConfig.getCredentialsFactoryConfig();
+        assertEquals("com.hazelcast.examples.MyCredentialsFactory", credentialsFactoryConfig.getClassName());
+        Properties properties = credentialsFactoryConfig.getProperties();
+        assertEquals("value", properties.getProperty("property"));
+    }
+
+    @Test
     public void testLeftovers() {
         assertEquals(40, fullClientConfig.getExecutorPoolSize());
-
-        assertEquals("com.hazelcast.security.UsernamePasswordCredentials",
-                fullClientConfig.getSecurityConfig().getCredentialsClassname());
-        assertEquals(40, fullClientConfig.getExecutorPoolSize());
-
         assertEquals("com.hazelcast.client.util.RandomLB", fullClientConfig.getLoadBalancer().getClass().getName());
 
         final List<ListenerConfig> listenerConfigs = fullClientConfig.getListenerConfigs();
@@ -488,6 +569,55 @@ public class XmlClientConfigBuilderTest extends HazelcastTestSupport {
         assertEquals(255, icmpPingConfig.getTtl());
         assertEquals(2, icmpPingConfig.getMaxAttempts());
         assertEquals(true, icmpPingConfig.isEchoFailFastOnStartup());
+    }
+
+    @Test
+    public void testReliableTopic() {
+        ClientReliableTopicConfig reliableTopicConfig = fullClientConfig.getReliableTopicConfig("rel-topic");
+        assertEquals(100, reliableTopicConfig.getReadBatchSize());
+        assertEquals(TopicOverloadPolicy.DISCARD_NEWEST, reliableTopicConfig.getTopicOverloadPolicy());
+    }
+
+    @Test
+    public void testReliableTopic_defaults() {
+        String xml = HAZELCAST_CLIENT_START_TAG
+                + "<reliable-topic name=\"rel-topic\">"
+                + "</reliable-topic>"
+                + HAZELCAST_CLIENT_END_TAG;
+        ClientConfig config = buildConfig(xml);
+        ClientReliableTopicConfig reliableTopicConfig = config.getReliableTopicConfig("rel-topic");
+        assertEquals("rel-topic", reliableTopicConfig.getName());
+        assertEquals(10, reliableTopicConfig.getReadBatchSize());
+        assertEquals(TopicOverloadPolicy.BLOCK, reliableTopicConfig.getTopicOverloadPolicy());
+    }
+
+    @Test
+    public void testCloudConfig() {
+        ClientCloudConfig cloudConfig = fullClientConfig.getNetworkConfig().getCloudConfig();
+        assertEquals(false, cloudConfig.isEnabled());
+        assertEquals("EXAMPLE_TOKEN", cloudConfig.getDiscoveryToken());
+    }
+
+    @Test
+    public void testCloudConfig_defaults() {
+        ClientCloudConfig cloudConfig = defaultClientConfig.getNetworkConfig().getCloudConfig();
+        assertEquals(false, cloudConfig.isEnabled());
+        assertEquals(null, cloudConfig.getDiscoveryToken());
+    }
+
+    @Test
+    public void testDiscoveryStrategyConfig() {
+        DiscoveryConfig discoveryConfig = fullClientConfig.getNetworkConfig().getDiscoveryConfig();
+        assertEquals("DummyFilterClass", discoveryConfig.getNodeFilterClass());
+        Collection<DiscoveryStrategyConfig> discoveryStrategyConfigs = discoveryConfig.getDiscoveryStrategyConfigs();
+        assertEquals(1, discoveryStrategyConfigs.size());
+        DiscoveryStrategyConfig discoveryStrategyConfig = discoveryStrategyConfigs.iterator().next();
+        assertEquals("DummyDiscoveryStrategy1", discoveryStrategyConfig.getClassName());
+        Map<String, Comparable> properties = discoveryStrategyConfig.getProperties();
+        assertEquals(3, properties.size());
+        assertEquals("foo", properties.get("key-string"));
+        assertEquals("123", properties.get("key-int"));
+        assertEquals("true", properties.get("key-boolean"));
     }
 
     private EvictionPolicy getNearCacheEvictionPolicy(String mapName, ClientConfig clientConfig) {

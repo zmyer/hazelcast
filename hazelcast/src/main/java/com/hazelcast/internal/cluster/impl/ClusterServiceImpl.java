@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2008-2018, Hazelcast, Inc. All Rights Reserved.
+ * Copyright (c) 2008-2019, Hazelcast, Inc. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -38,7 +38,6 @@ import com.hazelcast.internal.cluster.impl.operations.ShutdownNodeOp;
 import com.hazelcast.internal.cluster.impl.operations.TriggerExplicitSuspicionOp;
 import com.hazelcast.internal.metrics.MetricsRegistry;
 import com.hazelcast.internal.metrics.Probe;
-import com.hazelcast.internal.partition.impl.InternalPartitionServiceImpl;
 import com.hazelcast.logging.ILogger;
 import com.hazelcast.nio.Address;
 import com.hazelcast.nio.Connection;
@@ -76,11 +75,11 @@ import java.util.concurrent.locks.ReentrantLock;
 
 import static com.hazelcast.cluster.memberselector.MemberSelectors.NON_LOCAL_MEMBER_SELECTOR;
 import static com.hazelcast.instance.MemberImpl.NA_MEMBER_LIST_JOIN_VERSION;
-import static com.hazelcast.internal.cluster.Versions.V3_10;
 import static com.hazelcast.spi.ExecutionService.SYSTEM_EXECUTOR;
 import static com.hazelcast.util.Preconditions.checkFalse;
 import static com.hazelcast.util.Preconditions.checkNotNull;
 import static com.hazelcast.util.Preconditions.checkTrue;
+import static java.lang.String.format;
 
 @SuppressWarnings({"checkstyle:methodcount", "checkstyle:classdataabstractioncoupling", "checkstyle:classfanoutcomplexity"})
 public class ClusterServiceImpl implements ClusterService, ConnectionListener, ManagedService,
@@ -155,14 +154,14 @@ public class ClusterServiceImpl implements ClusterService, ConnectionListener, M
 
     @Override
     public void init(NodeEngine nodeEngine, Properties properties) {
-        long mergeFirstRunDelayMs = node.getProperties().getMillis(GroupProperty.MERGE_FIRST_RUN_DELAY_SECONDS);
-        mergeFirstRunDelayMs = (mergeFirstRunDelayMs > 0 ? mergeFirstRunDelayMs : DEFAULT_MERGE_RUN_DELAY_MILLIS);
+        long mergeFirstRunDelayMs = node.getProperties().getPositiveMillisOrDefault(GroupProperty.MERGE_FIRST_RUN_DELAY_SECONDS,
+                DEFAULT_MERGE_RUN_DELAY_MILLIS);
 
         ExecutionService executionService = nodeEngine.getExecutionService();
         executionService.register(EXECUTOR_NAME, 2, CLUSTER_EXECUTOR_QUEUE_CAPACITY, ExecutorType.CACHED);
 
-        long mergeNextRunDelayMs = node.getProperties().getMillis(GroupProperty.MERGE_NEXT_RUN_DELAY_SECONDS);
-        mergeNextRunDelayMs = (mergeNextRunDelayMs > 0 ? mergeNextRunDelayMs : DEFAULT_MERGE_RUN_DELAY_MILLIS);
+        long mergeNextRunDelayMs = node.getProperties().getPositiveMillisOrDefault(GroupProperty.MERGE_NEXT_RUN_DELAY_SECONDS,
+                DEFAULT_MERGE_RUN_DELAY_MILLIS);
         executionService.scheduleWithRepetition(EXECUTOR_NAME, new SplitBrainHandler(node), mergeFirstRunDelayMs,
                 mergeNextRunDelayMs, TimeUnit.MILLISECONDS);
 
@@ -378,7 +377,15 @@ public class ClusterServiceImpl implements ClusterService, ConnectionListener, M
 
             checkMemberUpdateContainsLocalMember(membersView, targetUuid);
 
-            initialClusterState(clusterState, clusterVersion);
+            try {
+                initialClusterState(clusterState, clusterVersion);
+            } catch (VersionMismatchException e) {
+                // node should shutdown since it cannot handle the cluster version
+                // it is safe to do so here because no operations have been executed yet
+                logger.severe(format("This member will shutdown because it cannot join the cluster: %s", e.getMessage()));
+                node.shutdown(true);
+                return false;
+            }
             setClusterId(clusterId);
             ClusterClockImpl clusterClock = getClusterClock();
             clusterClock.setClusterStartTime(clusterStartTime);
@@ -451,36 +458,6 @@ public class ClusterServiceImpl implements ClusterService, ConnectionListener, M
         return (callerAddress != null && callerAddress.equals(getMasterAddress()));
     }
 
-    void repairPartitionTableIfReturningMember(MemberImpl member) {
-        assert lock.isHeldByCurrentThread() : "Called without holding cluster service lock!";
-        if (!isMaster()) {
-            return;
-        }
-
-        if (getClusterState().isMigrationAllowed()) {
-            return;
-        }
-
-        if (!node.getNodeExtension().isStartCompleted()) {
-            return;
-        }
-
-        Address address = member.getAddress();
-        MemberImpl memberRemovedWhileClusterIsNotActive
-                = membershipManager.getMemberRemovedInNotJoinableState(member.getUuid());
-        if (memberRemovedWhileClusterIsNotActive != null) {
-            Address oldAddress = memberRemovedWhileClusterIsNotActive.getAddress();
-            if (!oldAddress.equals(address)) {
-                assert !isMemberRemovedInNotJoinableState(address);
-
-                logger.warning(member + " is returning with a new address. Old one was: " + oldAddress
-                        + ". Will update partition table with the new address.");
-                InternalPartitionServiceImpl partitionService = node.partitionService;
-                partitionService.replaceAddress(oldAddress, address);
-            }
-        }
-    }
-
     private boolean shouldProcessMemberUpdate(MembersView membersView) {
         int memberListVersion = membershipManager.getMemberListVersion();
         if (memberListVersion > membersView.getVersion()) {
@@ -548,16 +525,20 @@ public class ClusterServiceImpl implements ClusterService, ConnectionListener, M
         return nodeEngine;
     }
 
-    public boolean isMemberRemovedInNotJoinableState(Address target) {
-        return membershipManager.isMemberRemovedInNotJoinableState(target);
+    /**
+     * Returns whether member with given identity (either {@code UUID} or {@code Address}
+     * depending on Hot Restart is enabled or not) is a known missing member or not.
+     *
+     * @param address Address of the missing member
+     * @param uuid Uuid of the missing member
+     * @return true if it's a known missing member, false otherwise
+     */
+    public boolean isMissingMember(Address address, String uuid) {
+        return membershipManager.isMissingMember(address, uuid);
     }
 
-    boolean isMemberRemovedInNotJoinableState(String uuid) {
-        return membershipManager.isMemberRemovedInNotJoinableState(uuid);
-    }
-
-    public Collection<Member> getCurrentMembersAndMembersRemovedInNotJoinableState() {
-        return membershipManager.getCurrentMembersAndMembersRemovedInNotJoinableState();
+    public Collection<Member> getActiveAndMissingMembers() {
+        return membershipManager.getActiveAndMissingMembers();
     }
 
     public void notifyForRemovedMember(MemberImpl member) {
@@ -569,8 +550,8 @@ public class ClusterServiceImpl implements ClusterService, ConnectionListener, M
         }
     }
 
-    public void shrinkMembersRemovedInNotJoinableState(Collection<String> memberUuidsToRemove) {
-        membershipManager.shrinkMembersRemovedInNotJoinableState(memberUuidsToRemove);
+    public void shrinkMissingMembers(Collection<String> memberUuidsToRemove) {
+        membershipManager.shrinkMissingMembers(memberUuidsToRemove);
     }
 
     private void sendMemberAttributeEvent(MemberImpl member, MemberAttributeOperationType operationType, String key,
@@ -610,6 +591,14 @@ public class ClusterServiceImpl implements ClusterService, ConnectionListener, M
             return null;
         }
         return membershipManager.getMember(uuid);
+    }
+
+    @Override
+    public MemberImpl getMember(Address address, String uuid) {
+        if (address == null || uuid == null) {
+            return null;
+        }
+        return membershipManager.getMember(address, uuid);
     }
 
     @Override
@@ -896,10 +885,6 @@ public class ClusterServiceImpl implements ClusterService, ConnectionListener, M
         try {
             if (!isJoined()) {
                 throw new IllegalStateException("Member list join version is not available when not joined");
-            } else if (getClusterVersion().isLessThan(V3_10)) {
-                // RU_COMPAT_3_9
-                String msg = "Member list join version is not available with a cluster version less than 3.10";
-                throw new UnsupportedOperationException(msg);
             }
 
             int joinVersion = localMember.getMemberListJoinVersion();
@@ -912,10 +897,6 @@ public class ClusterServiceImpl implements ClusterService, ConnectionListener, M
         } finally {
             lock.unlock();
         }
-    }
-
-    void addMembersRemovedInNotJoinableState(Collection<MemberImpl> members) {
-        membershipManager.addMembersRemovedInNotJoinableState(members);
     }
 
     @Override

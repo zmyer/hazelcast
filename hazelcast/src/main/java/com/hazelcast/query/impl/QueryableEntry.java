@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2008-2018, Hazelcast, Inc. All Rights Reserved.
+ * Copyright (c) 2008-2019, Hazelcast, Inc. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,9 +16,13 @@
 
 package com.hazelcast.query.impl;
 
+import com.hazelcast.internal.json.Json;
+import com.hazelcast.internal.json.JsonValue;
+import com.hazelcast.core.HazelcastJsonValue;
 import com.hazelcast.core.TypeConverter;
 import com.hazelcast.internal.serialization.InternalSerializationService;
 import com.hazelcast.nio.serialization.Data;
+import com.hazelcast.nio.serialization.HazelcastSerializationException;
 import com.hazelcast.nio.serialization.Portable;
 import com.hazelcast.query.QueryException;
 import com.hazelcast.query.impl.getters.Extractors;
@@ -48,11 +52,6 @@ public abstract class QueryableEntry<K, V> implements Extractable, Map.Entry<K, 
         return extractAttributeValue(attributeName);
     }
 
-    @Override
-    public AttributeType getAttributeType(String attributeName) throws QueryException {
-        return extractAttributeType(attributeName);
-    }
-
     public abstract V getValue();
 
     public abstract K getKey();
@@ -68,7 +67,7 @@ public abstract class QueryableEntry<K, V> implements Extractable, Map.Entry<K, 
         if (attribute == null) {
             return NULL_CONVERTER;
         } else {
-            AttributeType attributeType = extractAttributeType(attributeName, attribute);
+            AttributeType attributeType = extractAttributeType(attribute);
             return attributeType == null ? IDENTITY_CONVERTER : attributeType.getConverter();
         }
     }
@@ -79,7 +78,7 @@ public abstract class QueryableEntry<K, V> implements Extractable, Map.Entry<K, 
             boolean isKey = startsWithKeyConstant(attributeName);
             attributeName = getAttributeName(isKey, attributeName);
             Object target = getTargetObject(isKey);
-            result = extractAttributeValueFromTargetObject(extractors, serializationService, attributeName, target);
+            result = extractAttributeValueFromTargetObject(extractors, attributeName, target);
         }
         return result;
     }
@@ -108,7 +107,7 @@ public abstract class QueryableEntry<K, V> implements Extractable, Map.Entry<K, 
             boolean isKey = startsWithKeyConstant(attributeName);
             attributeName = getAttributeName(isKey, attributeName);
             Object target = isKey ? key : value;
-            result = extractAttributeValueFromTargetObject(extractors, serializationService, attributeName, target);
+            result = extractAttributeValueFromTargetObject(extractors, attributeName, target);
         }
         return result;
     }
@@ -139,42 +138,11 @@ public abstract class QueryableEntry<K, V> implements Extractable, Map.Entry<K, 
     }
 
     private static Object extractAttributeValueFromTargetObject(Extractors extractors,
-                                                                InternalSerializationService serializationService,
                                                                 String attributeName, Object target) {
-        return extractors.extract(serializationService, target, attributeName);
+        return extractors.extract(target, attributeName);
     }
 
-    private AttributeType extractAttributeType(String attributeName) {
-        AttributeType result = extractAttributeTypeIfAttributeQueryConstant(attributeName);
-        if (result == null) {
-            Object attributeValue = extractAttributeValue(attributeName);
-            result = extractAttributeType(attributeValue);
-        }
-        return result;
-    }
-
-    /**
-     * Optimization of the extractAttributeType that accepts extracted attribute value to skip double extraction.
-     */
-    private AttributeType extractAttributeType(String attributeName, Object attributeValue) {
-        AttributeType result = extractAttributeTypeIfAttributeQueryConstant(attributeName);
-        if (result == null) {
-            result = extractAttributeType(attributeValue);
-        }
-        return result;
-    }
-
-    private AttributeType extractAttributeTypeIfAttributeQueryConstant(String attributeName) {
-        if (KEY_ATTRIBUTE_NAME.value().equals(attributeName)) {
-            return ReflectionHelper.getAttributeType(getKey().getClass());
-        } else if (THIS_ATTRIBUTE_NAME.value().equals(attributeName)) {
-            return ReflectionHelper.getAttributeType(getValue().getClass());
-        }
-        return null;
-    }
-
-
-    private AttributeType extractAttributeType(Object attributeValue) {
+    public static AttributeType extractAttributeType(Object attributeValue) {
         if (attributeValue instanceof MultiResult) {
             return extractAttributeTypeFromMultiResult((MultiResult) attributeValue);
         } else {
@@ -182,9 +150,29 @@ public abstract class QueryableEntry<K, V> implements Extractable, Map.Entry<K, 
         }
     }
 
-    private AttributeType extractAttributeTypeFromSingleResult(Object extractedSingleResult) {
+    private static AttributeType extractAttributeTypeFromJsonValue(JsonValue value) {
+        if (value.isNumber()) {
+            // toString method does not do any encoding in number case, it just returns stored string.
+            if (value.toString().contains(".")) {
+                // floating point number
+                return AttributeType.DOUBLE;
+            } else {
+                return AttributeType.LONG;
+            }
+        } else if (value.isBoolean()) {
+            return AttributeType.BOOLEAN;
+        } else if (value.isString()) {
+            return AttributeType.STRING;
+        }
+        throw new HazelcastSerializationException("Unknown Json type: " + value);
+    }
+
+    private static AttributeType extractAttributeTypeFromSingleResult(Object extractedSingleResult) {
         if (extractedSingleResult == null) {
             return null;
+        }
+        if (extractedSingleResult instanceof HazelcastJsonValue) {
+            return extractAttributeTypeFromJsonValue(Json.parse(extractedSingleResult.toString()));
         }
         if (extractedSingleResult instanceof Portable) {
             return AttributeType.PORTABLE;
@@ -193,7 +181,7 @@ public abstract class QueryableEntry<K, V> implements Extractable, Map.Entry<K, 
 
     }
 
-    private AttributeType extractAttributeTypeFromMultiResult(MultiResult extractedMultiResult) {
+    private static AttributeType extractAttributeTypeFromMultiResult(MultiResult extractedMultiResult) {
         Object firstNonNullResult = null;
         for (Object result : extractedMultiResult.getResults()) {
             if (result != null) {

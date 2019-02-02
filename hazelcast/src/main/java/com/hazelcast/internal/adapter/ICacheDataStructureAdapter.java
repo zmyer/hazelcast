@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2008-2018, Hazelcast, Inc. All Rights Reserved.
+ * Copyright (c) 2008-2019, Hazelcast, Inc. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -110,6 +110,12 @@ public class ICacheDataStructureAdapter<K, V> implements DataStructureAdapter<K,
     @Override
     public ICompletableFuture<Boolean> putIfAbsentAsync(K key, V value) {
         return cache.putIfAbsentAsync(key, value);
+    }
+
+    @Override
+    @MethodNotAvailable
+    public void setTtl(K key, long duration, TimeUnit timeUnit) {
+        throw new MethodNotAvailableException();
     }
 
     @Override
@@ -249,6 +255,16 @@ public class ICacheDataStructureAdapter<K, V> implements DataStructureAdapter<K,
     @Override
     public void destroy() {
         cache.destroy();
+    }
+
+    @Override
+    public void setExpiryPolicy(Set<K> keys, ExpiryPolicy expiryPolicy) {
+        cache.setExpiryPolicy(keys, expiryPolicy);
+    }
+
+    @Override
+    public boolean setExpiryPolicy(K key, ExpiryPolicy expiryPolicy) {
+        return cache.setExpiryPolicy(key, expiryPolicy);
     }
 
     @Override

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2008-2018, Hazelcast, Inc. All Rights Reserved.
+ * Copyright (c) 2008-2019, Hazelcast, Inc. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -19,6 +19,7 @@ package com.hazelcast.client.map;
 import com.hazelcast.client.config.ClientConfig;
 import com.hazelcast.client.test.TestHazelcastFactory;
 import com.hazelcast.config.Config;
+import com.hazelcast.config.MapConfig;
 import com.hazelcast.core.HazelcastInstance;
 import com.hazelcast.test.HazelcastTestSupport;
 import org.junit.AfterClass;
@@ -37,6 +38,13 @@ public abstract class AbstractClientMapTest extends HazelcastTestSupport {
     @BeforeClass
     public static final void startHazelcastInstances() {
         Config config = regularInstanceConfig();
+        MapConfig mapConfig = new MapConfig("mapWithTTL");
+        mapConfig.setTimeToLiveSeconds(1);
+        config.addMapConfig(mapConfig);
+
+        MapConfig mapConfig1 = new MapConfig("mapWithMaxIdle");
+        mapConfig1.setMaxIdleSeconds(11);
+        config.addMapConfig(mapConfig1);
         ClientConfig clientConfig = getClientConfig();
 
         member1 = hazelcastFactory.newHazelcastInstance(config);

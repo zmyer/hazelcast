@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2008-2018, Hazelcast, Inc. All Rights Reserved.
+ * Copyright (c) 2008-2019, Hazelcast, Inc. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -20,6 +20,7 @@ import com.hazelcast.client.impl.protocol.task.MessageTask;
 import com.hazelcast.cluster.ClusterState;
 import com.hazelcast.core.HazelcastException;
 import com.hazelcast.core.HazelcastInstanceNotActiveException;
+import com.hazelcast.core.Member;
 import com.hazelcast.instance.MemberImpl;
 import com.hazelcast.instance.Node;
 import com.hazelcast.instance.NodeState;
@@ -28,6 +29,7 @@ import com.hazelcast.internal.metrics.MetricsProvider;
 import com.hazelcast.internal.metrics.MetricsRegistry;
 import com.hazelcast.internal.metrics.Probe;
 import com.hazelcast.internal.partition.InternalPartition;
+import com.hazelcast.internal.partition.PartitionReplica;
 import com.hazelcast.internal.serialization.impl.SerializationServiceV1;
 import com.hazelcast.internal.util.counters.Counter;
 import com.hazelcast.logging.ILogger;
@@ -36,6 +38,7 @@ import com.hazelcast.nio.Connection;
 import com.hazelcast.nio.ObjectDataInput;
 import com.hazelcast.nio.Packet;
 import com.hazelcast.nio.serialization.Data;
+import com.hazelcast.nio.serialization.HazelcastSerializationException;
 import com.hazelcast.quorum.QuorumException;
 import com.hazelcast.quorum.impl.QuorumServiceImpl;
 import com.hazelcast.spi.BlockingOperation;
@@ -330,9 +333,10 @@ class OperationRunnerImpl extends OperationRunner implements MetricsProvider {
                     op.getClass().getName(), op.getServiceName());
         }
 
-        Address owner = internalPartition.getReplicaAddress(op.getReplicaIndex());
-        if (op.validatesTarget() && !thisAddress.equals(owner)) {
-            throw new WrongTargetException(thisAddress, owner, partitionId, op.getReplicaIndex(),
+        PartitionReplica owner = internalPartition.getReplica(op.getReplicaIndex());
+        if (op.validatesTarget() && (owner == null || !owner.isIdentical(node.getLocalMember()))) {
+            Member target = owner != null ? node.getClusterService().getMember(owner.address(), owner.uuid()) : null;
+            throw new WrongTargetException(node.getLocalMember(), target, partitionId, op.getReplicaIndex(),
                     op.getClass().getName(), op.getServiceName());
         }
     }
@@ -358,7 +362,7 @@ class OperationRunnerImpl extends OperationRunner implements MetricsProvider {
             return;
         }
 
-        // a response is send regardless of the Operation.returnsResponse method because some operation do want to send
+        // A response is sent regardless of the Operation.returnsResponse method because some operations do want to send
         // back a response, but they didn't want to send it yet but they ran into some kind of error. If on the receiving
         // side no invocation is waiting, the response is ignored.
         sendResponseAfterOperationError(operation, e);
@@ -481,15 +485,26 @@ class OperationRunnerImpl extends OperationRunner implements MetricsProvider {
             }
         } else if (t instanceof OutOfMemoryError) {
             try {
-                logger.severe(t.getMessage(), t);
+                logException(t.getMessage(), t, SEVERE);
             } catch (Throwable ignored) {
                 logger.severe(ignored.getMessage(), t);
             }
-        } else {
-            final Level level = nodeEngine.isRunning() ? SEVERE : FINEST;
-            if (logger.isLoggable(level)) {
-                logger.log(level, t.getMessage(), t);
+        } else if (t instanceof HazelcastSerializationException) {
+            if (!node.getClusterService().isJoined()) {
+                logException("A serialization exception occurred while joining a cluster, is this member compatible with "
+                        + "other members of the cluster?", t, SEVERE);
+            } else {
+                logException(t.getMessage(), t, nodeEngine.isRunning() ? SEVERE : FINEST);
             }
+        } else {
+            logException(t.getMessage(), t, nodeEngine.isRunning() ? SEVERE : FINEST);
         }
     }
+
+    private void logException(String message, Throwable t, Level level) {
+        if (logger.isLoggable(level)) {
+            logger.log(level, message, t);
+        }
+    }
+
 }

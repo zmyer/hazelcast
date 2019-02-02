@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2008-2018, Hazelcast, Inc. All Rights Reserved.
+ * Copyright (c) 2008-2019, Hazelcast, Inc. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -265,7 +265,7 @@ public class MapSplitBrainTest extends SplitBrainTestSupport {
         assertEquals("value1", mapA1.get("key1"));
 
         // prevent updating at the same time
-        sleepAtLeastMillis(100);
+        sleepAtLeastMillis(1000);
 
         mapA2.put("key1", "LatestAccessedValue1");
         // access to record
@@ -276,7 +276,7 @@ public class MapSplitBrainTest extends SplitBrainTestSupport {
         assertEquals("value2", mapA2.get("key2"));
 
         // prevent updating at the same time
-        sleepAtLeastMillis(100);
+        sleepAtLeastMillis(1000);
 
         mapA1.put("key2", "LatestAccessedValue2");
         // access to record
@@ -301,13 +301,13 @@ public class MapSplitBrainTest extends SplitBrainTestSupport {
         mapA1.put("key1", "value1");
 
         // prevent updating at the same time
-        sleepAtLeastMillis(100);
+        sleepAtLeastMillis(1000);
 
         mapA2.put("key1", "LatestUpdatedValue1");
         mapA2.put("key2", "value2");
 
         // prevent updating at the same time
-        sleepAtLeastMillis(100);
+        sleepAtLeastMillis(1000);
 
         mapA1.put("key2", "LatestUpdatedValue2");
     }

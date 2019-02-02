@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2008-2018, Hazelcast, Inc. All Rights Reserved.
+ * Copyright (c) 2008-2019, Hazelcast, Inc. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,7 +16,7 @@
 
 package com.hazelcast.client.proxy;
 
-import com.hazelcast.client.impl.ClientLockReferenceIdGenerator;
+import com.hazelcast.client.impl.clientside.ClientLockReferenceIdGenerator;
 import com.hazelcast.client.impl.protocol.ClientMessage;
 import com.hazelcast.client.impl.protocol.codec.MultiMapAddEntryListenerCodec;
 import com.hazelcast.client.impl.protocol.codec.MultiMapAddEntryListenerToKeyCodec;
@@ -495,7 +495,7 @@ public class ClientMultiMapProxy<K, V> extends ClientProxy implements MultiMap<K
         }
 
         @Override
-        public void handle(Data key, Data value, Data oldValue, Data mergingValue,
+        public void handleEntryEventV10(Data key, Data value, Data oldValue, Data mergingValue,
                            int eventType, String uuid, int numberOfAffectedEntries) {
             Member member = getContext().getClusterService().getMember(uuid);
             final IMapEvent iMapEvent = createIMapEvent(key, value, oldValue,

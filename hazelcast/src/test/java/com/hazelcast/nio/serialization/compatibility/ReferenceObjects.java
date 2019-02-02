@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2008-2018, Hazelcast, Inc. All Rights Reserved.
+ * Copyright (c) 2008-2019, Hazelcast, Inc. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -51,8 +51,8 @@ class ReferenceObjects {
     /**
      * CUSTOM SERIALIZER IDS
      */
-    static int CUSTOM_STREAM_SERILAZABLE_ID = 1;
-    static int CUSTOM_BYTE_ARRAY_SERILAZABLE_ID = 2;
+    static int CUSTOM_STREAM_SERIALIZABLE_ID = 1;
+    static int CUSTOM_BYTE_ARRAY_SERIALIZABLE_ID = 2;
 
     /**
      * OBJECTS

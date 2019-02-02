@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2008-2018, Hazelcast, Inc. All Rights Reserved.
+ * Copyright (c) 2008-2019, Hazelcast, Inc. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -53,9 +53,9 @@ public class WANAwareOperationProvider extends MapOperationProviderDelegator {
     }
 
     @Override
-    public MapOperation createPutOperation(String name, Data key, Data value, long ttl) {
+    public MapOperation createPutOperation(String name, Data key, Data value, long ttl, long maxIdle) {
         checkWanReplicationQueues(name);
-        return getDelegate().createPutOperation(name, key, value, ttl);
+        return getDelegate().createPutOperation(name, key, value, ttl, maxIdle);
     }
 
     @Override
@@ -65,27 +65,33 @@ public class WANAwareOperationProvider extends MapOperationProviderDelegator {
     }
 
     @Override
-    public MapOperation createSetOperation(String name, Data dataKey, Data value, long ttl) {
+    public MapOperation createSetOperation(String name, Data dataKey, Data value, long ttl, long maxIdle) {
         checkWanReplicationQueues(name);
-        return getDelegate().createSetOperation(name, dataKey, value, ttl);
+        return getDelegate().createSetOperation(name, dataKey, value, ttl, maxIdle);
     }
 
     @Override
-    public MapOperation createPutIfAbsentOperation(String name, Data key, Data value, long ttl) {
+    public MapOperation createPutIfAbsentOperation(String name, Data key, Data value, long ttl, long maxIdle) {
         checkWanReplicationQueues(name);
-        return getDelegate().createPutIfAbsentOperation(name, key, value, ttl);
+        return getDelegate().createPutIfAbsentOperation(name, key, value, ttl, maxIdle);
     }
 
     @Override
-    public MapOperation createPutTransientOperation(String name, Data key, Data value, long ttl) {
+    public MapOperation createPutTransientOperation(String name, Data key, Data value, long ttl, long maxIdle) {
         checkWanReplicationQueues(name);
-        return getDelegate().createPutTransientOperation(name, key, value, ttl);
+        return getDelegate().createPutTransientOperation(name, key, value, ttl, maxIdle);
     }
 
     @Override
     public MapOperation createRemoveOperation(String name, Data key, boolean disableWanReplicationEvent) {
         checkWanReplicationQueues(name);
         return getDelegate().createRemoveOperation(name, key, disableWanReplicationEvent);
+    }
+
+    @Override
+    public MapOperation createSetTtlOperation(String name, Data key, long ttl) {
+        checkWanReplicationQueues(name);
+        return getDelegate().createSetTtlOperation(name, key, ttl);
     }
 
     @Override

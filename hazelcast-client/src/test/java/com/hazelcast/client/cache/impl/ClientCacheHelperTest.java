@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2008-2018, Hazelcast, Inc. All Rights Reserved.
+ * Copyright (c) 2008-2019, Hazelcast, Inc. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,7 +16,7 @@
 
 package com.hazelcast.client.cache.impl;
 
-import com.hazelcast.client.impl.HazelcastClientInstanceImpl;
+import com.hazelcast.client.impl.clientside.HazelcastClientInstanceImpl;
 import com.hazelcast.client.test.TestHazelcastFactory;
 import com.hazelcast.config.CacheConfig;
 import com.hazelcast.config.CacheSimpleConfig;
@@ -39,7 +39,7 @@ import java.util.concurrent.ConcurrentMap;
 import static com.hazelcast.client.cache.impl.ClientCacheHelper.createCacheConfig;
 import static com.hazelcast.client.cache.impl.ClientCacheHelper.enableStatisticManagementOnNodes;
 import static com.hazelcast.client.cache.impl.ClientCacheHelper.getCacheConfig;
-import static com.hazelcast.client.impl.ClientTestUtil.getHazelcastClientInstanceImpl;
+import static com.hazelcast.client.impl.clientside.ClientTestUtil.getHazelcastClientInstanceImpl;
 import static java.util.Collections.singletonList;
 import static java.util.Collections.singletonMap;
 import static org.junit.Assert.assertEquals;

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2008-2018, Hazelcast, Inc. All Rights Reserved.
+ * Copyright (c) 2008-2019, Hazelcast, Inc. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -72,6 +72,10 @@ public class ExtractionInSingleValueSpecTest extends AbstractExtractionTest {
             limb(null, new ArrayList<String>(), new Finger[]{})
     );
 
+    public ExtractionInSingleValueSpecTest(InMemoryFormat inMemoryFormat, Index index, Multivalue multivalue) {
+        super(inMemoryFormat, index, multivalue);
+    }
+
     protected Configurator getInstanceConfigurator() {
         return new Configurator() {
             @Override
@@ -79,10 +83,6 @@ public class ExtractionInSingleValueSpecTest extends AbstractExtractionTest {
                 config.getSerializationConfig().addPortableFactory(ComplexTestDataStructure.PersonPortableFactory.ID, new ComplexTestDataStructure.PersonPortableFactory());
             }
         };
-    }
-
-    public ExtractionInSingleValueSpecTest(InMemoryFormat inMemoryFormat, Index index, Multivalue multivalue) {
-        super(inMemoryFormat, index, multivalue);
     }
 
     @Test

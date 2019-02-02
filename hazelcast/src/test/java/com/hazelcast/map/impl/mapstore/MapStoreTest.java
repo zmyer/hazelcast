@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2008-2018, Hazelcast, Inc. All Rights Reserved.
+ * Copyright (c) 2008-2019, Hazelcast, Inc. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -36,7 +36,7 @@ import com.hazelcast.map.impl.MapService;
 import com.hazelcast.map.impl.MapStoreWrapper;
 import com.hazelcast.map.impl.mapstore.writebehind.MapStoreWithCounter;
 import com.hazelcast.map.impl.proxy.MapProxyImpl;
-import com.hazelcast.map.listener.EntryAddedListener;
+import com.hazelcast.map.listener.EntryLoadedListener;
 import com.hazelcast.map.listener.EntryUpdatedListener;
 import com.hazelcast.monitor.LocalMapStats;
 import com.hazelcast.query.SampleTestObjects.Employee;
@@ -765,9 +765,9 @@ public class MapStoreTest extends AbstractMapStoreTest {
         IMap map = node.getMap(mapName);
 
         final CountDownLatch latch = new CountDownLatch(numberOfEntriesToLoad);
-        map.addEntryListener(new EntryAddedListener<Object, Object>() {
+        map.addEntryListener(new EntryLoadedListener<Object, Object>() {
             @Override
-            public void entryAdded(EntryEvent<Object, Object> event) {
+            public void entryLoaded(EntryEvent<Object, Object> event) {
                 latch.countDown();
             }
         }, true);

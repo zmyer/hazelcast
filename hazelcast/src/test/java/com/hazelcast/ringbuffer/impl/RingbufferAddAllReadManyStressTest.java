@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2008-2018, Hazelcast, Inc. All Rights Reserved.
+ * Copyright (c) 2008-2019, Hazelcast, Inc. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -34,6 +34,7 @@ import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
 
 import java.util.LinkedList;
+import java.util.List;
 import java.util.Random;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -152,7 +153,7 @@ public class RingbufferAddAllReadManyStressTest extends HazelcastTestSupport {
         @Override
         public void doRun() throws Throwable {
             while (!stop.get()) {
-                LinkedList<Long> items = makeBatch();
+                List<Long> items = makeBatch();
                 addAll(items);
             }
 
@@ -160,7 +161,7 @@ public class RingbufferAddAllReadManyStressTest extends HazelcastTestSupport {
         }
 
         @SuppressWarnings("NonAtomicOperationOnVolatileField")
-        private LinkedList<Long> makeBatch() {
+        private List<Long> makeBatch() {
             int count = max(1, random.nextInt(MAX_BATCH));
             LinkedList<Long> items = new LinkedList<Long>();
 
@@ -177,7 +178,7 @@ public class RingbufferAddAllReadManyStressTest extends HazelcastTestSupport {
             return items;
         }
 
-        private void addAll(LinkedList<Long> items) throws InterruptedException, ExecutionException {
+        private void addAll(List<Long> items) throws Exception {
             long sleepMs = 100;
             for (; ; ) {
                 long result = ringbuffer.addAllAsync(items, FAIL).get();

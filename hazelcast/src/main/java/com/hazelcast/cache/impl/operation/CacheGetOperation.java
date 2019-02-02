@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2008-2018, Hazelcast, Inc. All Rights Reserved.
+ * Copyright (c) 2008-2019, Hazelcast, Inc. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -31,7 +31,7 @@ import java.io.IOException;
  * @see com.hazelcast.cache.impl.ICacheRecordStore#get(Data, javax.cache.expiry.ExpiryPolicy)
  */
 public class CacheGetOperation
-        extends AbstractCacheOperation
+        extends KeyBasedCacheOperation
         implements ReadonlyOperation {
 
     private ExpiryPolicy expiryPolicy;
@@ -47,7 +47,7 @@ public class CacheGetOperation
     @Override
     public void run()
             throws Exception {
-        response = cache.get(key, expiryPolicy);
+        response = recordStore.get(key, expiryPolicy);
     }
 
     @Override

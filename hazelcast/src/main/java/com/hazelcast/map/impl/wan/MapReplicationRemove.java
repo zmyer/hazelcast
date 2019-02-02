@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2008-2018, Hazelcast, Inc. All Rights Reserved.
+ * Copyright (c) 2008-2019, Hazelcast, Inc. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -21,8 +21,8 @@ import com.hazelcast.nio.ObjectDataOutput;
 import com.hazelcast.nio.serialization.Data;
 import com.hazelcast.nio.serialization.IdentifiedDataSerializable;
 import com.hazelcast.wan.ReplicationEventObject;
+import com.hazelcast.wan.impl.DistributedServiceWanEventCounters;
 import com.hazelcast.wan.impl.WanDataSerializerHook;
-import com.hazelcast.wan.impl.WanEventCounter;
 
 import java.io.IOException;
 
@@ -90,7 +90,7 @@ public class MapReplicationRemove implements ReplicationEventObject, IdentifiedD
     }
 
     @Override
-    public void incrementEventCount(WanEventCounter eventCounter) {
-        eventCounter.incrementRemove(mapName);
+    public void incrementEventCount(DistributedServiceWanEventCounters counters) {
+        counters.incrementRemove(mapName);
     }
 }

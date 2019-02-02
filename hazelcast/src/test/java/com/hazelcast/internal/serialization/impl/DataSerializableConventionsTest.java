@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2008-2018, Hazelcast, Inc. All Rights Reserved.
+ * Copyright (c) 2008-2019, Hazelcast, Inc. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -19,11 +19,13 @@ package com.hazelcast.internal.serialization.impl;
 import com.google.common.collect.HashMultimap;
 import com.google.common.collect.Multimap;
 import com.hazelcast.internal.serialization.DataSerializerHook;
+import com.hazelcast.map.impl.wan.WanMapEntryView;
 import com.hazelcast.nio.serialization.BinaryInterface;
 import com.hazelcast.nio.serialization.DataSerializable;
 import com.hazelcast.nio.serialization.DataSerializableFactory;
 import com.hazelcast.nio.serialization.IdentifiedDataSerializable;
 import com.hazelcast.nio.serialization.SerializableByConvention;
+import com.hazelcast.query.impl.SkipIndexPredicate;
 import com.hazelcast.spi.AbstractLocalOperation;
 import com.hazelcast.spi.annotation.PrivateApi;
 import com.hazelcast.test.HazelcastParallelClassRunner;
@@ -64,18 +66,15 @@ import static org.junit.Assert.fail;
 @Category({QuickTest.class})
 public class DataSerializableConventionsTest {
 
-    // subclasses of classes in the white list are not taken into account for conventions tests, as they
-    // inherit Serializable from a parent class and cannot implement IdentifiedDataSerializable due to
-    // unavailability of default constructor.
-    private static final Set<Class> SERIALIZABLE_WHITE_LIST;
+    // subclasses of classes in the white list are not taken into account for
+    // conventions tests. Reasons:
+    // - they inherit Serializable from a parent class and cannot implement
+    // IdentifiedDataSerializable due to unavailability of default constructor.
+    // - they purposefully break conventions to fix a known issue
+    private final Set<Class> classWhiteList;
 
-    static {
-        Set<Class> whiteList = new HashSet<Class>();
-        whiteList.add(EventObject.class);
-        whiteList.add(Throwable.class);
-        whiteList.add(Permission.class);
-        whiteList.add(PermissionCollection.class);
-        SERIALIZABLE_WHITE_LIST = Collections.unmodifiableSet(whiteList);
+    public DataSerializableConventionsTest() {
+        classWhiteList = Collections.unmodifiableSet(getWhitelistedClasses());
     }
 
     /**
@@ -281,6 +280,7 @@ public class DataSerializableConventionsTest {
         Set<Class<? extends IdentifiedDataSerializable>> identifiedDataSerializables
                 = REFLECTIONS.getSubTypesOf(IdentifiedDataSerializable.class);
         filterNonConcreteClasses(identifiedDataSerializables);
+        identifiedDataSerializables.removeAll(classWhiteList);
         return identifiedDataSerializables;
     }
 
@@ -320,12 +320,26 @@ public class DataSerializableConventionsTest {
                 && klass.getAnnotation(PrivateApi.class) == null;
     }
 
-    private static boolean inheritsFromWhiteListedClass(Class klass) {
-        for (Class superclass : SERIALIZABLE_WHITE_LIST) {
+    private boolean inheritsFromWhiteListedClass(Class klass) {
+        for (Class superclass : classWhiteList) {
             if (superclass.isAssignableFrom(klass)) {
                 return true;
             }
         }
         return false;
+    }
+
+    /**
+     * Returns the set of classes excluded from the conventions tests.
+     */
+    protected Set<Class> getWhitelistedClasses() {
+        Set<Class> whiteList = new HashSet<Class>();
+        whiteList.add(EventObject.class);
+        whiteList.add(Throwable.class);
+        whiteList.add(Permission.class);
+        whiteList.add(PermissionCollection.class);
+        whiteList.add(WanMapEntryView.class);
+        whiteList.add(SkipIndexPredicate.class);
+        return whiteList;
     }
 }

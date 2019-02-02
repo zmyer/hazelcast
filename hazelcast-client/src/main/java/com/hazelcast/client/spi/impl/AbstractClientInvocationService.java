@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2008-2018, Hazelcast, Inc. All Rights Reserved.
+ * Copyright (c) 2008-2019, Hazelcast, Inc. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -19,7 +19,7 @@ package com.hazelcast.client.spi.impl;
 import com.hazelcast.client.HazelcastClientNotActiveException;
 import com.hazelcast.client.connection.ClientConnectionManager;
 import com.hazelcast.client.connection.nio.ClientConnection;
-import com.hazelcast.client.impl.HazelcastClientInstanceImpl;
+import com.hazelcast.client.impl.clientside.HazelcastClientInstanceImpl;
 import com.hazelcast.client.impl.protocol.ClientMessage;
 import com.hazelcast.client.spi.ClientExecutionService;
 import com.hazelcast.client.spi.ClientInvocationService;
@@ -33,6 +33,7 @@ import com.hazelcast.spi.impl.sequence.CallIdFactory;
 import com.hazelcast.spi.impl.sequence.CallIdSequence;
 import com.hazelcast.spi.properties.HazelcastProperties;
 import com.hazelcast.spi.properties.HazelcastProperty;
+import com.hazelcast.util.function.Consumer;
 
 import java.io.IOException;
 import java.util.Iterator;
@@ -79,21 +80,26 @@ public abstract class AbstractClientInvocationService implements ClientInvocatio
         HazelcastProperties properties = client.getProperties();
         int maxAllowedConcurrentInvocations = properties.getInteger(MAX_CONCURRENT_INVOCATIONS);
         long backofftimeoutMs = properties.getLong(BACKPRESSURE_BACKOFF_TIMEOUT_MILLIS);
-        boolean isBackPressureEnabled = maxAllowedConcurrentInvocations != Integer.MAX_VALUE;
-        callIdSequence = CallIdFactory
-                .newCallIdSequence(isBackPressureEnabled, maxAllowedConcurrentInvocations, backofftimeoutMs);
+        // clients needs to have a call id generator capable of determining how many
+        // pending calls there are. So backpressure needs to be on
+        this.callIdSequence = CallIdFactory
+                .newCallIdSequence(true, maxAllowedConcurrentInvocations, backofftimeoutMs);
 
         client.getMetricsRegistry().scanAndRegister(this, "invocations");
     }
 
+    @Override
+    public long concurrentInvocations() {
+        return callIdSequence.concurrentInvocations();
+    }
+
     private long initInvocationRetryPauseMillis() {
-        long pauseTime = client.getProperties().getMillis(INVOCATION_RETRY_PAUSE_MILLIS);
-        return pauseTime > 0 ? pauseTime : Long.parseLong(INVOCATION_RETRY_PAUSE_MILLIS.getDefaultValue());
+        return client.getProperties().getPositiveMillisOrDefault(INVOCATION_RETRY_PAUSE_MILLIS);
+
     }
 
     private long initInvocationTimeoutMillis() {
-        long waitTime = client.getProperties().getMillis(INVOCATION_TIMEOUT_SECONDS);
-        return waitTime > 0 ? waitTime : Integer.parseInt(INVOCATION_TIMEOUT_SECONDS.getDefaultValue());
+        return client.getProperties().getPositiveMillisOrDefault(INVOCATION_TIMEOUT_SECONDS);
     }
 
     @Probe(level = MANDATORY)
@@ -124,17 +130,13 @@ public abstract class AbstractClientInvocationService implements ClientInvocatio
         partitionService = client.getClientPartitionService();
         responseHandlerSupplier.start();
         ClientExecutionService executionService = client.getClientExecutionService();
-        long cleanResourcesMillis = client.getProperties().getMillis(CLEAN_RESOURCES_MILLIS);
-        if (cleanResourcesMillis <= 0) {
-            cleanResourcesMillis = Integer.parseInt(CLEAN_RESOURCES_MILLIS.getDefaultValue());
-
-        }
+        long cleanResourcesMillis = client.getProperties().getPositiveMillisOrDefault(CLEAN_RESOURCES_MILLIS);
         executionService.scheduleWithRepetition(new CleanResourcesTask(), cleanResourcesMillis,
                 cleanResourcesMillis, MILLISECONDS);
     }
 
     @Override
-    public ClientResponseHandler getResponseHandler() {
+    public Consumer<ClientMessage> getResponseHandler() {
         return responseHandlerSupplier.get();
     }
 

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2008-2018, Hazelcast, Inc. All Rights Reserved.
+ * Copyright (c) 2008-2019, Hazelcast, Inc. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -621,6 +621,7 @@ public class CacheStatsTest extends CacheTestSupport {
         if (useBackups) {
             // Create the second instance to store data as backup.
             instance2 = getHazelcastInstance();
+            waitAllForSafeState(factory.getAllHazelcastInstances());
             CachingProvider cp = getCachingProvider(instance2);
             CacheManager cm = cp.getCacheManager();
             cache = createCache(cacheName);
@@ -670,6 +671,7 @@ public class CacheStatsTest extends CacheTestSupport {
             // so the second instance will be owner of some partitions
             // and the first instance will lose ownership of some instances.
             instance2 = getHazelcastInstance();
+            waitAllForSafeState(factory.getAllHazelcastInstances());
             CachingProvider cp = getCachingProvider(instance2);
             CacheManager cm = cp.getCacheManager();
             ICache<Integer, String> c = cm.getCache(cacheName).unwrap(ICache.class);
@@ -731,11 +733,11 @@ public class CacheStatsTest extends CacheTestSupport {
         // configure members with 2 partitions, cache with eviction on max size 2
         CacheSimpleConfig cacheConfig = new CacheSimpleConfig();
         cacheConfig.setName("*")
-                   .setBackupCount(1)
-                   .setStatisticsEnabled(true)
-                   .setEvictionConfig(
-                           new EvictionConfig(maxEntryCount, EvictionConfig.MaxSizePolicy.ENTRY_COUNT, EvictionPolicy.LFU)
-                   );
+                .setBackupCount(1)
+                .setStatisticsEnabled(true)
+                .setEvictionConfig(
+                        new EvictionConfig(maxEntryCount, EvictionConfig.MaxSizePolicy.ENTRY_COUNT, EvictionPolicy.LFU)
+                );
 
         Config config = new Config();
         config.setProperty(GroupProperty.PARTITION_COUNT.getName(), Integer.toString(partitionCount));
@@ -757,8 +759,8 @@ public class CacheStatsTest extends CacheTestSupport {
         cache1.put(key, "foo");
 
         // number of evictions on primary and backup must be 1
-        assertEquals(1, cache1.getLocalCacheStatistics().getCacheEvictions() +
-                cache2.getLocalCacheStatistics().getCacheEvictions());
+        assertEquals(1, cache1.getLocalCacheStatistics().getCacheEvictions()
+                + cache2.getLocalCacheStatistics().getCacheEvictions());
     }
 
     @Test(expected = UnsupportedOperationException.class)

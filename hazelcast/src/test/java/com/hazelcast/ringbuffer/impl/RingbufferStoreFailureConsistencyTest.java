@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2008-2018, Hazelcast, Inc. All Rights Reserved.
+ * Copyright (c) 2008-2019, Hazelcast, Inc. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -43,8 +43,8 @@ import static com.google.common.collect.Lists.newArrayList;
 import static com.hazelcast.config.InMemoryFormat.OBJECT;
 import static com.hazelcast.config.RingbufferConfig.DEFAULT_CAPACITY;
 import static org.junit.Assert.assertEquals;
-import static org.mockito.Matchers.any;
-import static org.mockito.Matchers.eq;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.MockitoAnnotations.initMocks;
 
@@ -141,7 +141,8 @@ public class RingbufferStoreFailureConsistencyTest extends HazelcastTestSupport 
     public void testAddAllAsync_PrimaryAndBackupIsConsistentAfterStoreFailure() throws Exception {
         long primaryTailSequenceBeforeAddingAll = ringbufferPrimary.tailSequence();
         long seqFirstItem = ringbufferPrimary.tailSequence() + 1;
-        doThrow(new IllegalStateException("Expected test exception")).when(store).storeAll(eq(seqFirstItem), any(String[].class));
+        doThrow(new IllegalStateException("Expected test exception")).when(store).storeAll(eq(seqFirstItem),
+                (String[]) any(Object[].class));
 
         ICompletableFuture<Long> result = ringbufferPrimary.addAllAsync(newArrayList(ONE, TWO, THREE), OverflowPolicy.FAIL);
         try {

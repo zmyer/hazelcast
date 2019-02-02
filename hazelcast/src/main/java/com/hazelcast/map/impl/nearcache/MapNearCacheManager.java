@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2008-2018, Hazelcast, Inc. All Rights Reserved.
+ * Copyright (c) 2008-2019, Hazelcast, Inc. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -21,8 +21,8 @@ import com.hazelcast.internal.cluster.ClusterService;
 import com.hazelcast.internal.nearcache.NearCache;
 import com.hazelcast.internal.nearcache.impl.DefaultNearCacheManager;
 import com.hazelcast.internal.nearcache.impl.invalidation.BatchInvalidator;
+import com.hazelcast.internal.nearcache.impl.invalidation.InvalidationMetaDataFetcher;
 import com.hazelcast.internal.nearcache.impl.invalidation.Invalidator;
-import com.hazelcast.internal.nearcache.impl.invalidation.MetaDataFetcher;
 import com.hazelcast.internal.nearcache.impl.invalidation.MinimalPartitionService;
 import com.hazelcast.internal.nearcache.impl.invalidation.NonStopInvalidator;
 import com.hazelcast.internal.nearcache.impl.invalidation.RepairingHandler;
@@ -31,7 +31,7 @@ import com.hazelcast.logging.ILogger;
 import com.hazelcast.map.impl.EventListenerFilter;
 import com.hazelcast.map.impl.MapManagedService;
 import com.hazelcast.map.impl.MapServiceContext;
-import com.hazelcast.map.impl.nearcache.invalidation.MemberMapMetaDataFetcher;
+import com.hazelcast.map.impl.nearcache.invalidation.MemberMapInvalidationMetaDataFetcher;
 import com.hazelcast.nio.serialization.SerializableByConvention;
 import com.hazelcast.spi.EventFilter;
 import com.hazelcast.spi.EventRegistration;
@@ -62,7 +62,8 @@ public class MapNearCacheManager extends DefaultNearCacheManager {
 
     public MapNearCacheManager(MapServiceContext mapServiceContext) {
         super(mapServiceContext.getNodeEngine().getSerializationService(),
-                mapServiceContext.getNodeEngine().getExecutionService().getGlobalTaskScheduler(), null);
+                mapServiceContext.getNodeEngine().getExecutionService().getGlobalTaskScheduler(),
+                null, mapServiceContext.getNodeEngine().getProperties());
         this.nodeEngine = mapServiceContext.getNodeEngine();
         this.mapServiceContext = mapServiceContext;
         this.partitionService = new MemberMinimalPartitionService(nodeEngine.getPartitionService());
@@ -102,12 +103,15 @@ public class MapNearCacheManager extends DefaultNearCacheManager {
         ClusterService clusterService = nodeEngine.getClusterService();
         OperationService operationService = nodeEngine.getOperationService();
         HazelcastProperties properties = nodeEngine.getProperties();
-        ILogger logger = nodeEngine.getLogger(RepairingTask.class);
 
-        MetaDataFetcher metaDataFetcher = new MemberMapMetaDataFetcher(clusterService, operationService, logger);
+        ILogger metadataFetcherLogger = nodeEngine.getLogger(MemberMapInvalidationMetaDataFetcher.class);
+        InvalidationMetaDataFetcher invalidationMetaDataFetcher
+                = new MemberMapInvalidationMetaDataFetcher(clusterService, operationService, metadataFetcherLogger);
+
+        ILogger repairingTaskLogger = nodeEngine.getLogger(RepairingTask.class);
         String localUuid = nodeEngine.getLocalMember().getUuid();
-        return new RepairingTask(properties, metaDataFetcher, executionService.getGlobalTaskScheduler(),
-                serializationService, partitionService, localUuid, logger);
+        return new RepairingTask(properties, invalidationMetaDataFetcher, executionService.getGlobalTaskScheduler(),
+                serializationService, partitionService, localUuid, repairingTaskLogger);
     }
 
     /**

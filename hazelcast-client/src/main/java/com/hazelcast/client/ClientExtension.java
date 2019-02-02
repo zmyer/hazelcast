@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2008-2018, Hazelcast, Inc. All Rights Reserved.
+ * Copyright (c) 2008-2019, Hazelcast, Inc. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,10 +16,10 @@
 
 package com.hazelcast.client;
 
-import com.hazelcast.client.impl.HazelcastClientInstanceImpl;
+import com.hazelcast.client.impl.clientside.HazelcastClientInstanceImpl;
 import com.hazelcast.client.spi.ClientProxyFactory;
 import com.hazelcast.internal.nearcache.NearCacheManager;
-import com.hazelcast.internal.networking.ChannelFactory;
+import com.hazelcast.internal.networking.ChannelInitializer;
 import com.hazelcast.internal.serialization.InternalSerializationService;
 import com.hazelcast.map.impl.MapService;
 import com.hazelcast.memory.MemoryStats;
@@ -27,7 +27,7 @@ import com.hazelcast.nio.SocketInterceptor;
 
 /**
  * ClientExtension is a client extension mechanism to be able to plug different implementations of
- * some modules, like; {@link InternalSerializationService}, {@link ChannelFactory} etc.
+ * some modules, like; {@link InternalSerializationService} etc.
  */
 public interface ClientExtension {
 
@@ -59,12 +59,7 @@ public interface ClientExtension {
      */
     SocketInterceptor createSocketInterceptor();
 
-    /**
-     * Creates a {@link ChannelFactory} instance to be used by this client.
-     *
-     * @return the created {@link ChannelFactory} instance
-     */
-    ChannelFactory createSocketChannelWrapperFactory();
+    ChannelInitializer createChannelInitializer();
 
     /**
      * Creates a {@link NearCacheManager} instance to be used by this client.

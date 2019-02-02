@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2008-2018, Hazelcast, Inc. All Rights Reserved.
+ * Copyright (c) 2008-2019, Hazelcast, Inc. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -19,22 +19,26 @@ package com.hazelcast.spring;
 import com.hazelcast.config.AtomicLongConfig;
 import com.hazelcast.config.AtomicReferenceConfig;
 import com.hazelcast.config.AwsConfig;
+import com.hazelcast.config.AzureConfig;
 import com.hazelcast.config.CRDTReplicationConfig;
 import com.hazelcast.config.CacheDeserializedValues;
 import com.hazelcast.config.CacheSimpleConfig;
 import com.hazelcast.config.CardinalityEstimatorConfig;
 import com.hazelcast.config.ClassFilter;
 import com.hazelcast.config.Config;
+import com.hazelcast.config.ConsistencyCheckStrategy;
 import com.hazelcast.config.CountDownLatchConfig;
 import com.hazelcast.config.DiscoveryConfig;
 import com.hazelcast.config.DiscoveryStrategyConfig;
 import com.hazelcast.config.DurableExecutorConfig;
 import com.hazelcast.config.EntryListenerConfig;
+import com.hazelcast.config.EurekaConfig;
 import com.hazelcast.config.EventJournalConfig;
 import com.hazelcast.config.EvictionConfig;
 import com.hazelcast.config.EvictionPolicy;
 import com.hazelcast.config.ExecutorConfig;
 import com.hazelcast.config.FlakeIdGeneratorConfig;
+import com.hazelcast.config.GcpConfig;
 import com.hazelcast.config.GlobalSerializerConfig;
 import com.hazelcast.config.GroupConfig;
 import com.hazelcast.config.HotRestartPersistenceConfig;
@@ -42,6 +46,7 @@ import com.hazelcast.config.IcmpFailureDetectorConfig;
 import com.hazelcast.config.InMemoryFormat;
 import com.hazelcast.config.ItemListenerConfig;
 import com.hazelcast.config.JavaSerializationFilterConfig;
+import com.hazelcast.config.KubernetesConfig;
 import com.hazelcast.config.ListConfig;
 import com.hazelcast.config.ListenerConfig;
 import com.hazelcast.config.LockConfig;
@@ -56,6 +61,7 @@ import com.hazelcast.config.MemberAddressProviderConfig;
 import com.hazelcast.config.MemberAttributeConfig;
 import com.hazelcast.config.MemberGroupConfig;
 import com.hazelcast.config.MergePolicyConfig;
+import com.hazelcast.config.MerkleTreeConfig;
 import com.hazelcast.config.MultiMapConfig;
 import com.hazelcast.config.NativeMemoryConfig;
 import com.hazelcast.config.NearCacheConfig;
@@ -87,8 +93,10 @@ import com.hazelcast.config.WANQueueFullBehavior;
 import com.hazelcast.config.WanAcknowledgeType;
 import com.hazelcast.config.WanConsumerConfig;
 import com.hazelcast.config.WanPublisherConfig;
+import com.hazelcast.config.WanPublisherState;
 import com.hazelcast.config.WanReplicationConfig;
 import com.hazelcast.config.WanReplicationRef;
+import com.hazelcast.config.WanSyncConfig;
 import com.hazelcast.core.EntryListener;
 import com.hazelcast.core.Hazelcast;
 import com.hazelcast.core.HazelcastInstance;
@@ -130,6 +138,7 @@ import com.hazelcast.test.HazelcastTestSupport;
 import com.hazelcast.test.annotation.QuickTest;
 import com.hazelcast.topic.TopicOverloadPolicy;
 import com.hazelcast.wan.WanReplicationEndpoint;
+
 import org.junit.AfterClass;
 import org.junit.Before;
 import org.junit.BeforeClass;
@@ -143,8 +152,11 @@ import javax.annotation.Resource;
 import java.io.File;
 import java.net.InetSocketAddress;
 import java.nio.ByteOrder;
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
@@ -286,13 +298,12 @@ public class TestFullApplicationContext extends HazelcastTestSupport {
         assertEquals("PUT_IF_ABSENT", wanRef.getMergePolicy());
         assertEquals(1, wanRef.getFilters().size());
         assertEquals("com.example.SampleFilter", wanRef.getFilters().get(0));
-        assertFalse(wanRef.isRepublishingEnabled());
     }
 
     @Test
     public void testMapConfig() {
         assertNotNull(config);
-        assertEquals(26, config.getMapConfigs().size());
+        assertEquals(27, config.getMapConfigs().size());
 
         MapConfig testMapConfig = config.getMapConfig("testMap");
         assertNotNull(testMapConfig);
@@ -428,6 +439,17 @@ public class TestFullApplicationContext extends HazelcastTestSupport {
     }
 
     @Test
+    public void testMapNoWanMergePolicy() {
+        MapConfig testMapConfig2 = config.getMapConfig("testMap2");
+
+
+        // test testMapConfig2's WanReplicationConfig
+        WanReplicationRef wanReplicationRef = testMapConfig2.getWanReplicationRef();
+        assertEquals("testWan", wanReplicationRef.getName());
+        assertEquals("PUT_IF_ABSENT", wanReplicationRef.getMergePolicy());
+    }
+
+    @Test
     public void testMemberFlakeIdGeneratorConfig() {
         FlakeIdGeneratorConfig c = instance.getConfig().findFlakeIdGeneratorConfig("flakeIdGenerator");
         assertEquals(3, c.getPrefetchCount());
@@ -549,12 +571,16 @@ public class TestFullApplicationContext extends HazelcastTestSupport {
         final Set<PermissionConfig> clientPermissionConfigs = config.getSecurityConfig().getClientPermissionConfigs();
         assertFalse(config.getSecurityConfig().getClientBlockUnmappedActions());
         assertTrue(isNotEmpty(clientPermissionConfigs));
-        assertEquals(1, clientPermissionConfigs.size());
+        assertEquals(22, clientPermissionConfigs.size());
         final PermissionConfig pnCounterPermission = new PermissionConfig(PermissionType.PN_COUNTER, "pnCounterPermission", "*")
                 .addAction("create")
                 .setEndpoints(Collections.<String>emptySet());
-
         assertContains(clientPermissionConfigs, pnCounterPermission);
+        Set<PermissionType> permTypes = new HashSet<PermissionType>(Arrays.asList(PermissionType.values()));
+        for (PermissionConfig pc : clientPermissionConfigs) {
+            permTypes.remove(pc.getType());
+        }
+        assertTrue("All permission types should be listed in fullConfig. Not found ones: " + permTypes, permTypes.isEmpty());
     }
 
     @Test
@@ -788,6 +814,10 @@ public class TestFullApplicationContext extends HazelcastTestSupport {
         assertEquals("127.0.0.1:5701", members.get(1));
         assertEquals("127.0.0.1:5700", tcp.getRequiredMember());
         assertAwsConfig(networkConfig.getJoin().getAwsConfig());
+        assertGcpConfig(networkConfig.getJoin().getGcpConfig());
+        assertAzureConfig(networkConfig.getJoin().getAzureConfig());
+        assertKubernetesConfig(networkConfig.getJoin().getKubernetesConfig());
+        assertEurekaConfig(networkConfig.getJoin().getEurekaConfig());
 
         assertTrue("reuse-address", networkConfig.isReuseAddress());
 
@@ -820,6 +850,35 @@ public class TestFullApplicationContext extends HazelcastTestSupport {
         assertEquals("sample-tag-key", aws.getTagKey());
         assertEquals("sample-tag-value", aws.getTagValue());
         assertEquals("sample-role", aws.getIamRole());
+    }
+
+    private void assertGcpConfig(GcpConfig gcp) {
+        assertFalse(gcp.isEnabled());
+        assertEquals("us-east1-b,us-east1-c", gcp.getProperty("zones"));
+    }
+
+    private void assertAzureConfig(AzureConfig azure) {
+        assertFalse(azure.isEnabled());
+        assertEquals("CLIENT_ID", azure.getProperty("client-id"));
+        assertEquals("CLIENT_SECRET", azure.getProperty("client-secret"));
+        assertEquals("TENANT_ID", azure.getProperty("tenant-id"));
+        assertEquals("SUB_ID", azure.getProperty("subscription-id"));
+        assertEquals("HZLCAST001", azure.getProperty("cluster-id"));
+        assertEquals("GROUP-NAME", azure.getProperty("group-name"));
+    }
+
+    private void assertKubernetesConfig(KubernetesConfig kubernetes) {
+        assertFalse(kubernetes.isEnabled());
+        assertEquals("MY-KUBERNETES-NAMESPACE", kubernetes.getProperty("namespace"));
+        assertEquals("MY-SERVICE-NAME", kubernetes.getProperty("service-name"));
+        assertEquals("MY-SERVICE-LABEL-NAME", kubernetes.getProperty("service-label-name"));
+        assertEquals("MY-SERVICE-LABEL-VALUE", kubernetes.getProperty("service-label-value"));
+    }
+
+    private void assertEurekaConfig(EurekaConfig eureka) {
+        assertFalse(eureka.isEnabled());
+        assertEquals("true", eureka.getProperty("self-registration"));
+        assertEquals("hazelcast", eureka.getProperty("namespace"));
     }
 
     private void assertDiscoveryConfig(DiscoveryConfig discoveryConfig) {
@@ -912,8 +971,10 @@ public class TestFullApplicationContext extends HazelcastTestSupport {
 
         WanPublisherConfig publisherConfig = wcfg.getWanPublisherConfigs().get(0);
         assertEquals("tokyo", publisherConfig.getGroupName());
+        assertEquals("tokyoPublisherId", publisherConfig.getPublisherId());
         assertEquals("com.hazelcast.enterprise.wan.replication.WanBatchReplication", publisherConfig.getClassName());
         assertEquals(WANQueueFullBehavior.THROW_EXCEPTION, publisherConfig.getQueueFullBehavior());
+        assertEquals(WanPublisherState.STOPPED, publisherConfig.getInitialPublisherState());
         assertEquals(1000, publisherConfig.getQueueCapacity());
         Map<String, Comparable> publisherProps = publisherConfig.getProperties();
         assertEquals("50", publisherProps.get("batch.size"));
@@ -925,6 +986,7 @@ public class TestFullApplicationContext extends HazelcastTestSupport {
 
         WanPublisherConfig customPublisher = wcfg.getWanPublisherConfigs().get(1);
         assertEquals("istanbul", customPublisher.getGroupName());
+        assertEquals("istanbulPublisherId", customPublisher.getPublisherId());
         assertEquals("com.hazelcast.wan.custom.CustomPublisher", customPublisher.getClassName());
         assertEquals(WANQueueFullBehavior.THROW_EXCEPTION_ONLY_IF_REPLICATION_ACTIVE, customPublisher.getQueueFullBehavior());
         Map<String, Comparable> customPublisherProps = customPublisher.getProperties();
@@ -932,6 +994,10 @@ public class TestFullApplicationContext extends HazelcastTestSupport {
         assertEquals("5", customPublisherProps.get("discovery.period"));
         assertEquals("2", customPublisherProps.get("maxEndpoints"));
         assertAwsConfig(customPublisher.getAwsConfig());
+        assertGcpConfig(customPublisher.getGcpConfig());
+        assertAzureConfig(customPublisher.getAzureConfig());
+        assertKubernetesConfig(customPublisher.getKubernetesConfig());
+        assertEurekaConfig(customPublisher.getEurekaConfig());
         assertDiscoveryConfig(customPublisher.getDiscoveryConfig());
 
         WanPublisherConfig publisherPlaceHolderConfig = wcfg.getWanPublisherConfigs().get(2);
@@ -941,12 +1007,46 @@ public class TestFullApplicationContext extends HazelcastTestSupport {
         assertEquals("com.hazelcast.wan.custom.WanConsumer", consumerConfig.getClassName());
         Map<String, Comparable> consumerProps = consumerConfig.getProperties();
         assertEquals("prop.consumer", consumerProps.get("custom.prop.consumer"));
+        assertTrue(consumerConfig.isPersistWanReplicatedData());
+    }
 
+    @Test
+    public void testWanConsumerWithPersistDataFalse() {
         WanReplicationConfig config2 = config.getWanReplicationConfig("testWan2");
         WanConsumerConfig consumerConfig2 = config2.getWanConsumerConfig();
-        consumerConfig2.setProperties(consumerProps);
         assertInstanceOf(DummyWanConsumer.class, consumerConfig2.getImplementation());
-        assertEquals("prop.consumer", consumerConfig2.getProperties().get("custom.prop.consumer"));
+        assertFalse(consumerConfig2.isPersistWanReplicatedData());
+    }
+
+    @Test
+    public void testNoWanConsumerClass() {
+        WanReplicationConfig config2 = config.getWanReplicationConfig("testWan3");
+        WanConsumerConfig consumerConfig2 = config2.getWanConsumerConfig();
+        assertFalse(consumerConfig2.isPersistWanReplicatedData());
+    }
+
+    @Test
+    public void testWanReplicationSyncConfig() {
+        final WanReplicationConfig wcfg = config.getWanReplicationConfig("testWan2");
+        final WanConsumerConfig consumerConfig = wcfg.getWanConsumerConfig();
+        final Map<String, Comparable> consumerProps = new HashMap<String, Comparable>();
+        consumerProps.put("custom.prop.consumer", "prop.consumer");
+        consumerConfig.setProperties(consumerProps);
+        assertInstanceOf(DummyWanConsumer.class, consumerConfig.getImplementation());
+        assertEquals("prop.consumer", consumerConfig.getProperties().get("custom.prop.consumer"));
+        assertFalse(consumerConfig.isPersistWanReplicatedData());
+
+        final List<WanPublisherConfig> publisherConfigs = wcfg.getWanPublisherConfigs();
+        assertNotNull(publisherConfigs);
+        assertEquals(1, publisherConfigs.size());
+
+        final WanPublisherConfig publisherConfig = publisherConfigs.get(0);
+        assertEquals("tokyo", publisherConfig.getGroupName());
+        assertEquals("PublisherClassName", publisherConfig.getClassName());
+
+        final WanSyncConfig wanSyncConfig = publisherConfig.getWanSyncConfig();
+        assertNotNull(wanSyncConfig);
+        assertEquals(ConsistencyCheckStrategy.MERKLE_TREES, wanSyncConfig.getConsistencyCheckStrategy());
     }
 
     @Test
@@ -1006,6 +1106,7 @@ public class TestFullApplicationContext extends HazelcastTestSupport {
         ManagementCenterConfig managementCenterConfig = config.getManagementCenterConfig();
         assertNotNull(managementCenterConfig);
         assertTrue(managementCenterConfig.isEnabled());
+        assertFalse(managementCenterConfig.isScriptingEnabled());
         assertEquals("myserver:80", managementCenterConfig.getUrl());
         assertEquals(2, managementCenterConfig.getUpdateInterval());
         assertTrue(managementCenterConfig.getMutualAuthConfig().isEnabled());
@@ -1275,6 +1376,14 @@ public class TestFullApplicationContext extends HazelcastTestSupport {
         assertTrue(journalConfig.isEnabled());
         assertEquals(123, journalConfig.getCapacity());
         assertEquals(321, journalConfig.getTimeToLiveSeconds());
+    }
+
+    @Test
+    public void testMapMerkleTreeConfigIsWellParsed() {
+        MerkleTreeConfig treeConfig = config.getMapMerkleTreeConfig("mapName");
+
+        assertTrue(treeConfig.isEnabled());
+        assertEquals(15, treeConfig.getDepth());
     }
 
     @Test

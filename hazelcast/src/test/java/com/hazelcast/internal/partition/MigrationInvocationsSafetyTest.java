@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2008-2018, Hazelcast, Inc. All Rights Reserved.
+ * Copyright (c) 2008-2019, Hazelcast, Inc. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -26,10 +26,12 @@ import com.hazelcast.spi.PartitionMigrationEvent;
 import com.hazelcast.spi.impl.SpiDataSerializerHook;
 import com.hazelcast.spi.properties.GroupProperty;
 import com.hazelcast.test.AssertTask;
+import com.hazelcast.test.ChangeLoggingRule;
 import com.hazelcast.test.HazelcastSerialClassRunner;
 import com.hazelcast.test.annotation.ParallelTest;
 import com.hazelcast.test.annotation.QuickTest;
 import org.junit.Before;
+import org.junit.ClassRule;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
@@ -62,6 +64,9 @@ import static org.junit.Assert.assertTrue;
 @RunWith(HazelcastSerialClassRunner.class)
 @Category({QuickTest.class, ParallelTest.class})
 public class MigrationInvocationsSafetyTest extends PartitionCorrectnessTestSupport {
+
+    @ClassRule
+    public static ChangeLoggingRule changeLoggingRule = new ChangeLoggingRule("log4j2-debug.xml");
 
     @Before
     public void setupParams() {
@@ -269,6 +274,11 @@ public class MigrationInvocationsSafetyTest extends PartitionCorrectnessTestSupp
         // intercept migration complete on destination and drop commit response
         getPartitionServiceImpl(destination).setInternalMigrationListener(new InternalMigrationListener() {
             final AtomicReference<MigrationInfo> committedMigrationInfoRef = new AtomicReference<MigrationInfo>();
+
+            @Override
+            public void onMigrationStart(MigrationParticipant participant, MigrationInfo migrationInfo) {
+               assertClusterStateEventually(ClusterState.ACTIVE, destination);
+            }
 
             @Override
             public void onMigrationCommit(MigrationParticipant participant, MigrationInfo migrationInfo) {

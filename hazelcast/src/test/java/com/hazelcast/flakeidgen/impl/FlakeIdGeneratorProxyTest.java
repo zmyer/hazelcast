@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2008-2018, Hazelcast, Inc. All Rights Reserved.
+ * Copyright (c) 2008-2019, Hazelcast, Inc. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -199,7 +199,8 @@ public class FlakeIdGeneratorProxyTest {
         // and check, that the ID after idOffset is set is larger than the value from IG.
         long largestIdGeneratorValue = 5421380884070400000L;
         long currentFlakeGenValue = gen.newId();
-        long reserve = 274877906944L; /* this number is mentioned in FlakeIdGeneratorConfig.setIdOffset() */
+        // this number is mentioned in FlakeIdGeneratorConfig.setIdOffset()
+        long reserve = 274877906944L;
         // This test will start failing after December 17th 2058 3:52:07 UTC: after this time no idOffset will be needed.
         assertTrue(largestIdGeneratorValue > currentFlakeGenValue);
         // the before() call will create a new gen

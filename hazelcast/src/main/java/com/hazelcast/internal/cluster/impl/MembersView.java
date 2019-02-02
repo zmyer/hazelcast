@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2008-2018, Hazelcast, Inc. All Rights Reserved.
+ * Copyright (c) 2008-2019, Hazelcast, Inc. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -22,6 +22,7 @@ import com.hazelcast.nio.Address;
 import com.hazelcast.nio.ObjectDataInput;
 import com.hazelcast.nio.ObjectDataOutput;
 import com.hazelcast.nio.serialization.IdentifiedDataSerializable;
+import com.hazelcast.nio.serialization.impl.Versioned;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -35,8 +36,10 @@ import static java.util.Collections.unmodifiableList;
 
 /**
  * MembersView is a container object to carry member list and version together.
+ * MembersView implements Versioned because it serializes versioned objects (MemberInfo)
+ * by passing its own ObjectDataOutput to internal objects' writeData method.
  */
-public final class MembersView implements IdentifiedDataSerializable {
+public final class MembersView implements IdentifiedDataSerializable, Versioned {
 
     private int version;
     private List<MemberInfo> members;

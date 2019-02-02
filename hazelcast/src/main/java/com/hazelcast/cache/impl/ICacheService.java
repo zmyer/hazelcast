@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2008-2018, Hazelcast, Inc. All Rights Reserved.
+ * Copyright (c) 2008-2019, Hazelcast, Inc. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -21,6 +21,7 @@ import com.hazelcast.cache.impl.event.CacheWanEventPublisher;
 import com.hazelcast.cache.impl.journal.CacheEventJournal;
 import com.hazelcast.config.CacheConfig;
 import com.hazelcast.config.InMemoryFormat;
+import com.hazelcast.internal.eviction.ExpirationManager;
 import com.hazelcast.nio.serialization.Data;
 import com.hazelcast.spi.EventFilter;
 import com.hazelcast.spi.EventPublishingService;
@@ -31,6 +32,7 @@ import com.hazelcast.spi.RemoteService;
 
 import java.util.Collection;
 
+@SuppressWarnings({"checkstyle:methodcount"})
 public interface ICacheService
         extends ManagedService, RemoteService, FragmentedMigrationAwareService,
         EventPublishingService<Object, CacheEventListener> {
@@ -79,6 +81,8 @@ public interface ICacheService
 
     CacheConfig deleteCacheConfig(String cacheNameWithPrefix);
 
+    CachePartitionSegment[] getPartitionSegments();
+
     CacheStatisticsImpl createCacheStatIfAbsent(String cacheNameWithPrefix);
 
     CacheContext getOrCreateCacheContext(String cacheNameWithPrefix);
@@ -106,6 +110,8 @@ public interface ICacheService
     void deregisterAllListener(String cacheNameWithPrefix);
 
     CacheStatistics getStatistics(String cacheNameWithPrefix);
+
+    ExpirationManager getExpirationManager();
 
     /**
      * Creates cache operations according to the storage-type of the cache

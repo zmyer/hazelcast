@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2008-2018, Hazelcast, Inc. All Rights Reserved.
+ * Copyright (c) 2008-2019, Hazelcast, Inc. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -18,7 +18,7 @@ package com.hazelcast.client.spi.impl;
 
 import com.hazelcast.client.connection.ClientConnectionManager;
 import com.hazelcast.client.connection.nio.ClientConnection;
-import com.hazelcast.client.impl.HazelcastClientInstanceImpl;
+import com.hazelcast.client.impl.clientside.HazelcastClientInstanceImpl;
 import com.hazelcast.client.impl.protocol.ClientMessage;
 import com.hazelcast.client.impl.protocol.codec.ClientAddPartitionListenerCodec;
 import com.hazelcast.client.impl.protocol.codec.ClientGetPartitionsCodec;
@@ -99,7 +99,7 @@ public final class ClientPartitionServiceImpl
     }
 
     @Override
-    public void handle(Collection<Map.Entry<Address, List<Integer>>> collection, int partitionStateVersion) {
+    public void handlePartitionsEventV15(Collection<Map.Entry<Address, List<Integer>>> collection, int partitionStateVersion) {
         processPartitionResponse(collection, partitionStateVersion, true);
     }
 

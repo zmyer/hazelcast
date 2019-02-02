@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2008-2018, Hazelcast, Inc. All Rights Reserved.
+ * Copyright (c) 2008-2019, Hazelcast, Inc. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -27,14 +27,12 @@ public interface ICollection<E> extends Collection<E>, DistributedObject {
 
     /**
      * Returns the name of this collection.
-     *
-     * @return the name of this collection
      */
     String getName();
 
     /**
      * Adds an item listener for this collection.
-     * The listener will be notified for all collection add/remove events.
+     * The listener will be notified of all collection add/remove events.
      *
      * @param listener     the item listener
      * @param includeValue {@code true} if the updated item should be passed

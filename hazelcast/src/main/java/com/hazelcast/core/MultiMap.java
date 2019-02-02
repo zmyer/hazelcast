@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2008-2018, Hazelcast, Inc. All Rights Reserved.
+ * Copyright (c) 2008-2019, Hazelcast, Inc. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -53,15 +53,7 @@ import java.util.concurrent.TimeUnit;
  * @see IMap
  */
 @SuppressWarnings("checkstyle:methodcount")
-public interface MultiMap<K, V> extends BaseMultiMap<K, V>, DistributedObject {
-
-    /**
-     * Returns the name of this multimap.
-     *
-     * @return the name of this multimap
-     */
-    String getName();
-
+public interface MultiMap<K, V> extends BaseMultiMap<K, V> {
     /**
      * Stores a key-value pair in the multimap.
      * <p>

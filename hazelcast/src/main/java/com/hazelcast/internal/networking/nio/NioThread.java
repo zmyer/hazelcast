@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2008-2018, Hazelcast, Inc. All Rights Reserved.
+ * Copyright (c) 2008-2019, Hazelcast, Inc. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -35,7 +35,7 @@ import java.util.Queue;
 import java.util.Random;
 import java.util.concurrent.ConcurrentLinkedQueue;
 
-import static com.hazelcast.internal.metrics.ProbeLevel.DEBUG;
+import static com.hazelcast.internal.metrics.ProbeLevel.INFO;
 import static com.hazelcast.internal.networking.nio.SelectorMode.SELECT_NOW;
 import static com.hazelcast.internal.networking.nio.SelectorOptimizer.newSelector;
 import static com.hazelcast.internal.util.counters.SwCounter.newSwCounter;
@@ -46,7 +46,8 @@ import static java.lang.System.currentTimeMillis;
 public class NioThread extends Thread implements OperationHostileThread {
 
     // WARNING: This value has significant effect on idle CPU usage!
-    private static final int SELECT_WAIT_TIME_MILLIS = 5000;
+    private static final int SELECT_WAIT_TIME_MILLIS
+            = Integer.getInteger("hazelcast.io.select.wait.time.millis", 5000);
     private static final int SELECT_FAILURE_PAUSE_MILLIS = 1000;
     // When we detect Selector.select returning prematurely
     // for more than SELECT_IDLE_COUNT_THRESHOLD then we rebuild the selector
@@ -63,13 +64,13 @@ public class NioThread extends Thread implements OperationHostileThread {
     @Probe(name = "ioThreadId", level = ProbeLevel.INFO)
     public int id;
 
-    @Probe(level = DEBUG)
+    @Probe(level = INFO)
     volatile long bytesTransceived;
-    @Probe(level = DEBUG)
+    @Probe(level = INFO)
     volatile long framesTransceived;
-    @Probe(level = DEBUG)
+    @Probe(level = INFO)
     volatile long priorityFramesTransceived;
-    @Probe(level = DEBUG)
+    @Probe(level = INFO)
     volatile long processCount;
 
     @Probe(name = "taskQueueSize")
@@ -131,6 +132,10 @@ public class NioThread extends Thread implements OperationHostileThread {
         this.idleStrategy = idleStrategy;
     }
 
+    void setSelectorWorkaroundTest(boolean selectorWorkaroundTest) {
+        this.selectorWorkaroundTest = selectorWorkaroundTest;
+    }
+
     public long bytesTransceived() {
         return bytesTransceived;
     }
@@ -160,7 +165,7 @@ public class NioThread extends Thread implements OperationHostileThread {
      *
      * @return the Selector
      */
-    public final Selector getSelector() {
+    public Selector getSelector() {
         return selector;
     }
 
@@ -189,7 +194,7 @@ public class NioThread extends Thread implements OperationHostileThread {
      * @param task the task to add
      * @throws NullPointerException if task is null
      */
-    public final void addTask(Runnable task) {
+    public void addTask(Runnable task) {
         taskQueue.add(task);
     }
 
@@ -208,14 +213,14 @@ public class NioThread extends Thread implements OperationHostileThread {
     }
 
     @Override
-    public final void run() {
+    public void run() {
         // This outer loop is a bit complex but it takes care of a lot of stuff:
         // * it calls runSelectNowLoop or runSelectLoop based on selectNow enabled or not.
         // * handles backoff and retrying in case if io exception is thrown
         // * it takes care of other exception handling.
         //
-        // The idea about this approach is that the runSelectNowLoop and runSelectLoop are as clean as possible and don't contain
-        // any logic that isn't happening on the happy-path.
+        // The idea about this approach is that the runSelectNowLoop and runSelectLoop are
+        // as clean as possible and don't contain any logic that isn't happening on the happy-path.
         try {
             for (; ; ) {
                 try {
@@ -272,7 +277,7 @@ public class NioThread extends Thread implements OperationHostileThread {
 
             int selectedKeys = selector.select(SELECT_WAIT_TIME_MILLIS);
             if (selectedKeys > 0) {
-                handleSelectionKeys();
+                processSelectionKeys();
             }
         }
     }
@@ -286,7 +291,7 @@ public class NioThread extends Thread implements OperationHostileThread {
             int selectedKeys = selector.select(SELECT_WAIT_TIME_MILLIS);
             if (selectedKeys > 0) {
                 idleCount = 0;
-                handleSelectionKeys();
+                processSelectionKeys();
             } else if (!taskQueue.isEmpty()) {
                 idleCount = 0;
             } else {
@@ -315,7 +320,7 @@ public class NioThread extends Thread implements OperationHostileThread {
             int selectedKeys = selector.selectNow();
 
             if (selectedKeys > 0) {
-                handleSelectionKeys();
+                processSelectionKeys();
                 idleRound = 0;
             } else if (tasksProcessed) {
                 idleRound = 0;
@@ -340,17 +345,17 @@ public class NioThread extends Thread implements OperationHostileThread {
         return tasksProcessed;
     }
 
-    private void handleSelectionKeys() {
+    private void processSelectionKeys() {
         lastSelectTimeMs = currentTimeMillis();
         Iterator<SelectionKey> it = selector.selectedKeys().iterator();
         while (it.hasNext()) {
             SelectionKey sk = it.next();
             it.remove();
-            handleSelectionKey(sk);
+            processSelectionKey(sk);
         }
     }
 
-    private void handleSelectionKey(SelectionKey sk) {
+    private void processSelectionKey(SelectionKey sk) {
         NioPipeline pipeline = (NioPipeline) sk.attachment();
         try {
             if (!sk.isValid()) {
@@ -363,7 +368,7 @@ public class NioThread extends Thread implements OperationHostileThread {
             eventCount.inc();
             pipeline.process();
         } catch (Throwable t) {
-            pipeline.onError(t);
+             pipeline.onError(t);
         }
     }
 
@@ -379,7 +384,7 @@ public class NioThread extends Thread implements OperationHostileThread {
         }
     }
 
-    public final void shutdown() {
+    public void shutdown() {
         stop = true;
         taskQueue.clear();
         interrupt();
@@ -419,9 +424,5 @@ public class NioThread extends Thread implements OperationHostileThread {
     @Override
     public String toString() {
         return getName();
-    }
-
-    void setSelectorWorkaroundTest(boolean selectorWorkaroundTest) {
-        this.selectorWorkaroundTest = selectorWorkaroundTest;
     }
 }

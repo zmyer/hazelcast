@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2008-2018, Hazelcast, Inc. All Rights Reserved.
+ * Copyright (c) 2008-2019, Hazelcast, Inc. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -17,11 +17,12 @@
 package com.hazelcast.client.cache.impl;
 
 import com.hazelcast.cache.CacheStatistics;
-import com.hazelcast.client.impl.ClientMessageDecoder;
+import com.hazelcast.client.impl.clientside.ClientMessageDecoder;
 import com.hazelcast.client.impl.protocol.ClientMessage;
 import com.hazelcast.client.impl.protocol.codec.CacheGetAllCodec;
 import com.hazelcast.client.impl.protocol.codec.CacheGetCodec;
 import com.hazelcast.client.impl.protocol.codec.CachePutAllCodec;
+import com.hazelcast.client.impl.protocol.codec.CacheSetExpiryPolicyCodec;
 import com.hazelcast.client.impl.protocol.codec.CacheSizeCodec;
 import com.hazelcast.client.spi.ClientContext;
 import com.hazelcast.client.spi.ClientPartitionService;
@@ -33,6 +34,7 @@ import com.hazelcast.core.ExecutionCallback;
 import com.hazelcast.core.ICompletableFuture;
 import com.hazelcast.nio.serialization.Data;
 import com.hazelcast.spi.InternalCompletableFuture;
+import com.hazelcast.util.FutureUtil;
 
 import javax.cache.CacheException;
 import javax.cache.expiry.ExpiryPolicy;
@@ -48,6 +50,7 @@ import java.util.concurrent.Future;
 
 import static com.hazelcast.cache.impl.CacheProxyUtil.NULL_KEY_IS_NOT_ALLOWED;
 import static com.hazelcast.cache.impl.CacheProxyUtil.validateNotNull;
+import static com.hazelcast.cache.impl.operation.MutableOperation.IGNORE_COMPLETION;
 import static com.hazelcast.util.CollectionUtil.objectToDataCollection;
 import static com.hazelcast.util.ExceptionUtil.rethrow;
 import static com.hazelcast.util.ExceptionUtil.rethrowAllowedTypeFirst;
@@ -278,6 +281,35 @@ abstract class AbstractClientCacheProxy<K, V> extends AbstractClientInternalCach
         putAllInternal(map, expiryPolicy, null, new List[partitionCount], startNanos);
     }
 
+    @Override
+    public void setExpiryPolicy(Set<? extends K> keys, ExpiryPolicy policy) {
+        ensureOpen();
+        checkNotNull(keys);
+        checkNotNull(policy);
+        if (keys.isEmpty()) {
+            return;
+        }
+        setExpiryPolicyInternal(keys, policy);
+    }
+
+    @Override
+    public boolean setExpiryPolicy(K key, ExpiryPolicy expiryPolicy) {
+        return setExpiryPolicyInternal(key, expiryPolicy);
+    }
+
+    protected void setExpiryPolicyInternal(Set<? extends K> keys, ExpiryPolicy policy) {
+        setExpiryPolicyInternal(keys, policy, null);
+    }
+
+    protected void setExpiryPolicyInternal(Set<? extends K> keys, ExpiryPolicy policy, Set<Data> serializedKeys) {
+        try {
+            List<Data>[] keysByPartition = groupKeysToPartitions(keys, serializedKeys);
+            setExpiryPolicyAndWaitForCompletion(keysByPartition, policy);
+        } catch (Exception e) {
+            throw rethrow(e);
+        }
+    }
+
     protected void putAllInternal(Map<? extends K, ? extends V> map, ExpiryPolicy expiryPolicy, Map<Object, Data> keyMap,
                                   List<Map.Entry<Data, Data>>[] entriesPerPartition, long startNanos) {
         try {
@@ -314,6 +346,28 @@ abstract class AbstractClientCacheProxy<K, V> extends AbstractClientInternalCach
         }
     }
 
+    private List<Data>[] groupKeysToPartitions(Set<? extends K> keys, Set<Data> serializedKeys) {
+        List<Data>[] keysByPartition = new List[partitionCount];
+        ClientPartitionService partitionService = getContext().getPartitionService();
+        for (K key: keys) {
+            Data keyData = getSerializationService().toData(key);
+
+            if (serializedKeys != null) {
+                serializedKeys.add(keyData);
+            }
+
+            int partitionId = partitionService.getPartitionId(keyData);
+
+            List<Data> partition = keysByPartition[partitionId];
+            if (partition == null) {
+                partition = new ArrayList<Data>();
+                keysByPartition[partitionId] = partition;
+            }
+            partition.add(keyData);
+        }
+        return keysByPartition;
+    }
+
     private static final class FutureEntriesTuple {
 
         private final Future future;
@@ -344,6 +398,24 @@ abstract class AbstractClientCacheProxy<K, V> extends AbstractClientInternalCach
         }
 
         waitResponseFromAllPartitionsForPutAll(futureEntriesTuples, startNanos);
+    }
+
+    private void setExpiryPolicyAndWaitForCompletion(List<Data>[] keysByPartition, ExpiryPolicy expiryPolicy) {
+        List<Future> futures = new ArrayList<Future>(keysByPartition.length);
+
+        Data policyData = toData(expiryPolicy);
+        for (int partitionId = 0; partitionId < keysByPartition.length; partitionId++) {
+            List<Data> keys = keysByPartition[partitionId];
+            if (keys != null) {
+                ClientMessage request = CacheSetExpiryPolicyCodec.encodeRequest(nameWithPrefix, keys, policyData);
+                futures.add(invoke(request, partitionId, IGNORE_COMPLETION));
+            }
+        }
+
+        List<Throwable> throwables = FutureUtil.waitUntilAllResponded(futures);
+        if (throwables.size() > 0) {
+            throw rethrow(throwables.get(0));
+        }
     }
 
     private void waitResponseFromAllPartitionsForPutAll(List<FutureEntriesTuple> futureEntriesTuples, long startNanos) {

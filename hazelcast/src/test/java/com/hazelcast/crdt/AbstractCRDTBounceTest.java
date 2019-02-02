@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2008-2018, Hazelcast, Inc. All Rights Reserved.
+ * Copyright (c) 2008-2019, Hazelcast, Inc. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -53,24 +53,26 @@ import java.util.concurrent.atomic.AtomicReferenceArray;
  * under concurrent mutation and instance shutdown.
  */
 public abstract class AbstractCRDTBounceTest extends HazelcastTestSupport {
+
     private static final int CONCURRENCY = 10;
     private static final int NODE_COUNT = 3;
+
     @Rule
     public JitterRule jitterRule = new JitterRule();
 
-    private AtomicReferenceArray<HazelcastInstance> instances;
-    private TestHazelcastInstanceFactory factory;
-    private Future bouncingFuture;
     private final AtomicBoolean testStop = new AtomicBoolean();
+
+    private AtomicReferenceArray<HazelcastInstance> instances;
+    private Future bouncingFuture;
 
     @Before
     public void setup() {
-        this.factory = createHazelcastInstanceFactory();
-        this.instances = new AtomicReferenceArray<HazelcastInstance>(NODE_COUNT);
+        TestHazelcastInstanceFactory factory = createHazelcastInstanceFactory();
+        instances = new AtomicReferenceArray<HazelcastInstance>(NODE_COUNT);
         for (int i = 0; i < NODE_COUNT; i++) {
             instances.set(i, factory.newHazelcastInstance(getConfig()));
         }
-        this.bouncingFuture = startBouncing(instances, testStop, factory);
+        bouncingFuture = startBouncing(instances, testStop, factory);
     }
 
     @Test

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2008-2018, Hazelcast, Inc. All Rights Reserved.
+ * Copyright (c) 2008-2019, Hazelcast, Inc. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -37,6 +37,7 @@ import com.hazelcast.client.impl.protocol.task.dynamicconfig.AddFlakeIdGenerator
 import com.hazelcast.client.impl.protocol.task.dynamicconfig.AddListConfigMessageTask;
 import com.hazelcast.client.impl.protocol.task.dynamicconfig.AddLockConfigMessageTask;
 import com.hazelcast.client.impl.protocol.task.dynamicconfig.AddMapConfigMessageTask;
+import com.hazelcast.client.impl.protocol.task.dynamicconfig.AddMerkleTreeConfigMessageTask;
 import com.hazelcast.client.impl.protocol.task.dynamicconfig.AddMultiMapConfigMessageTask;
 import com.hazelcast.client.impl.protocol.task.dynamicconfig.AddQueueConfigMessageTask;
 import com.hazelcast.client.impl.protocol.task.dynamicconfig.AddReliableTopicConfigMessageTask;
@@ -55,6 +56,11 @@ import com.hazelcast.client.impl.protocol.task.map.MapEventJournalReadTask;
 import com.hazelcast.client.impl.protocol.task.map.MapEventJournalSubscribeTask;
 import com.hazelcast.client.impl.protocol.task.map.MapProjectionMessageTask;
 import com.hazelcast.client.impl.protocol.task.map.MapProjectionWithPredicateMessageTask;
+import com.hazelcast.client.impl.protocol.task.map.MapPutIfAbsentWithMaxIdleMessageTask;
+import com.hazelcast.client.impl.protocol.task.map.MapPutTransientWithMaxIdleMessageTask;
+import com.hazelcast.client.impl.protocol.task.map.MapPutWithMaxIdleMessageTask;
+import com.hazelcast.client.impl.protocol.task.map.MapSetTtlMessageTask;
+import com.hazelcast.client.impl.protocol.task.map.MapSetWithMaxIdleMessageTask;
 import com.hazelcast.client.impl.protocol.task.map.Pre38MapAddNearCacheEntryListenerMessageTask;
 import com.hazelcast.client.impl.protocol.task.scheduledexecutor.ScheduledExecutorGetAllScheduledMessageTask;
 import com.hazelcast.client.impl.protocol.task.scheduledexecutor.ScheduledExecutorShutdownMessageTask;
@@ -313,6 +319,12 @@ public class DefaultMessageTaskFactoryProvider implements MessageTaskFactoryProv
         factories[com.hazelcast.client.impl.protocol.codec.CachePutAllCodec.RequestParameters.TYPE.id()] = new MessageTaskFactory() {
             public MessageTask create(ClientMessage clientMessage, Connection connection) {
                 return new com.hazelcast.client.impl.protocol.task.cache.CachePutAllMessageTask(clientMessage, node, connection);
+            }
+        };
+        factories[com.hazelcast.client.impl.protocol.codec.CacheSetExpiryPolicyCodec.RequestParameters.TYPE.id()] = new MessageTaskFactory() {
+            @Override
+            public MessageTask create(ClientMessage clientMessage, Connection connection) {
+                return new com.hazelcast.client.impl.protocol.task.cache.CacheSetExpiryPolicyMessageTask(clientMessage, node, connection);
             }
         };
         factories[com.hazelcast.client.impl.protocol.codec.CacheLoadAllCodec.RequestParameters.TYPE.id()] = new MessageTaskFactory() {
@@ -1659,6 +1671,36 @@ public class DefaultMessageTaskFactoryProvider implements MessageTaskFactoryProv
                 return new MapEventJournalReadTask<Object, Object, Object>(clientMessage, node, connection);
             }
         };
+        factories[com.hazelcast.client.impl.protocol.codec.MapSetTtlCodec.RequestParameters.TYPE.id()] = new MessageTaskFactory() {
+            @Override
+            public MessageTask create(ClientMessage clientMessage, Connection connection) {
+                return new MapSetTtlMessageTask(clientMessage, node, connection);
+            }
+        };
+        factories[com.hazelcast.client.impl.protocol.codec.MapSetWithMaxIdleCodec.RequestParameters.TYPE.id()] = new MessageTaskFactory() {
+            @Override
+            public MessageTask create(ClientMessage clientMessage, Connection connection) {
+                return new MapSetWithMaxIdleMessageTask(clientMessage, node, connection);
+            }
+        };
+        factories[com.hazelcast.client.impl.protocol.codec.MapPutWithMaxIdleCodec.RequestParameters.TYPE.id()] = new MessageTaskFactory() {
+            @Override
+            public MessageTask create(ClientMessage clientMessage, Connection connection) {
+                return new MapPutWithMaxIdleMessageTask(clientMessage, node, connection);
+            }
+        };
+        factories[com.hazelcast.client.impl.protocol.codec.MapPutIfAbsentWithMaxIdleCodec.RequestParameters.TYPE.id()] = new MessageTaskFactory() {
+            @Override
+            public MessageTask create(ClientMessage clientMessage, Connection connection) {
+                return new MapPutIfAbsentWithMaxIdleMessageTask(clientMessage, node, connection);
+            }
+        };
+        factories[com.hazelcast.client.impl.protocol.codec.MapPutTransientWithMaxIdleCodec.RequestParameters.TYPE.id()] = new MessageTaskFactory() {
+            @Override
+            public MessageTask create(ClientMessage clientMessage, Connection connection) {
+                return new MapPutTransientWithMaxIdleMessageTask(clientMessage, node, connection);
+            }
+        };
 //endregion
 //region ----------  REGISTRATION FOR com.hazelcast.client.impl.protocol.task
         factories[com.hazelcast.client.impl.protocol.codec.ClientAddPartitionLostListenerCodec.RequestParameters.TYPE.id()] = new MessageTaskFactory() {
@@ -2098,6 +2140,11 @@ public class DefaultMessageTaskFactoryProvider implements MessageTaskFactoryProv
         factories[com.hazelcast.client.impl.protocol.codec.PNCounterGetConfiguredReplicaCountCodec.RequestParameters.TYPE.id()] = new MessageTaskFactory() {
             public MessageTask create(ClientMessage clientMessage, Connection connection) {
                 return new PNCounterGetConfiguredReplicaCountMessageTask(clientMessage, node, connection);
+            }
+        };
+        factories[com.hazelcast.client.impl.protocol.codec.DynamicConfigAddMerkleTreeConfigCodec.RequestParameters.TYPE.id()] = new MessageTaskFactory() {
+            public MessageTask create(ClientMessage clientMessage, Connection connection) {
+                return new AddMerkleTreeConfigMessageTask(clientMessage, node, connection);
             }
         };
 //endregion

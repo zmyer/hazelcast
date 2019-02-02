@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2008-2018, Hazelcast, Inc. All Rights Reserved.
+ * Copyright (c) 2008-2019, Hazelcast, Inc. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -52,7 +52,7 @@ public class MatchingPointConfigPatternMatcher implements ConfigPatternMatcher {
     }
 
     /**
-     * This method returns higher values the better the matching is.
+     * This method returns the higher value the better the matching is.
      *
      * @param pattern  configuration pattern to match with
      * @param itemName item name to match

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2008-2018, Hazelcast, Inc. All Rights Reserved.
+ * Copyright (c) 2008-2019, Hazelcast, Inc. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -23,6 +23,7 @@ import com.hazelcast.client.impl.protocol.codec.MapRemoveCodec;
 import com.hazelcast.client.impl.protocol.codec.MapRemoveEntryListenerCodec;
 import com.hazelcast.client.spi.ClientContext;
 import com.hazelcast.client.spi.EventHandler;
+import com.hazelcast.client.spi.impl.ClientInvocationFuture;
 import com.hazelcast.client.spi.impl.ListenerMessageCodec;
 import com.hazelcast.client.util.ClientDelegatingFuture;
 import com.hazelcast.config.NearCacheConfig;
@@ -60,6 +61,7 @@ import static com.hazelcast.internal.nearcache.NearCacheRecord.NOT_RESERVED;
 import static com.hazelcast.util.CollectionUtil.objectToDataCollection;
 import static com.hazelcast.util.ExceptionUtil.rethrow;
 import static com.hazelcast.util.MapUtil.createHashMap;
+import static com.hazelcast.util.Preconditions.checkNotNull;
 import static java.lang.String.format;
 import static java.util.Collections.emptyMap;
 
@@ -135,39 +137,53 @@ public class NearCachedClientMapProxy<K, V> extends ClientMapProxy<K, V> {
     }
 
     @Override
-    public ICompletableFuture<V> getAsyncInternal(Object keyParameter) {
-        final Object key = toNearCacheKey(keyParameter);
-        Object value = getCachedValue(key, false);
+    protected boolean setTtlInternal(Object key, long ttl, TimeUnit timeUnit) {
+        key = toNearCacheKey(key);
+        try {
+            return super.setTtlInternal(key, ttl, timeUnit);
+        } finally {
+            invalidateNearCache(key);
+        }
+    }
+
+    @Override
+    public ICompletableFuture<V> getAsync(K key) {
+        checkNotNull(key, NULL_KEY_IS_NOT_ALLOWED);
+
+        final Object ncKey = toNearCacheKey(key);
+        Object value = getCachedValue(ncKey, false);
         if (value != NOT_CACHED) {
             ExecutorService executor = getContext().getExecutionService().getUserExecutor();
             return new CompletedFuture<V>(getSerializationService(), value, executor);
         }
 
-        Data keyData = toData(key);
-        final long reservationId = nearCache.tryReserveForUpdate(key, keyData);
-        ICompletableFuture<V> future;
+        Data keyData = toData(ncKey);
+        final long reservationId = nearCache.tryReserveForUpdate(ncKey, keyData);
+        ClientInvocationFuture invocationFuture;
         try {
-            future = super.getAsyncInternal(keyData);
+            invocationFuture = super.getAsyncInternal(keyData);
         } catch (Throwable t) {
-            invalidateNearCache(key);
+            invalidateNearCache(ncKey);
             throw rethrow(t);
         }
 
         if (reservationId != NOT_RESERVED) {
-            ((ClientDelegatingFuture) future).andThenInternal(new ExecutionCallback<Object>() {
+            invocationFuture.andThen(new ExecutionCallback<ClientMessage>() {
                 @Override
-                public void onResponse(Object value) {
-                    nearCache.tryPublishReserved(key, value, reservationId, false);
+                public void onResponse(ClientMessage response) {
+                    Object newDecodedResponse = GET_ASYNC_RESPONSE_DECODER.decodeClientMessage(response);
+                    nearCache.tryPublishReserved(ncKey, newDecodedResponse, reservationId, false);
                 }
 
                 @Override
                 public void onFailure(Throwable t) {
-                    invalidateNearCache(key);
+                    invalidateNearCache(ncKey);
                 }
-            }, false);
+            }, getClient().getClientExecutionService());
         }
 
-        return future;
+        return new ClientDelegatingFuture<V>(getAsyncInternal(key),
+                getSerializationService(), GET_ASYNC_RESPONSE_DECODER);
     }
 
     @Override
@@ -214,11 +230,12 @@ public class NearCachedClientMapProxy<K, V> extends ClientMapProxy<K, V> {
     }
 
     @Override
-    protected ICompletableFuture<V> putAsyncInternal(long ttl, TimeUnit timeunit, Object key, Object value) {
+    protected ICompletableFuture<V> putAsyncInternal(long ttl, TimeUnit timeunit, Long maxIdle, TimeUnit maxIdleUnit,
+                                                     Object key, Object value) {
         key = toNearCacheKey(key);
         ICompletableFuture<V> future;
         try {
-            future = super.putAsyncInternal(ttl, timeunit, key, value);
+            future = super.putAsyncInternal(ttl, timeunit, maxIdle, maxIdleUnit, key, value);
         } finally {
             invalidateNearCache(key);
         }
@@ -226,11 +243,12 @@ public class NearCachedClientMapProxy<K, V> extends ClientMapProxy<K, V> {
     }
 
     @Override
-    protected ICompletableFuture<Void> setAsyncInternal(long ttl, TimeUnit timeunit, Object key, Object value) {
+    protected ICompletableFuture<Void> setAsyncInternal(long ttl, TimeUnit timeunit, Long maxIdle, TimeUnit maxIdleUnit,
+                                                        Object key, Object value) {
         key = toNearCacheKey(key);
         ICompletableFuture<Void> future;
         try {
-            future = super.setAsyncInternal(ttl, timeunit, key, value);
+            future = super.setAsyncInternal(ttl, timeunit, maxIdle, maxIdleUnit, key, value);
         } finally {
             invalidateNearCache(key);
         }
@@ -262,7 +280,8 @@ public class NearCachedClientMapProxy<K, V> extends ClientMapProxy<K, V> {
     }
 
     @Override
-    protected boolean tryPutInternal(long timeout, TimeUnit timeunit, Object key, Object value) {
+    protected boolean tryPutInternal(long timeout, TimeUnit timeunit,
+                                     Object key, Object value) {
         key = toNearCacheKey(key);
         boolean putInternal;
         try {
@@ -274,11 +293,11 @@ public class NearCachedClientMapProxy<K, V> extends ClientMapProxy<K, V> {
     }
 
     @Override
-    protected V putInternal(long ttl, TimeUnit timeunit, Object key, Object value) {
+    protected V putInternal(long ttl, TimeUnit ttlUnit, Long maxIdle, TimeUnit maxIdleUnit, Object key, Object value) {
         key = toNearCacheKey(key);
         V previousValue;
         try {
-            previousValue = super.putInternal(ttl, timeunit, key, value);
+            previousValue = super.putInternal(ttl, ttlUnit, maxIdle, maxIdleUnit, key, value);
         } finally {
             invalidateNearCache(key);
         }
@@ -286,21 +305,23 @@ public class NearCachedClientMapProxy<K, V> extends ClientMapProxy<K, V> {
     }
 
     @Override
-    protected void putTransientInternal(long ttl, TimeUnit timeunit, Object key, Object value) {
+    protected void putTransientInternal(long ttl, TimeUnit timeunit, Long maxIdle, TimeUnit maxIdleUnit,
+                                        Object key, Object value) {
         key = toNearCacheKey(key);
         try {
-            super.putTransientInternal(ttl, timeunit, key, value);
+            super.putTransientInternal(ttl, timeunit, maxIdle, maxIdleUnit, key, value);
         } finally {
             invalidateNearCache(key);
         }
     }
 
     @Override
-    protected V putIfAbsentInternal(long ttl, TimeUnit timeunit, Object key, Object value) {
+    protected V putIfAbsentInternal(long ttl, TimeUnit timeunit, Long maxIdle, TimeUnit maxIdleUnit,
+                                    Object key, Object value) {
         key = toNearCacheKey(key);
         V previousValue;
         try {
-            previousValue = super.putIfAbsentInternal(ttl, timeunit, key, value);
+            previousValue = super.putIfAbsentInternal(ttl, timeunit, maxIdle, maxIdleUnit, key, value);
         } finally {
             invalidateNearCache(key);
         }
@@ -332,10 +353,10 @@ public class NearCachedClientMapProxy<K, V> extends ClientMapProxy<K, V> {
     }
 
     @Override
-    protected void setInternal(long ttl, TimeUnit timeunit, Object key, Object value) {
+    protected void setInternal(long ttl, TimeUnit timeunit, Long maxIdle, TimeUnit maxIdleUnit, Object key, Object value) {
         key = toNearCacheKey(key);
         try {
-            super.setInternal(ttl, timeunit, key, value);
+            super.setInternal(ttl, timeunit, maxIdle, maxIdleUnit, key, value);
         } finally {
             invalidateNearCache(key);
         }
@@ -601,7 +622,7 @@ public class NearCachedClientMapProxy<K, V> extends ClientMapProxy<K, V> {
 
     private void registerInvalidationListener() {
         try {
-            invalidationListenerId = addNearCacheInvalidationListener(new ConnectedServerVersionAwareNearCacheEventHandler());
+            invalidationListenerId = addNearCacheInvalidationListener(new NearCacheInvalidationEventHandler());
         } catch (Exception e) {
             ILogger logger = getContext().getLoggingService().getLogger(getClass());
             logger.severe("-----------------\nNear Cache is not initialized!\n-----------------", e);
@@ -655,131 +676,77 @@ public class NearCachedClientMapProxy<K, V> extends ClientMapProxy<K, V> {
         deregisterListener(invalidationListenerId);
     }
 
+    private boolean supportsRepairableNearCache() {
+        return getConnectedServerVersion() >= minConsistentNearCacheSupportingServerVersion;
+    }
+
     /**
-     * Deals with client compatibility.
-     * <p>
-     * Eventual consistency for Near Cache can be used with server versions >= 3.8,
-     * other connected server versions must use {@link Pre38NearCacheEventHandler}
+     * Eventual consistency for Near Cache can be used with server versions >= 3.8
+     * For repairing functionality please see {@link RepairingHandler}
+     * handleCacheInvalidationEventV14 and handleCacheBatchInvalidationEventV14
+     *
+     * If server version is < 3.8 and client version is >= 3.8, eventual consistency is not supported
+     * Following methods handle the old behaviour:
+     * handleCacheBatchInvalidationEventV10 and handleCacheInvalidationEventV10
      */
-    private final class ConnectedServerVersionAwareNearCacheEventHandler implements EventHandler<ClientMessage> {
+    private final class NearCacheInvalidationEventHandler
+            extends MapAddNearCacheInvalidationListenerCodec.AbstractEventHandler
+            implements EventHandler<ClientMessage> {
 
-        private final Pre38NearCacheEventHandler pre38EventHandler = new Pre38NearCacheEventHandler();
-        private final RepairableNearCacheEventHandler repairingEventHandler = new RepairableNearCacheEventHandler();
-
+        private volatile RepairingHandler repairingHandler;
         private volatile boolean supportsRepairableNearCache;
 
         @Override
         public void beforeListenerRegister() {
-            repairingEventHandler.beforeListenerRegister();
-
             supportsRepairableNearCache = supportsRepairableNearCache();
 
-            if (!supportsRepairableNearCache) {
-                pre38EventHandler.beforeListenerRegister();
-
+            if (supportsRepairableNearCache) {
+                RepairingTask repairingTask = getContext().getRepairingTask(getServiceName());
+                repairingHandler = repairingTask.registerAndGetHandler(name, nearCache);
+            } else {
+                nearCache.clear();
+                RepairingTask repairingTask = getContext().getRepairingTask(getServiceName());
+                repairingTask.deregisterHandler(name);
                 logger.warning(format("Near Cache for '%s' map is started in legacy mode", name));
             }
         }
 
         @Override
         public void onListenerRegister() {
-            if (supportsRepairableNearCache) {
-                repairingEventHandler.onListenerRegister();
-            } else {
-                pre38EventHandler.onListenerRegister();
-            }
-        }
-
-        @Override
-        public void handle(ClientMessage clientMessage) {
-            if (supportsRepairableNearCache) {
-                repairingEventHandler.handle(clientMessage);
-            } else {
-                pre38EventHandler.handle(clientMessage);
-            }
-        }
-    }
-
-    /**
-     * This event handler can only be used with server versions >= 3.8 and supports Near Cache eventual consistency improvements.
-     * For repairing functionality please see {@link RepairingHandler}.
-     */
-    private final class RepairableNearCacheEventHandler
-            extends MapAddNearCacheInvalidationListenerCodec.AbstractEventHandler
-            implements EventHandler<ClientMessage> {
-
-        private volatile RepairingHandler repairingHandler;
-
-        @Override
-        public void beforeListenerRegister() {
-            if (supportsRepairableNearCache()) {
-                RepairingTask repairingTask = getContext().getRepairingTask(getServiceName());
-                repairingHandler = repairingTask.registerAndGetHandler(name, nearCache);
-            } else {
-                RepairingTask repairingTask = getContext().getRepairingTask(getServiceName());
-                repairingTask.deregisterHandler(name);
-            }
-        }
-
-        @Override
-        public void onListenerRegister() {
-            // NOP
-        }
-
-        @Override
-        public void handle(Data key, String sourceUuid, UUID partitionUuid, long sequence) {
-            repairingHandler.handle(key, sourceUuid, partitionUuid, sequence);
-        }
-
-        @Override
-        public void handle(Collection<Data> keys, Collection<String> sourceUuids,
-                           Collection<UUID> partitionUuids, Collection<Long> sequences) {
-            repairingHandler.handle(keys, sourceUuids, partitionUuids, sequences);
-        }
-    }
-
-    /**
-     * This event handler is here to be used with server versions < 3.8.
-     * <p>
-     * If server version is < 3.8 and client version is >= 3.8, this event handler must be used to
-     * listen Near Cache invalidations. Because new improvements for Near Cache eventual consistency
-     * cannot work with server versions < 3.8.
-     */
-    private final class Pre38NearCacheEventHandler
-            extends MapAddNearCacheEntryListenerCodec.AbstractEventHandler
-            implements EventHandler<ClientMessage> {
-
-        @Override
-        public void beforeListenerRegister() {
-            nearCache.clear();
-        }
-
-        @Override
-        public void onListenerRegister() {
-            nearCache.clear();
-        }
-
-        @Override
-        public void handle(Data key, String sourceUuid, UUID partitionUuid, long sequence) {
-            // null key means that the Near Cache has to remove all entries in it
-            // (see Pre38MapAddNearCacheEntryListenerMessageTask)
-            if (key == null) {
+            if (!supportsRepairableNearCache) {
                 nearCache.clear();
-            } else {
-                nearCache.invalidate(serializeKeys ? key : toObject(key));
             }
         }
 
         @Override
-        public void handle(Collection<Data> keys, Collection<String> sourceUuids,
-                           Collection<UUID> partitionUuids, Collection<Long> sequences) {
+        public void handleIMapInvalidationEventV10(Data key) {
+            if (key != null) {
+                nearCache.invalidate(serializeKeys ? key : toObject(key));
+            } else {
+                nearCache.clear();
+            }
+        }
+
+        @Override
+        public void handleIMapBatchInvalidationEventV10(Collection<Data> keys) {
             for (Data key : keys) {
                 nearCache.invalidate(serializeKeys ? key : toObject(key));
             }
         }
-    }
 
-    private boolean supportsRepairableNearCache() {
-        return getConnectedServerVersion() >= minConsistentNearCacheSupportingServerVersion;
+        @Override
+        public void handleIMapInvalidationEventV14(Data key, String sourceUuid,
+                                                   UUID partitionUuid, long sequence) {
+            repairingHandler.handle(key, sourceUuid, partitionUuid, sequence);
+        }
+
+
+        @Override
+        public void handleIMapBatchInvalidationEventV14(Collection<Data> keys,
+                                                        Collection<String> sourceUuids,
+                                                        Collection<UUID> partitionUuids,
+                                                        Collection<Long> sequences) {
+            repairingHandler.handle(keys, sourceUuids, partitionUuids, sequences);
+        }
     }
 }

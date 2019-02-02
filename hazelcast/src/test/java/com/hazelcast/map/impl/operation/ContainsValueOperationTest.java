@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2008-2018, Hazelcast, Inc. All Rights Reserved.
+ * Copyright (c) 2008-2019, Hazelcast, Inc. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -48,13 +48,12 @@ public class ContainsValueOperationTest extends HazelcastTestSupport {
 
     private final TestHazelcastInstanceFactory factory = createHazelcastInstanceFactory(2);
     private HazelcastInstance member1;
-    private HazelcastInstance member2;
 
     @Before
-    public void setUp() throws Exception {
+    public void setUp() {
         Config config = getConfig();
         member1 = factory.newHazelcastInstance(config);
-        member2 = factory.newHazelcastInstance(config);
+        factory.newHazelcastInstance(config);
     }
 
     @Test
@@ -62,7 +61,7 @@ public class ContainsValueOperationTest extends HazelcastTestSupport {
         int value = 1;
         String mapName = randomMapName();
 
-        IMap map = member1.getMap(mapName);
+        IMap<String, Integer> map = member1.getMap(mapName);
         String key = generateKeyNotOwnedBy(member1);
         map.put(key, value);
 
@@ -71,7 +70,7 @@ public class ContainsValueOperationTest extends HazelcastTestSupport {
         assertTrue((Boolean) future.get());
     }
 
-    protected InternalCompletableFuture<Object> executeOperation(Map map, String key, int value) {
+    private InternalCompletableFuture<Object> executeOperation(Map map, String key, int value) {
         int partitionId = getNode(member1).getPartitionService().getPartitionId(key);
         MapProxyImpl mapProxy = (MapProxyImpl) map;
         MapServiceContext mapServiceContext = ((MapService) mapProxy.getService()).getMapServiceContext();

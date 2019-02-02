@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2008-2018, Hazelcast, Inc. All Rights Reserved.
+ * Copyright (c) 2008-2019, Hazelcast, Inc. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -18,7 +18,7 @@ package com.hazelcast.nio.tcp;
 
 import com.hazelcast.internal.metrics.Probe;
 import com.hazelcast.internal.networking.Channel;
-import com.hazelcast.internal.networking.EventLoopGroup;
+import com.hazelcast.internal.networking.Networking;
 import com.hazelcast.internal.networking.OutboundFrame;
 import com.hazelcast.logging.ILogger;
 import com.hazelcast.nio.Address;
@@ -31,6 +31,10 @@ import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.nio.channels.CancelledKeyException;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.logging.Level;
+
+import static com.hazelcast.nio.ConnectionType.MEMBER;
+import static com.hazelcast.nio.ConnectionType.NONE;
 
 /**
  * The Tcp/Ip implementation of the {@link com.hazelcast.nio.Connection}.
@@ -38,10 +42,10 @@ import java.util.concurrent.atomic.AtomicBoolean;
  * A {@link TcpIpConnection} is not responsible for reading or writing data to the socket; that is task of
  * the {@link Channel}.
  *
- * @see EventLoopGroup
+ * @see Networking
  */
 @SuppressWarnings("checkstyle:methodcount")
-public final class TcpIpConnection implements Connection {
+public class TcpIpConnection implements Connection {
 
     private final Channel channel;
 
@@ -59,7 +63,7 @@ public final class TcpIpConnection implements Connection {
 
     private TcpIpConnectionErrorHandler errorHandler;
 
-    private volatile ConnectionType type = ConnectionType.NONE;
+    private volatile ConnectionType type = NONE;
 
     private volatile Throwable closeCause;
 
@@ -87,8 +91,14 @@ public final class TcpIpConnection implements Connection {
 
     @Override
     public void setType(ConnectionType type) {
-        if (this.type == ConnectionType.NONE) {
-            this.type = type;
+        if (this.type != NONE) {
+            return;
+        }
+
+        this.type = type;
+        if (type == MEMBER) {
+            logger.info("Initialized new cluster connection between "
+                        + channel.localSocketAddress() + " and " + channel.remoteSocketAddress());
         }
     }
 
@@ -152,7 +162,7 @@ public final class TcpIpConnection implements Connection {
     @Override
     public boolean isClient() {
         ConnectionType t = type;
-        return t != null && t != ConnectionType.NONE && t.isClient();
+        return t != null && t != NONE && t.isClient();
     }
 
     @Override
@@ -210,6 +220,11 @@ public final class TcpIpConnection implements Connection {
     }
 
     private void logClose() {
+        Level logLevel = resolveLogLevelOnClose();
+        if (!logger.isLoggable(logLevel)) {
+            return;
+        }
+
         String message = toString() + " closed. Reason: ";
         if (closeReason != null) {
             message += closeReason;
@@ -219,18 +234,29 @@ public final class TcpIpConnection implements Connection {
             message += "Socket explicitly closed";
         }
 
-        if (ioService.isActive()) {
-            if (closeCause == null || closeCause instanceof EOFException || closeCause instanceof CancelledKeyException) {
-                logger.info(message);
+        if (Level.FINEST.equals(logLevel)) {
+            logger.log(logLevel, message, closeCause);
+        } else if (closeCause == null || closeCause instanceof EOFException || closeCause instanceof CancelledKeyException) {
+            logger.log(logLevel, message);
+        } else {
+            logger.log(logLevel, message, closeCause);
+        }
+    }
+
+    private Level resolveLogLevelOnClose() {
+        if (!ioService.isActive()) {
+            return Level.FINEST;
+        }
+
+        if (closeCause == null || closeCause instanceof EOFException || closeCause instanceof CancelledKeyException) {
+            if (type == ConnectionType.REST_CLIENT || type == ConnectionType.MEMCACHE_CLIENT) {
+                // text-based clients are expected to come and go frequently.
+                return Level.FINE;
             } else {
-                logger.warning(message, closeCause);
+                return Level.INFO;
             }
         } else {
-            if (closeCause == null) {
-                logger.finest(message);
-            } else {
-                logger.finest(message, closeCause);
-            }
+            return Level.WARNING;
         }
     }
 

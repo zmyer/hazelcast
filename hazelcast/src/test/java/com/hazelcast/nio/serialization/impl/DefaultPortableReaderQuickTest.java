@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2008-2018, Hazelcast, Inc. All Rights Reserved.
+ * Copyright (c) 2008-2019, Hazelcast, Inc. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -626,10 +626,10 @@ public class DefaultPortableReaderQuickTest extends HazelcastTestSupport {
 
         String name;
         ChipPortable chip;
-        Portable chips[];
-        Portable emptyChips[];
-        Portable nullChips[];
-        int serial[];
+        Portable[] chips;
+        Portable[] emptyChips;
+        Portable[] nullChips;
+        int[] serial;
 
         public WheelPortable() {
         }

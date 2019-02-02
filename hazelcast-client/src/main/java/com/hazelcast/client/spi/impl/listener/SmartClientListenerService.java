@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2008-2018, Hazelcast, Inc. All Rights Reserved.
+ * Copyright (c) 2008-2019, Hazelcast, Inc. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,7 +16,7 @@
 
 package com.hazelcast.client.spi.impl.listener;
 
-import com.hazelcast.client.impl.HazelcastClientInstanceImpl;
+import com.hazelcast.client.impl.clientside.HazelcastClientInstanceImpl;
 import com.hazelcast.client.spi.ClientClusterService;
 import com.hazelcast.client.spi.EventHandler;
 import com.hazelcast.client.spi.impl.ListenerMessageCodec;
@@ -32,9 +32,8 @@ import static com.hazelcast.util.StringUtil.timeToString;
 
 public class SmartClientListenerService extends AbstractClientListenerService  {
 
-    public SmartClientListenerService(HazelcastClientInstanceImpl client,
-                                      int eventThreadCount, int eventQueueCapacity) {
-        super(client, eventThreadCount, eventQueueCapacity);
+    public SmartClientListenerService(HazelcastClientInstanceImpl client) {
+        super(client);
     }
 
     @Override

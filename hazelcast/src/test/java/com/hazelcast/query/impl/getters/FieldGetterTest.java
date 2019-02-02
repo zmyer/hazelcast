@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2008-2018, Hazelcast, Inc. All Rights Reserved.
+ * Copyright (c) 2008-2019, Hazelcast, Inc. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -391,7 +391,7 @@ public class FieldGetterTest {
         }
     }
 
-    static class Body {
+    static final class Body {
 
         String name;
         Limb[] limbArray;
@@ -404,7 +404,7 @@ public class FieldGetterTest {
         }
     }
 
-    static class Limb {
+    static final class Limb {
 
         String name;
         Nail[] nailArray;
@@ -417,7 +417,7 @@ public class FieldGetterTest {
         }
     }
 
-    static class Nail {
+    static final class Nail {
 
         String colour;
 
@@ -426,7 +426,7 @@ public class FieldGetterTest {
         }
     }
 
-    static class PrimitiveBloke {
+    static final class PrimitiveBloke {
 
         public byte[] bytes = new byte[]{1};
         public short[] shorts = new short[]{1};

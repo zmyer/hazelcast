@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2008-2018, Hazelcast, Inc. All Rights Reserved.
+ * Copyright (c) 2008-2019, Hazelcast, Inc. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -64,12 +64,12 @@ public class ClientConcurrentLockTest {
         concurrent_LockTest(true);
     }
 
-    private void concurrent_LockTest(boolean tryLockWithTimeOut) throws InterruptedException {
+    private void concurrent_LockTest(boolean tryLockWithTimeOut) {
         final ILock lock = client.getLock(randomString());
         final AtomicInteger upTotal = new AtomicInteger(0);
         final AtomicInteger downTotal = new AtomicInteger(0);
 
-        LockTestThread threads[] = new LockTestThread[8];
+        LockTestThread[] threads = new LockTestThread[8];
         for (int i = 0; i < threads.length; i++) {
             LockTestThread t;
 
@@ -91,7 +91,7 @@ public class ClientConcurrentLockTest {
             super(lock, upTotal, downTotal);
         }
 
-        public void doRun() throws Exception {
+        public void doRun() {
             if (lock.tryLock()) {
                 work();
                 lock.unlock();
@@ -112,9 +112,12 @@ public class ClientConcurrentLockTest {
         }
     }
 
-    static abstract class LockTestThread extends Thread {
+    abstract static class LockTestThread extends Thread {
+
         private static final int ITERATIONS = 1000 * 10;
+
         private final Random random = new Random();
+
         protected final ILock lock;
         protected final AtomicInteger upTotal;
         protected final AtomicInteger downTotal;

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2008-2018, Hazelcast, Inc. All Rights Reserved.
+ * Copyright (c) 2008-2019, Hazelcast, Inc. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -1301,7 +1301,10 @@ public class ClientMapNearCacheTest extends NearCacheTestSupport {
     }
 
     protected ClientConfig newClientConfig() {
-        return new ClientConfig();
+        ClientConfig clientConfig = new ClientConfig();
+        clientConfig.setProperty(NearCache.PROP_EXPIRATION_TASK_INITIAL_DELAY_SECONDS, "0");
+        clientConfig.setProperty(NearCache.PROP_EXPIRATION_TASK_PERIOD_SECONDS, "1");
+        return clientConfig;
     }
 
     protected void assertNearCacheInvalidation_whenMaxSizeExceeded(NearCacheConfig config) {
@@ -1328,15 +1331,28 @@ public class ClientMapNearCacheTest extends NearCacheTestSupport {
         }
 
         @Override
-        public void handle(Data key, String sourceUuid, UUID partitionUuid, long sequence) {
+        public void handleIMapInvalidationEventV10(Data key) {
             if (key == null) {
                 clearEventCount.incrementAndGet();
             }
         }
 
         @Override
-        public void handle(Collection<Data> keys, Collection<String> sourceUuids,
-                           Collection<UUID> partitionUuids, Collection<Long> sequences) {
+        public void handleIMapInvalidationEventV14(Data key, String sourceUuid, UUID partitionUuid, long sequence) {
+            if (key == null) {
+                clearEventCount.incrementAndGet();
+            }
+        }
+
+        @Override
+        public void handleIMapBatchInvalidationEventV10(Collection<Data> keys) {
+
+        }
+
+        @Override
+        public void handleIMapBatchInvalidationEventV14(Collection<Data> keys, Collection<String> sourceUuids,
+                                                        Collection<UUID> partitionUuids, Collection<Long> sequences) {
+
         }
 
         @Override

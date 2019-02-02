@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2008-2018, Hazelcast, Inc. All Rights Reserved.
+ * Copyright (c) 2008-2019, Hazelcast, Inc. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -20,7 +20,6 @@ import com.hazelcast.core.EntryEventType;
 import com.hazelcast.core.EntryView;
 import com.hazelcast.nio.Address;
 import com.hazelcast.nio.serialization.Data;
-import com.hazelcast.util.Clock;
 
 /**
  * Helper methods for publishing events related to map actions. The implementation may delegate
@@ -33,38 +32,21 @@ public interface MapEventPublisher {
     /**
      * Notifies the WAN subsystem of a map update on a replica owner.
      *
-     * @param mapName   the map name
-     * @param entryView the updated entry
+     * @param mapName           the map name
+     * @param entryView         the updated entry
+     * @param hasLoadProvenance {@code true} to indicate the provenance of
+     *                          update is a load from map-loader, otherwise
+     *                          set {@code false}
      */
-    void publishWanReplicationUpdate(String mapName, EntryView<Data, Data> entryView);
+    void publishWanUpdate(String mapName, EntryView<Data, Data> entryView, boolean hasLoadProvenance);
 
     /**
      * Notifies the WAN subsystem of a map entry removal on a replica owner.
      *
-     * @param mapName    the map name
-     * @param key        the key of the removed entry
-     * @param removeTime the clock time for the remove event
-     * @see Clock#currentTimeMillis()
+     * @param mapName the map name
+     * @param key     the key of the removed entry
      */
-    void publishWanReplicationRemove(String mapName, Data key, long removeTime);
-
-    /**
-     * Notifies the WAN subsystem of a map update on a backup replica.
-     *
-     * @param mapName   the map name
-     * @param entryView the updated entry
-     */
-    void publishWanReplicationUpdateBackup(String mapName, EntryView entryView);
-
-    /**
-     * Notifies the WAN subsystem of a map entry removal on a backup replica.
-     *
-     * @param mapName    the map name
-     * @param key        the key of the removed entry
-     * @param removeTime the clock time for the remove event
-     * @see Clock#currentTimeMillis()
-     */
-    void publishWanReplicationRemoveBackup(String mapName, Data key, long removeTime);
+    void publishWanRemove(String mapName, Data key);
 
     void publishMapEvent(Address caller, String mapName, EntryEventType eventType, int numberOfEntriesAffected);
 

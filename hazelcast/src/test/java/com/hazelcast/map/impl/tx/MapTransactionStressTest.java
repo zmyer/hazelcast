@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2008-2018, Hazelcast, Inc. All Rights Reserved.
+ * Copyright (c) 2008-2019, Hazelcast, Inc. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -61,7 +61,7 @@ import static org.junit.Assert.assertTrue;
 @Category(NightlyTest.class)
 public class MapTransactionStressTest extends HazelcastTestSupport {
 
-    private static String DUMMY_TX_SERVICE = "dummy-tx-service";
+    private static final String DUMMY_TX_SERVICE = "dummy-tx-service";
 
     @Test
     public void testTransactionAtomicity_whenMapGetIsUsed_withTransaction() throws InterruptedException {

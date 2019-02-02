@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2008-2018, Hazelcast, Inc. All Rights Reserved.
+ * Copyright (c) 2008-2019, Hazelcast, Inc. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -17,22 +17,20 @@
 package com.hazelcast.client.impl;
 
 import com.hazelcast.cache.impl.JCacheDetector;
-import com.hazelcast.client.ClientEndpoint;
-import com.hazelcast.client.ClientEndpointManager;
-import com.hazelcast.client.ClientEngine;
-import com.hazelcast.client.ClientEvent;
-import com.hazelcast.client.ClientEventType;
 import com.hazelcast.client.impl.operations.ClientDisconnectionOperation;
 import com.hazelcast.client.impl.operations.GetConnectedClientsOperation;
 import com.hazelcast.client.impl.operations.OnJoinClientOperation;
-import com.hazelcast.client.impl.protocol.ClientExceptionFactory;
+import com.hazelcast.client.impl.protocol.ClientExceptions;
 import com.hazelcast.client.impl.protocol.ClientMessage;
 import com.hazelcast.client.impl.protocol.MessageTaskFactory;
 import com.hazelcast.client.impl.protocol.task.AuthenticationCustomCredentialsMessageTask;
 import com.hazelcast.client.impl.protocol.task.AuthenticationMessageTask;
+import com.hazelcast.client.impl.protocol.task.BlockingMessageTask;
 import com.hazelcast.client.impl.protocol.task.GetPartitionsMessageTask;
+import com.hazelcast.client.impl.protocol.task.ListenerMessageTask;
 import com.hazelcast.client.impl.protocol.task.MessageTask;
 import com.hazelcast.client.impl.protocol.task.PingMessageTask;
+import com.hazelcast.client.impl.protocol.task.TransactionalMessageTask;
 import com.hazelcast.client.impl.protocol.task.map.AbstractMapQueryMessageTask;
 import com.hazelcast.config.Config;
 import com.hazelcast.core.Client;
@@ -109,7 +107,8 @@ public class ClientEngineImpl implements ClientEngine, CoreService, PreJoinAware
     public static final String SERVICE_NAME = "hz:core:clientEngine";
 
     private static final int EXECUTOR_QUEUE_CAPACITY_PER_CORE = 100000;
-    private static final int THREADS_PER_CORE = 20;
+    private static final int BLOCKING_THREADS_PER_CORE = 20;
+    private static final int THREADS_PER_CORE = 1;
     private static final int QUERY_THREADS_PER_CORE = 1;
     private static final ConstructorFunction<String, AtomicLong> LAST_AUTH_CORRELATION_ID_CONSTRUCTOR_FUNC =
             new ConstructorFunction<String, AtomicLong>() {
@@ -121,6 +120,7 @@ public class ClientEngineImpl implements ClientEngine, CoreService, PreJoinAware
     private final Node node;
     private final NodeEngineImpl nodeEngine;
     private final Executor executor;
+    private final Executor blockingExecutor;
     private final ExecutorService clientManagementExecutor;
     private final Executor queryExecutor;
 
@@ -136,7 +136,7 @@ public class ClientEngineImpl implements ClientEngine, CoreService, PreJoinAware
     private final ConnectionListener connectionListener = new ConnectionListenerImpl();
 
     private final MessageTaskFactory messageTaskFactory;
-    private final ClientExceptionFactory clientExceptionFactory;
+    private final ClientExceptions clientExceptions;
     private final int endpointRemoveDelaySeconds;
     private final ClientPartitionListenerService partitionListenerService;
 
@@ -148,16 +148,17 @@ public class ClientEngineImpl implements ClientEngine, CoreService, PreJoinAware
         this.endpointManager = new ClientEndpointManagerImpl(nodeEngine);
         this.executor = newClientExecutor();
         this.queryExecutor = newClientQueryExecutor();
+        this.blockingExecutor = newBlockingExecutor();
         this.clientManagementExecutor = newClientsManagementExecutor();
         this.messageTaskFactory = new CompositeMessageTaskFactory(nodeEngine);
-        this.clientExceptionFactory = initClientExceptionFactory();
+        this.clientExceptions = initClientExceptionFactory();
         this.endpointRemoveDelaySeconds = node.getProperties().getInteger(GroupProperty.CLIENT_ENDPOINT_REMOVE_DELAY_SECONDS);
         this.partitionListenerService = new ClientPartitionListenerService(nodeEngine);
     }
 
-    private ClientExceptionFactory initClientExceptionFactory() {
+    private ClientExceptions initClientExceptionFactory() {
         boolean jcacheAvailable = JCacheDetector.isJCacheAvailable(nodeEngine.getConfigClassLoader());
-        return new ClientExceptionFactory(jcacheAvailable);
+        return new ClientExceptions(jcacheAvailable);
     }
 
     private ExecutorService newClientsManagementExecutor() {
@@ -200,6 +201,22 @@ public class ClientEngineImpl implements ClientEngine, CoreService, PreJoinAware
                 ExecutorType.CONCRETE);
     }
 
+    private Executor newBlockingExecutor() {
+        final ExecutionService executionService = nodeEngine.getExecutionService();
+        int coreSize = Runtime.getRuntime().availableProcessors();
+
+        int threadCount = node.getProperties().getInteger(GroupProperty.CLIENT_ENGINE_BLOCKING_THREAD_COUNT);
+        if (threadCount <= 0) {
+            threadCount = coreSize * BLOCKING_THREADS_PER_CORE;
+        }
+
+        logger.finest("Creating new client executor for blocking tasks with threadCount=" + threadCount);
+
+        return executionService.register(ExecutionService.CLIENT_BLOCKING_EXECUTOR,
+                threadCount, coreSize * EXECUTOR_QUEUE_CAPACITY_PER_CORE,
+                ExecutorType.CONCRETE);
+    }
+
     //needed for testing purposes
     public ConnectionListener getConnectionListener() {
         return connectionListener;
@@ -226,6 +243,12 @@ public class ClientEngineImpl implements ClientEngine, CoreService, PreJoinAware
                 operationService.execute(new PriorityPartitionSpecificRunnable(messageTask));
             } else if (isQuery(messageTask)) {
                 queryExecutor.execute(messageTask);
+            } else if (messageTask instanceof TransactionalMessageTask) {
+                blockingExecutor.execute(messageTask);
+            } else if (messageTask instanceof BlockingMessageTask) {
+                blockingExecutor.execute(messageTask);
+            } else if (messageTask instanceof ListenerMessageTask) {
+                blockingExecutor.execute(messageTask);
             } else {
                 executor.execute(messageTask);
             }
@@ -301,8 +324,8 @@ public class ClientEngineImpl implements ClientEngine, CoreService, PreJoinAware
         return endpointManager;
     }
 
-    public ClientExceptionFactory getClientExceptionFactory() {
-        return clientExceptionFactory;
+    public ClientExceptions getClientExceptions() {
+        return clientExceptions;
     }
 
     @Override
@@ -409,7 +432,7 @@ public class ClientEngineImpl implements ClientEngine, CoreService, PreJoinAware
         AtomicLong lastCorrelationId = ConcurrencyUtil.getOrPutIfAbsent(lastAuthenticationCorrelationIds,
                 clientUuid,
                 LAST_AUTH_CORRELATION_ID_CONSTRUCTOR_FUNC);
-        return ConcurrencyUtil.setIfGreaterThan(lastCorrelationId, newCorrelationId);
+        return ConcurrencyUtil.setIfEqualOrGreaterThan(lastCorrelationId, newCorrelationId);
     }
 
     public String addOwnershipMapping(String clientUuid, String ownerUuid) {
@@ -461,13 +484,15 @@ public class ClientEngineImpl implements ClientEngine, CoreService, PreJoinAware
             }
 
             String localMemberUuid = node.getThisUuid();
-            String ownerUuid = ownershipMappings.get(endpoint.getUuid());
+            final String clientUuid = endpoint.getUuid();
+            String ownerUuid = ownershipMappings.get(clientUuid);
             if (localMemberUuid.equals(ownerUuid)) {
+                final long authenticationCorrelationId = endpoint.getAuthenticationCorrelationId();
                 try {
                     nodeEngine.getExecutionService().schedule(new Runnable() {
                         @Override
                         public void run() {
-                            callDisconnectionOperation(endpoint);
+                            callDisconnectionOperation(clientUuid, authenticationCorrelationId);
                         }
                     }, endpointRemoveDelaySeconds, TimeUnit.SECONDS);
                 } catch (RejectedExecutionException e) {
@@ -478,11 +503,10 @@ public class ClientEngineImpl implements ClientEngine, CoreService, PreJoinAware
             }
         }
 
-        private void callDisconnectionOperation(ClientEndpointImpl endpoint) {
+        private void callDisconnectionOperation(String clientUuid, long authenticationCorrelationId) {
             Collection<Member> memberList = nodeEngine.getClusterService().getMembers();
             OperationService operationService = nodeEngine.getOperationService();
             String memberUuid = getLocalMember().getUuid();
-            String clientUuid = endpoint.getUuid();
 
             String ownerMember = ownershipMappings.get(clientUuid);
             if (!memberUuid.equals(ownerMember)) {
@@ -490,7 +514,7 @@ public class ClientEngineImpl implements ClientEngine, CoreService, PreJoinAware
                 return;
             }
 
-            if (lastAuthenticationCorrelationIds.get(clientUuid).get() > endpoint.getAuthenticationCorrelationId()) {
+            if (lastAuthenticationCorrelationIds.get(clientUuid).get() > authenticationCorrelationId) {
                 //a new authentication already made for that client. This check is needed to detect
                 // "a disconnected client is reconnected back to same node"
                 return;

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2008-2018, Hazelcast, Inc. All Rights Reserved.
+ * Copyright (c) 2008-2019, Hazelcast, Inc. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -19,6 +19,7 @@ package com.hazelcast.map.impl.proxy;
 import com.hazelcast.config.MapConfig;
 import com.hazelcast.config.NearCacheConfig;
 import com.hazelcast.core.ExecutionCallback;
+import com.hazelcast.core.ICompletableFuture;
 import com.hazelcast.internal.cluster.ClusterService;
 import com.hazelcast.internal.nearcache.NearCache;
 import com.hazelcast.internal.nearcache.impl.invalidation.BatchNearCacheInvalidation;
@@ -158,10 +159,20 @@ public class NearCachedMapProxyImpl<K, V> extends MapProxyImpl<K, V> {
     }
 
     @Override
-    protected Data putInternal(Object key, Data value, long ttl, TimeUnit timeunit) {
+    protected Data putInternal(Object key, Data value, long ttl, TimeUnit ttlUnit, long maxIdle, TimeUnit maxIdleUnit) {
         key = toNearCacheKeyWithStrategy(key);
         try {
-            return super.putInternal(key, value, ttl, timeunit);
+            return super.putInternal(key, value, ttl, ttlUnit, maxIdle, maxIdleUnit);
+        } finally {
+            invalidateNearCache(key);
+        }
+    }
+
+    @Override
+    protected boolean setTtlInternal(Object key, long ttl, TimeUnit timeUnit) {
+        key = toNearCacheKeyWithStrategy(key);
+        try {
+            return super.setTtlInternal(key, ttl, timeUnit);
         } finally {
             invalidateNearCache(key);
         }
@@ -178,40 +189,42 @@ public class NearCachedMapProxyImpl<K, V> extends MapProxyImpl<K, V> {
     }
 
     @Override
-    protected Data putIfAbsentInternal(Object key, Data value, long ttl, TimeUnit timeunit) {
+    protected Data putIfAbsentInternal(Object key, Data value, long ttl, TimeUnit ttlUnit, long maxIdle, TimeUnit maxIdleUnit) {
         key = toNearCacheKeyWithStrategy(key);
         try {
-            return super.putIfAbsentInternal(key, value, ttl, timeunit);
+            return super.putIfAbsentInternal(key, value, ttl, ttlUnit, maxIdle, maxIdleUnit);
         } finally {
             invalidateNearCache(key);
         }
     }
 
     @Override
-    protected void putTransientInternal(Object key, Data value, long ttl, TimeUnit timeunit) {
+    protected void putTransientInternal(Object key, Data value, long ttl, TimeUnit ttlUnit, long maxIdle, TimeUnit maxIdleUnit) {
         key = toNearCacheKeyWithStrategy(key);
         try {
-            super.putTransientInternal(key, value, ttl, timeunit);
+            super.putTransientInternal(key, value, ttl, ttlUnit, maxIdle, maxIdleUnit);
         } finally {
             invalidateNearCache(key);
         }
     }
 
     @Override
-    protected InternalCompletableFuture<Data> putAsyncInternal(Object key, Data value, long ttl, TimeUnit timeunit) {
+    protected InternalCompletableFuture<Data> putAsyncInternal(Object key, Data value, long ttl, TimeUnit ttlUnit,
+                                                               long maxIdle, TimeUnit maxIdleUnit) {
         key = toNearCacheKeyWithStrategy(key);
         try {
-            return super.putAsyncInternal(key, value, ttl, timeunit);
+            return super.putAsyncInternal(key, value, ttl, ttlUnit, maxIdle, maxIdleUnit);
         } finally {
             invalidateNearCache(key);
         }
     }
 
     @Override
-    protected InternalCompletableFuture<Data> setAsyncInternal(Object key, Data value, long ttl, TimeUnit timeunit) {
+    protected InternalCompletableFuture<Data> setAsyncInternal(Object key, Data value, long ttl, TimeUnit ttlUnit,
+                                                               long maxIdle, TimeUnit maxIdleUnit) {
         key = toNearCacheKeyWithStrategy(key);
         try {
-            return super.setAsyncInternal(key, value, ttl, timeunit);
+            return super.setAsyncInternal(key, value, ttl, ttlUnit, maxIdle, maxIdleUnit);
         } finally {
             invalidateNearCache(key);
         }
@@ -238,10 +251,10 @@ public class NearCachedMapProxyImpl<K, V> extends MapProxyImpl<K, V> {
     }
 
     @Override
-    protected void setInternal(Object key, Data value, long ttl, TimeUnit timeunit) {
+    protected void setInternal(Object key, Data value, long ttl, TimeUnit ttlUnit, long maxIdle, TimeUnit maxIdleUnit) {
         key = toNearCacheKeyWithStrategy(key);
         try {
-            super.setInternal(key, value, ttl, timeunit);
+            super.setInternal(key, value, ttl, ttlUnit, maxIdle, maxIdleUnit);
         } finally {
             invalidateNearCache(key);
         }
@@ -507,12 +520,13 @@ public class NearCachedMapProxyImpl<K, V> extends MapProxyImpl<K, V> {
     }
 
     @Override
-    public Map<K, Object> executeOnKeysInternal(Set<K> keys, Set<Data> dataKeys, EntryProcessor entryProcessor) {
+    public ICompletableFuture<Map<K, Object>> submitToKeysInternal(Set<K> keys, Set<Data> dataKeys,
+                                                                   EntryProcessor entryProcessor) {
         if (serializeKeys) {
             toDataCollectionWithNonNullKeyValidation(keys, dataKeys);
         }
         try {
-            return super.executeOnKeysInternal(keys, dataKeys, entryProcessor);
+            return super.submitToKeysInternal(keys, dataKeys, entryProcessor);
         } finally {
             Set<?> ncKeys = serializeKeys ? dataKeys : keys;
             for (Object key : ncKeys) {

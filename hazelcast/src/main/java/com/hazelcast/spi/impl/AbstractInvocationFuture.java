@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2008-2018, Hazelcast, Inc. All Rights Reserved.
+ * Copyright (c) 2008-2019, Hazelcast, Inc. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -147,7 +147,7 @@ public abstract class AbstractInvocationFuture<V> implements InternalCompletable
     }
 
     @Override
-    public final V get() throws InterruptedException, ExecutionException {
+    public V get() throws InterruptedException, ExecutionException {
         Object response = registerWaiter(Thread.currentThread(), null);
         if (response != VOID) {
             // no registration was done since a value is available.
@@ -171,7 +171,7 @@ public abstract class AbstractInvocationFuture<V> implements InternalCompletable
     }
 
     @Override
-    public final V get(final long timeout, final TimeUnit unit)
+    public V get(final long timeout, final TimeUnit unit)
             throws InterruptedException, ExecutionException, TimeoutException {
         Object response = registerWaiter(Thread.currentThread(), null);
         if (response != VOID) {

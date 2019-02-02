@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2008-2018, Hazelcast, Inc. All Rights Reserved.
+ * Copyright (c) 2008-2019, Hazelcast, Inc. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -25,6 +25,7 @@ import com.hazelcast.map.impl.querycache.subscriber.record.ObjectQueryCacheRecor
 import com.hazelcast.map.impl.querycache.subscriber.record.QueryCacheRecord;
 import com.hazelcast.map.impl.querycache.subscriber.record.QueryCacheRecordFactory;
 import com.hazelcast.nio.serialization.Data;
+import com.hazelcast.query.impl.Index;
 import com.hazelcast.query.impl.Indexes;
 import com.hazelcast.query.impl.QueryEntry;
 import com.hazelcast.query.impl.getters.Extractors;
@@ -42,20 +43,24 @@ import java.util.Set;
 class DefaultQueryCacheRecordStore implements QueryCacheRecordStore {
 
     private static final int DEFAULT_CACHE_CAPACITY = 1000;
-    private final QueryCacheRecordHashMap cache;
-    private final QueryCacheRecordFactory recordFactory;
+
     private final Indexes indexes;
-    private final InternalSerializationService serializationService;
+    private final QueryCacheRecordHashMap cache;
     private final EvictionOperator evictionOperator;
+    private final QueryCacheRecordFactory recordFactory;
+    private final InternalSerializationService serializationService;
+    private final Extractors extractors;
 
     public DefaultQueryCacheRecordStore(InternalSerializationService serializationService,
                                         Indexes indexes,
-                                        QueryCacheConfig config, EvictionListener listener) {
+                                        QueryCacheConfig config, EvictionListener listener,
+                                        Extractors extractors) {
         this.cache = new QueryCacheRecordHashMap(serializationService, DEFAULT_CACHE_CAPACITY);
         this.serializationService = serializationService;
         this.recordFactory = getRecordFactory(config.getInMemoryFormat());
         this.indexes = indexes;
         this.evictionOperator = new EvictionOperator(cache, config, listener, serializationService.getClassLoader());
+        this.extractors = extractors;
     }
 
     private QueryCacheRecord accessRecord(QueryCacheRecord record) {
@@ -82,6 +87,11 @@ class DefaultQueryCacheRecordStore implements QueryCacheRecordStore {
     public QueryCacheRecord add(Data keyData, Data valueData) {
         evictionOperator.evictIfRequired();
 
+        return addWithoutEvictionCheck(keyData, valueData);
+    }
+
+    @Override
+    public QueryCacheRecord addWithoutEvictionCheck(Data keyData, Data valueData) {
         QueryCacheRecord newRecord = recordFactory.createRecord(valueData);
         QueryCacheRecord oldRecord = cache.put(keyData, newRecord);
         saveIndex(keyData, newRecord, oldRecord);
@@ -92,9 +102,9 @@ class DefaultQueryCacheRecordStore implements QueryCacheRecordStore {
     private void saveIndex(Data keyData, QueryCacheRecord currentRecord, QueryCacheRecord oldRecord) {
         if (indexes.hasIndex()) {
             Object currentValue = currentRecord.getValue();
-            QueryEntry queryEntry = new QueryEntry(serializationService, keyData, currentValue, Extractors.empty());
+            QueryEntry queryEntry = new QueryEntry(serializationService, keyData, currentValue, extractors);
             Object oldValue = oldRecord == null ? null : oldRecord.getValue();
-            indexes.saveEntryIndex(queryEntry, oldValue);
+            indexes.saveEntryIndex(queryEntry, oldValue, Index.OperationSource.USER);
         }
     }
 
@@ -115,7 +125,7 @@ class DefaultQueryCacheRecordStore implements QueryCacheRecordStore {
 
     private void removeIndex(Data keyData, Object value) {
         if (indexes.hasIndex()) {
-            indexes.removeEntryIndex(keyData, value);
+            indexes.removeEntryIndex(keyData, value, Index.OperationSource.USER);
         }
     }
 
@@ -150,15 +160,10 @@ class DefaultQueryCacheRecordStore implements QueryCacheRecordStore {
 
     @Override
     public int clear() {
-        int removeCount = 0;
-        Set<Data> dataKeys = keySet();
-        for (Data dataKey : dataKeys) {
-            QueryCacheRecord oldRecord = remove(dataKey);
-            if (oldRecord != null) {
-                removeCount++;
-            }
-        }
-        return removeCount;
+        int removedEntryCount = cache.size();
+        cache.clear();
+        indexes.clearAll();
+        return removedEntryCount;
     }
 
     @Override

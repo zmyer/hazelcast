@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2008-2018, Hazelcast, Inc. All Rights Reserved.
+ * Copyright (c) 2008-2019, Hazelcast, Inc. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -50,8 +50,14 @@ public class ClientQueryCacheConfigurator extends AbstractQueryCacheConfigurator
     }
 
     @Override
-    public QueryCacheConfig getOrNull(String mapName, String cacheName) {
-        return clientConfig.getOrNullQueryCacheConfig(mapName, cacheName);
+    public QueryCacheConfig getOrNull(String mapName, String cacheName, String cacheId) {
+        QueryCacheConfig config = clientConfig.getOrNullQueryCacheConfig(mapName, cacheName);
+        if (config != null) {
+            setPredicateImpl(config);
+            setEntryListener(mapName, cacheId, config);
+        }
+
+        return config;
     }
 
     @Override

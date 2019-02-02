@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2008-2018, Hazelcast, Inc. All Rights Reserved.
+ * Copyright (c) 2008-2019, Hazelcast, Inc. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -29,9 +29,11 @@ import com.hazelcast.config.SocketInterceptorConfig;
 import com.hazelcast.config.matcher.MatchingPointConfigPatternMatcher;
 import com.hazelcast.core.ManagedContext;
 import com.hazelcast.flakeidgen.FlakeIdGenerator;
+import com.hazelcast.internal.config.ConfigUtils;
 import com.hazelcast.logging.ILogger;
 import com.hazelcast.logging.Logger;
 import com.hazelcast.security.Credentials;
+import com.hazelcast.util.function.BiConsumer;
 
 import java.util.HashMap;
 import java.util.LinkedList;
@@ -40,8 +42,8 @@ import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Properties;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentMap;
 
-import static com.hazelcast.config.NearCacheConfigAccessor.initDefaultMaxSizeForOnHeapMaps;
 import static com.hazelcast.internal.config.ConfigUtils.lookupByPattern;
 import static com.hazelcast.partition.strategy.StringPartitioningStrategy.getBaseName;
 import static com.hazelcast.util.Preconditions.checkFalse;
@@ -121,6 +123,9 @@ public class ClientConfig {
 
     private final Map<String, ClientFlakeIdGeneratorConfig> flakeIdGeneratorConfigMap =
             new ConcurrentHashMap<String, ClientFlakeIdGeneratorConfig>();
+
+    private Map<String, String> attributes = new ConcurrentHashMap<String, String>();
+    private ConcurrentMap<String, Object> userContext = new ConcurrentHashMap<String, Object>();
 
     /**
      * Sets the pattern matcher which is used to match item names to
@@ -253,12 +258,13 @@ public class ClientConfig {
      * @return the found config. If none is found, a default configured one is returned.
      */
     public ClientReliableTopicConfig getReliableTopicConfig(String name) {
-        ClientReliableTopicConfig reliableTopicConfig = lookupByPattern(configPatternMatcher, reliableTopicConfigMap, name);
-        if (reliableTopicConfig == null) {
-            reliableTopicConfig = new ClientReliableTopicConfig(name);
-            addReliableTopicConfig(reliableTopicConfig);
-        }
-        return reliableTopicConfig;
+        return ConfigUtils.getConfig(configPatternMatcher, reliableTopicConfigMap, name,
+                ClientReliableTopicConfig.class, new BiConsumer<ClientReliableTopicConfig, String>() {
+                    @Override
+                    public void accept(ClientReliableTopicConfig clientReliableTopicConfig, String name) {
+                        clientReliableTopicConfig.setName(name);
+                    }
+                });
     }
 
     /**
@@ -327,7 +333,6 @@ public class ClientConfig {
                 nearCacheConfig = new NearCacheConfig(nearCacheConfig);
             }
         }
-        initDefaultMaxSizeForOnHeapMaps(nearCacheConfig);
         return nearCacheConfig;
     }
 
@@ -419,20 +424,13 @@ public class ClientConfig {
      * @see #getConfigPatternMatcher()
      */
     public ClientFlakeIdGeneratorConfig getFlakeIdGeneratorConfig(String name) {
-        String baseName = getBaseName(name);
-        ClientFlakeIdGeneratorConfig config = lookupByPattern(configPatternMatcher, flakeIdGeneratorConfigMap, baseName);
-        if (config != null) {
-            return config;
-        }
-        ClientFlakeIdGeneratorConfig defConfig = flakeIdGeneratorConfigMap.get("default");
-        if (defConfig == null) {
-            defConfig = new ClientFlakeIdGeneratorConfig("default");
-            flakeIdGeneratorConfigMap.put(defConfig.getName(), defConfig);
-        }
-        config = new ClientFlakeIdGeneratorConfig(defConfig);
-        config.setName(name);
-        flakeIdGeneratorConfigMap.put(config.getName(), config);
-        return config;
+        return ConfigUtils.getConfig(configPatternMatcher, getFlakeIdGeneratorConfigMap(), name,
+                ClientFlakeIdGeneratorConfig.class, new BiConsumer<ClientFlakeIdGeneratorConfig, String>() {
+                    @Override
+                    public void accept(ClientFlakeIdGeneratorConfig flakeIdGeneratorConfig, String name) {
+                        flakeIdGeneratorConfig.setName(name);
+                    }
+                });
     }
 
     /**
@@ -463,6 +461,34 @@ public class ClientConfig {
             entry.getValue().setName(entry.getKey());
         }
         return this;
+    }
+
+    /**
+     * Sets the map of {@link ClientReliableTopicConfig},
+     * mapped by config name. The config name may be a pattern with which the
+     * configuration will be obtained in the future.
+     *
+     * @param map the FlakeIdGenerator configuration map to set
+     * @return this config instance
+     */
+    public ClientConfig setReliableTopicConfigMap(Map<String, ClientReliableTopicConfig> map) {
+        reliableTopicConfigMap.clear();
+        reliableTopicConfigMap.putAll(map);
+        for (Entry<String, ClientReliableTopicConfig> entry : map.entrySet()) {
+            entry.getValue().setName(entry.getKey());
+        }
+        return this;
+    }
+
+    /**
+     * Returns the map of reliable topic configurations,
+     * mapped by config name. The config name may be a pattern with which the
+     * configuration was initially obtained.
+     *
+     * @return the map configurations mapped by config name
+     */
+    public Map<String, ClientReliableTopicConfig> getReliableTopicConfigMap() {
+        return reliableTopicConfigMap;
     }
 
     /**
@@ -930,5 +956,50 @@ public class ClientConfig {
         }
 
         return lookupByPattern(configPatternMatcher, queryCacheConfigsForMap, cacheName);
+    }
+
+
+    /**
+     * Sets attribute to client to be used on the server side.
+     * Attributes can be accessed from {@link com.hazelcast.core.Client}
+     *
+     * @param key   the key of the attribute
+     * @param value the value of the attribute
+     * @return configured {@link com.hazelcast.client.config.ClientConfig} for chaining
+     */
+    public ClientConfig setAttribute(String key, String value) {
+        attributes.put(key, value);
+        return this;
+    }
+
+    /**
+     * @return attributes of this client
+     */
+    public Map<String, String> getAttributes() {
+        return attributes;
+    }
+
+    /**
+     * Sets attributes to client to be used on the server side.
+     * Attributes can be accessed from {@link com.hazelcast.core.Client}
+     *
+     * @param attributes
+     * @return configured {@link com.hazelcast.client.config.ClientConfig} for chaining
+     */
+    public ClientConfig setAttributes(Map<String, String> attributes) {
+        this.attributes = attributes;
+        return this;
+    }
+
+    public ClientConfig setUserContext(ConcurrentMap<String, Object> userContext) {
+        if (userContext == null) {
+            throw new IllegalArgumentException("userContext can't be null");
+        }
+        this.userContext = userContext;
+        return this;
+    }
+
+    public ConcurrentMap<String, Object> getUserContext() {
+        return userContext;
     }
 }

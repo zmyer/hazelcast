@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2008-2018, Hazelcast, Inc. All Rights Reserved.
+ * Copyright (c) 2008-2019, Hazelcast, Inc. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -50,7 +50,7 @@ public class ByteArrayObjectDataOutputTest {
     private InternalSerializationService mockSerializationService;
     private ByteArrayObjectDataOutput out;
 
-    private static byte[] TEST_DATA = new byte[]{1, 2, 3};
+    private static final byte[] TEST_DATA = new byte[]{1, 2, 3};
 
     @Before
     public void before() {

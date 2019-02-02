@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2008-2018, Hazelcast, Inc. All Rights Reserved.
+ * Copyright (c) 2008-2019, Hazelcast, Inc. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -154,9 +154,7 @@ public class QueueSplitBrainTest extends SplitBrainTestSupport {
         queueStoreA.purgeValuesWithPrefix("lostItem");
         queueStoreB.purgeValuesWithPrefix("lostItem");
 
-        int partitionId = ((QueueProxySupport) queueA1).getPartitionId();
-        HazelcastInstance backupInstance = getFirstBackupInstance(instances, partitionId);
-        backupQueue = getBackupQueue(backupInstance, queueNameA);
+        backupQueue = getBackupQueue(instances, queueA1);
 
         queueB1 = instances[0].getQueue(queueNameB);
 

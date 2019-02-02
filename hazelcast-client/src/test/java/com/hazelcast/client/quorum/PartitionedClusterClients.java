@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2008-2018, Hazelcast, Inc. All Rights Reserved.
+ * Copyright (c) 2008-2019, Hazelcast, Inc. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -25,7 +25,7 @@ import static com.hazelcast.client.quorum.QuorumTestUtil.createClient;
 public class PartitionedClusterClients {
 
     private TestHazelcastFactory factory;
-    private HazelcastInstance clients[];
+    private HazelcastInstance[] clients;
     private PartitionedCluster cluster;
 
     public PartitionedClusterClients(PartitionedCluster cluster, TestHazelcastFactory factory) {

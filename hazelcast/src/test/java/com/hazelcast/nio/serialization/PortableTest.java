@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2008-2018, Hazelcast, Inc. All Rights Reserved.
+ * Copyright (c) 2008-2019, Hazelcast, Inc. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -377,8 +377,9 @@ public class PortableTest {
                                 return new TestObject1();
                             case 2:
                                 return new TestObject2();
+                            default:
+                                return null;
                         }
-                        return null;
                     }
                 })
                 .build();
@@ -575,8 +576,9 @@ public class PortableTest {
                     return new ObjectCarryingPortable();
                 case TestSerializationConstants.ALL_FIELD_OBJECT_PORTABLE:
                     return new SerializationV1Portable();
+                default:
+                    return null;
             }
-            return null;
         }
     }
 
@@ -586,8 +588,9 @@ public class PortableTest {
             switch (typeId) {
                 case TestSerializationConstants.SAMPLE_IDENTIFIED_DATA_SERIALIZABLE:
                     return new SampleIdentifiedDataSerializable();
+                default:
+                    return null;
             }
-            return null;
         }
     }
 
@@ -666,8 +669,9 @@ public class PortableTest {
                                 return new ChildGenericPortable1();
                             case ChildGenericPortable2.CLASS_ID:
                                 return new ChildGenericPortable2();
+                            default:
+                                throw new IllegalArgumentException();
                         }
-                        throw new IllegalArgumentException();
                     }
                 }).build();
 

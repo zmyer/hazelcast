@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2008-2018, Hazelcast, Inc. All Rights Reserved.
+ * Copyright (c) 2008-2019, Hazelcast, Inc. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -29,7 +29,7 @@ import com.hazelcast.spi.merge.SplitBrainMergePolicy;
 import com.hazelcast.spi.merge.SplitBrainMergeTypes.MapMergeTypes;
 import com.hazelcast.spi.serialization.SerializationService;
 import com.hazelcast.wan.WanReplicationEvent;
-import com.hazelcast.wan.WanReplicationService;
+import com.hazelcast.wan.impl.DistributedServiceWanEventCounters;
 
 import java.util.concurrent.Future;
 
@@ -40,12 +40,13 @@ import static com.hazelcast.util.ExceptionUtil.rethrow;
 class MapReplicationSupportingService implements ReplicationSupportingService {
     private final MapServiceContext mapServiceContext;
     private final NodeEngine nodeEngine;
-    private final WanReplicationService wanService;
+    private final DistributedServiceWanEventCounters wanEventTypeCounters;
 
     MapReplicationSupportingService(MapServiceContext mapServiceContext) {
         this.mapServiceContext = mapServiceContext;
         this.nodeEngine = mapServiceContext.getNodeEngine();
-        this.wanService = nodeEngine.getWanReplicationService();
+        this.wanEventTypeCounters = nodeEngine.getWanReplicationService()
+                                              .getReceivedEventCounters(MapService.SERVICE_NAME);
     }
 
     @Override
@@ -69,7 +70,7 @@ class MapReplicationSupportingService implements ReplicationSupportingService {
             Future future = nodeEngine.getOperationService()
                     .invokeOnPartition(SERVICE_NAME, operation, partitionId);
             future.get();
-            wanService.getReceivedEventCounter(MapService.SERVICE_NAME).incrementRemove(mapName);
+            wanEventTypeCounters.incrementRemove(mapName);
         } catch (Throwable t) {
             throw rethrow(t);
         }
@@ -96,7 +97,7 @@ class MapReplicationSupportingService implements ReplicationSupportingService {
             Future future = nodeEngine.getOperationService()
                     .invokeOnPartition(SERVICE_NAME, operation, partitionId);
             future.get();
-            wanService.getReceivedEventCounter(MapService.SERVICE_NAME).incrementUpdate(mapName);
+            wanEventTypeCounters.incrementUpdate(mapName);
         } catch (Throwable t) {
             throw rethrow(t);
         }

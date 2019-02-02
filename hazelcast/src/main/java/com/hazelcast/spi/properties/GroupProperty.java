@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2008-2018, Hazelcast, Inc. All Rights Reserved.
+ * Copyright (c) 2008-2019, Hazelcast, Inc. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -114,12 +114,26 @@ public final class GroupProperty {
      * partition-specific operation thread, but there are also requests that can't be executed on a partition-specific operation
      * thread, such as {@code multimap.containsValue(value)}, because they need to access all partitions on a given
      * member.
+     *
+     * When not set it is set as core-size
      */
     public static final HazelcastProperty CLIENT_ENGINE_THREAD_COUNT
             = new HazelcastProperty("hazelcast.clientengine.thread.count", -1);
 
+    /**
+     * The number of threads that the client engine has available for processing requests that are related to transactions
+     * When not set it is set as core-size.
+     */
     public static final HazelcastProperty CLIENT_ENGINE_QUERY_THREAD_COUNT
             = new HazelcastProperty("hazelcast.clientengine.query.thread.count", -1);
+
+    /**
+     * The number of threads that the client engine has available for processing requests that are blocking
+     * (example: related to transactions)
+     * When not set it is set as core-size * 20.
+     */
+    public static final HazelcastProperty CLIENT_ENGINE_BLOCKING_THREAD_COUNT
+            = new HazelcastProperty("hazelcast.clientengine.blocking.thread.count", -1);
 
     /**
      * Time after which client connection is removed or owner node of a client is removed from the cluster.
@@ -401,6 +415,7 @@ public final class GroupProperty {
 
     /**
      * The interval at which master confirmations are sent from non-master nodes to the master node
+     *
      * @deprecated since 3.10
      */
     @Deprecated
@@ -408,6 +423,7 @@ public final class GroupProperty {
             = new HazelcastProperty("hazelcast.master.confirmation.interval.seconds", 30, SECONDS);
     /**
      * The timeout which defines when a cluster member is removed because it has not sent any master confirmations.
+     *
      * @deprecated since 3.10
      */
     @Deprecated
@@ -534,13 +550,42 @@ public final class GroupProperty {
             = new HazelcastProperty("hazelcast.map.replica.scheduled.task.delay.seconds", 10, SECONDS);
 
     /**
-     * You can use MAP_EXPIRY_DELAY_SECONDS to deal with some possible edge cases, such as using EntryProcessor.
-     * Without this delay, you may see that an EntryProcessor running on the owner partition found a key, but
-     * EntryBackupProcessor did not find it on backup, and as a result when backup promotes to owner
-     * you will end up with an unprocessed key.
+     * You can use MAP_EXPIRY_DELAY_SECONDS to deal with some possible
+     * edge cases, such as using EntryProcessor. Without this delay, you
+     * may see that an EntryProcessor running on the owner partition
+     * found a key, but EntryBackupProcessor did not find it on backup,
+     * and as a result when backup promotes to owner you will end up
+     * with an unprocessed key.
      */
     public static final HazelcastProperty MAP_EXPIRY_DELAY_SECONDS
             = new HazelcastProperty("hazelcast.map.expiry.delay.seconds", 10, SECONDS);
+
+    /**
+     * Maximum number of IMap entries Hazelcast will evict during a
+     * single eviction cycle. Eviction cycle is triggered by a map
+     * mutation. Typically it's OK to evict at most a single entry.
+     * However imagine the scenario where you are inserting values in a
+     * loop and in each iteration you double entry size. In this
+     * situation Hazelcast has to evict more than just a single entry -
+     * as all existing entries are smaller than the entry which is about
+     * to be added and removing any old entry cannot make sufficient
+     * room for the new entry.
+     *
+     * Default: 1
+     */
+    public static final HazelcastProperty MAP_EVICTION_BATCH_SIZE
+            = new HazelcastProperty("hazelcast.map.eviction.batch.size", 1);
+
+    /**
+     * This property is a switch between old and new event publishing
+     * behavior of map#loadAll. When it is true, map#loadAll publishes
+     * entry ADDED events, when false, map#loadAll publishes entry
+     * LOADED events. By default LOADED events will be published.
+     *
+     * @since 3.11
+     */
+    public static final HazelcastProperty MAP_LOAD_ALL_PUBLISHES_ADDED_EVENT
+            = new HazelcastProperty("hazelcast.map.loadAll.publishes.added.event", false);
 
     public static final HazelcastProperty LOGGING_TYPE
             = new HazelcastProperty("hazelcast.logging.type", "jdk");
@@ -550,13 +595,6 @@ public final class GroupProperty {
     public static final HazelcastProperty JMX_UPDATE_INTERVAL_SECONDS
             = new HazelcastProperty("hazelcast.jmx.update.interval.seconds", 5, SECONDS);
 
-    /**
-     * @deprecated as of 3.10
-     * This will be removed in future versions.
-     */
-    @Deprecated
-    public static final HazelcastProperty MC_MAX_VISIBLE_INSTANCE_COUNT
-            = new HazelcastProperty("hazelcast.mc.max.visible.instance.count", Integer.MAX_VALUE);
     public static final HazelcastProperty MC_MAX_VISIBLE_SLOW_OPERATION_COUNT
             = new HazelcastProperty("hazelcast.mc.max.visible.slow.operations.count", 10);
     public static final HazelcastProperty MC_URL_CHANGE_ENABLED
@@ -978,20 +1016,20 @@ public final class GroupProperty {
     /**
      * By default, search for data structures config is performed within static configuration first:
      * <ul>
-     *     <li>Exact match in static config</li>
-     *     <li>Wildcard match in static config</li>
-     *     <li>Exact match in dynamic config</li>
-     *     <li>Wildcard match in dynamic config</li>
-     *     <li>Fallback to default</li>
+     * <li>Exact match in static config</li>
+     * <li>Wildcard match in static config</li>
+     * <li>Exact match in dynamic config</li>
+     * <li>Wildcard match in dynamic config</li>
+     * <li>Fallback to default</li>
      * </ul>
      * But sometimes it makes sense to perform search within dynamic configs first. If this property is set to
      * <code>true</code>, search algorithm changes to:
      * <ul>
-     *     <li>Exact match in dynamic config</li>
-     *     <li>Wildcard match in dynamic config</li>
-     *     <li>Exact match in static config</li>
-     *     <li>Wildcard match in static config</li>
-     *     <li>Fallback to default</li>
+     * <li>Exact match in dynamic config</li>
+     * <li>Wildcard match in dynamic config</li>
+     * <li>Exact match in static config</li>
+     * <li>Wildcard match in static config</li>
+     * <li>Fallback to default</li>
      * </ul>
      */
     public static final HazelcastProperty SEARCH_DYNAMIC_CONFIG_FIRST

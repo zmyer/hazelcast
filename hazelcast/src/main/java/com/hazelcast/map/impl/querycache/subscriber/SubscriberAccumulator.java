@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2008-2018, Hazelcast, Inc. All Rights Reserved.
+ * Copyright (c) 2008-2019, Hazelcast, Inc. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -142,7 +142,8 @@ public class SubscriberAccumulator extends BasicAccumulator<QueryCacheEventData>
                         currentSequence + 1L, sequence, queryCache.size()));
             }
 
-            publishEventLost(context, info.getMapName(), info.getCacheId(), event.getPartitionId());
+            publishEventLost(context, info.getMapName(), info.getCacheId(),
+                    event.getPartitionId(), queryCache.getExtractors());
         }
     }
 

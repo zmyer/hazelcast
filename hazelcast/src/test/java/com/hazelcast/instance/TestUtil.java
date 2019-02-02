@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2008-2018, Hazelcast, Inc. All Rights Reserved.
+ * Copyright (c) 2008-2019, Hazelcast, Inc. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -22,6 +22,7 @@ import com.hazelcast.core.PartitionService;
 import com.hazelcast.internal.serialization.impl.DefaultSerializationServiceBuilder;
 import com.hazelcast.nio.serialization.Data;
 import com.hazelcast.spi.serialization.SerializationService;
+import com.hazelcast.test.starter.HazelcastStarter;
 
 import java.io.IOException;
 import java.net.DatagramSocket;
@@ -32,11 +33,12 @@ import java.util.List;
 
 import static com.hazelcast.test.HazelcastTestSupport.sleepMillis;
 import static com.hazelcast.util.EmptyStatement.ignore;
+import static java.lang.reflect.Proxy.isProxyClass;
 
 @SuppressWarnings("WeakerAccess")
 public final class TestUtil {
 
-    private static final SerializationService serializationService = new DefaultSerializationServiceBuilder().build();
+    private static final SerializationService SERIALIZATION_SERVICE = new DefaultSerializationServiceBuilder().build();
 
     private TestUtil() {
     }
@@ -48,7 +50,7 @@ public final class TestUtil {
      * @return the serialized {@link Data} instance
      */
     public static Data toData(Object obj) {
-        return serializationService.toData(obj);
+        return SERIALIZATION_SERVICE.toData(obj);
     }
 
     /**
@@ -58,7 +60,7 @@ public final class TestUtil {
      * @return the deserialized object
      */
     public static Object toObject(Data data) {
-        return serializationService.toObject(data);
+        return SERIALIZATION_SERVICE.toObject(data);
     }
 
     /**
@@ -68,8 +70,12 @@ public final class TestUtil {
      * @return the {@link Node} from the given Hazelcast instance
      */
     public static Node getNode(HazelcastInstance hz) {
-        HazelcastInstanceImpl hazelcastInstanceImpl = getHazelcastInstanceImpl(hz);
-        return hazelcastInstanceImpl.node;
+        if (isProxyClass(hz.getClass())) {
+            return HazelcastStarter.getNode(hz);
+        } else {
+            HazelcastInstanceImpl hazelcastInstanceImpl = getHazelcastInstanceImpl(hz);
+            return hazelcastInstanceImpl.node;
+        }
     }
 
     /**
@@ -81,15 +87,19 @@ public final class TestUtil {
      *                                  e.g. when called with a Hazelcast client instance
      */
     public static HazelcastInstanceImpl getHazelcastInstanceImpl(HazelcastInstance hz) {
-        if (hz instanceof HazelcastInstanceProxy) {
+        if (hz instanceof HazelcastInstanceImpl) {
+            return (HazelcastInstanceImpl) hz;
+        } else if (hz instanceof HazelcastInstanceProxy) {
             HazelcastInstanceProxy proxy = (HazelcastInstanceProxy) hz;
             if (proxy.original != null) {
                 return proxy.original;
             }
-        } else if (hz instanceof HazelcastInstanceImpl) {
-            return (HazelcastInstanceImpl) hz;
         }
-        throw new IllegalArgumentException("Cannot retrieve HazelcastInstanceImpl from " + hz.getClass().getSimpleName());
+        Class<? extends HazelcastInstance> clazz = hz.getClass();
+        if (isProxyClass(clazz)) {
+            return HazelcastStarter.getHazelcastInstanceImpl(hz);
+        }
+        throw new IllegalArgumentException("The given HazelcastInstance is not an active HazelcastInstanceImpl: " + clazz);
     }
 
     /**

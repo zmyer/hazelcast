@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2008-2018, Hazelcast, Inc. All Rights Reserved.
+ * Copyright (c) 2008-2019, Hazelcast, Inc. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -84,7 +84,7 @@ import java.util.concurrent.ConcurrentMap;
 import static com.hazelcast.util.EmptyStatement.ignore;
 import static com.hazelcast.util.ExceptionUtil.rethrow;
 
-@SuppressWarnings("checkstyle:classfanoutcomplexity")
+@SuppressWarnings({"checkstyle:classdataabstractioncoupling", "checkstyle:classfanoutcomplexity"})
 public final class ServiceManagerImpl implements ServiceManager {
 
     private static final String PROVIDER_ID = "com.hazelcast.spi.impl.servicemanager.RemoteServiceDescriptorProvider";
@@ -286,7 +286,11 @@ public final class ServiceManagerImpl implements ServiceManager {
             } catch (NoSuchMethodException ignored) {
                 ignore(ignored);
             }
-            return ClassLoaderUtil.newInstance(serviceClass, classLoader, className);
+            final Constructor constructor = serviceClass.getDeclaredConstructor();
+            if (!constructor.isAccessible()) {
+                constructor.setAccessible(true);
+            }
+            return constructor.newInstance();
         } catch (Exception e) {
             logger.severe(e);
         }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2008-2018, Hazelcast, Inc. All Rights Reserved.
+ * Copyright (c) 2008-2019, Hazelcast, Inc. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -34,6 +34,7 @@ import com.hazelcast.cache.impl.operation.CachePutOperation;
 import com.hazelcast.cache.impl.operation.CacheRemoveAllOperationFactory;
 import com.hazelcast.cache.impl.operation.CacheRemoveOperation;
 import com.hazelcast.cache.impl.operation.CacheReplaceOperation;
+import com.hazelcast.cache.impl.operation.CacheSetExpiryPolicyOperation;
 import com.hazelcast.cache.impl.operation.CacheSizeOperationFactory;
 import com.hazelcast.config.InMemoryFormat;
 import com.hazelcast.nio.serialization.Data;
@@ -131,6 +132,11 @@ public class DefaultOperationProvider implements CacheOperationProvider {
                                                         List<CacheMergeTypes>[] mergingEntries,
                                                         SplitBrainMergePolicy<Data, CacheMergeTypes> policy) {
         return new CacheMergeOperationFactory(name, partitions, mergingEntries, policy);
+    }
+
+    @Override
+    public Operation createSetExpiryPolicyOperation(List<Data> keys, Data expiryPolicy) {
+        return new CacheSetExpiryPolicyOperation(nameWithPrefix, keys, expiryPolicy);
     }
 
     @Override

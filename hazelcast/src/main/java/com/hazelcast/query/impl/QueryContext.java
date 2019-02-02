@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2008-2018, Hazelcast, Inc. All Rights Reserved.
+ * Copyright (c) 2008-2019, Hazelcast, Inc. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -20,7 +20,7 @@ package com.hazelcast.query.impl;
  * Provides the context for queries execution.
  */
 public class QueryContext {
-    private final Indexes indexes;
+    protected Indexes indexes;
 
     /**
      * Creates a new query context with the given available indexes.
@@ -28,6 +28,21 @@ public class QueryContext {
      * @param indexes the indexes available for the query context.
      */
     public QueryContext(Indexes indexes) {
+        this.indexes = indexes;
+    }
+
+    /**
+     * Creates a new query context unattached to any indexes.
+     */
+    QueryContext() {
+    }
+
+    /**
+     * Attaches this index context to the given indexes.
+     *
+     * @param indexes the indexes to attach to.
+     */
+    void attachTo(Indexes indexes) {
         this.indexes = indexes;
     }
 
@@ -46,4 +61,12 @@ public class QueryContext {
             return indexes.getIndex(attributeName);
         }
     }
+
+    /**
+     * Applies the collected per-query stats, if any.
+     */
+    void applyPerQueryStats() {
+        // do nothing
+    }
+
 }

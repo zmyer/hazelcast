@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2008-2018, Hazelcast, Inc. All Rights Reserved.
+ * Copyright (c) 2008-2019, Hazelcast, Inc. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,57 +16,40 @@
 
 package com.hazelcast.client.protocol.compatibility;
 
+import com.hazelcast.client.impl.MemberImpl;
+import com.hazelcast.client.impl.client.DistributedObjectInfo;
 import com.hazelcast.client.impl.protocol.ClientMessage;
 import com.hazelcast.client.impl.protocol.codec.*;
+import com.hazelcast.core.Member;
+import com.hazelcast.internal.serialization.impl.HeapData;
+import com.hazelcast.map.impl.SimpleEntryView;
+import com.hazelcast.map.impl.querycache.event.DefaultQueryCacheEventData;
+import com.hazelcast.map.impl.querycache.event.QueryCacheEventData;
+import com.hazelcast.mapreduce.JobPartitionState;
+import com.hazelcast.mapreduce.impl.task.JobPartitionStateImpl;
+import com.hazelcast.nio.Address;
+import com.hazelcast.scheduledexecutor.ScheduledTaskHandler;
+import com.hazelcast.nio.serialization.Data;
+import com.hazelcast.transaction.impl.xa.SerializableXID;
 
 import java.io.DataOutputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.OutputStream;
+import java.lang.reflect.Array;
+import java.net.UnknownHostException;
+import javax.transaction.xa.Xid;
+import java.util.AbstractMap;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.LinkedList;
+import java.util.List;
+import java.util.ListIterator;
+import java.util.Map;
 
-import static com.hazelcast.client.protocol.compatibility.ReferenceObjects.aBoolean;
-import static com.hazelcast.client.protocol.compatibility.ReferenceObjects.aByte;
-import static com.hazelcast.client.protocol.compatibility.ReferenceObjects.aData;
-import static com.hazelcast.client.protocol.compatibility.ReferenceObjects.aListOfEntry;
-import static com.hazelcast.client.protocol.compatibility.ReferenceObjects.aListOfStringToByteArrEntry;
-import static com.hazelcast.client.protocol.compatibility.ReferenceObjects.aListOfStringToLong;
-import static com.hazelcast.client.protocol.compatibility.ReferenceObjects.aListOfStringToString;
-import static com.hazelcast.client.protocol.compatibility.ReferenceObjects.aLong;
-import static com.hazelcast.client.protocol.compatibility.ReferenceObjects.aMember;
-import static com.hazelcast.client.protocol.compatibility.ReferenceObjects.aNamePartitionSequenceList;
-import static com.hazelcast.client.protocol.compatibility.ReferenceObjects.aPartitionTable;
-import static com.hazelcast.client.protocol.compatibility.ReferenceObjects.aPartitionUuidList;
-import static com.hazelcast.client.protocol.compatibility.ReferenceObjects.aQueryCacheEventData;
-import static com.hazelcast.client.protocol.compatibility.ReferenceObjects.aString;
-import static com.hazelcast.client.protocol.compatibility.ReferenceObjects.aUUID;
-import static com.hazelcast.client.protocol.compatibility.ReferenceObjects.anAddress;
-import static com.hazelcast.client.protocol.compatibility.ReferenceObjects.anEntryView;
-import static com.hazelcast.client.protocol.compatibility.ReferenceObjects.anInt;
-import static com.hazelcast.client.protocol.compatibility.ReferenceObjects.anXid;
-import static com.hazelcast.client.protocol.compatibility.ReferenceObjects.arrLongs;
-import static com.hazelcast.client.protocol.compatibility.ReferenceObjects.cacheEntryListenerConfigs;
-import static com.hazelcast.client.protocol.compatibility.ReferenceObjects.cacheEventDatas;
-import static com.hazelcast.client.protocol.compatibility.ReferenceObjects.datas;
-import static com.hazelcast.client.protocol.compatibility.ReferenceObjects.distributedObjectInfos;
-import static com.hazelcast.client.protocol.compatibility.ReferenceObjects.evictionConfig;
-import static com.hazelcast.client.protocol.compatibility.ReferenceObjects.hotRestartConfig;
-import static com.hazelcast.client.protocol.compatibility.ReferenceObjects.jobPartitionStates;
-import static com.hazelcast.client.protocol.compatibility.ReferenceObjects.listenerConfigs;
-import static com.hazelcast.client.protocol.compatibility.ReferenceObjects.longs;
-import static com.hazelcast.client.protocol.compatibility.ReferenceObjects.mapAttributeConfigs;
-import static com.hazelcast.client.protocol.compatibility.ReferenceObjects.mapIndexConfigs;
-import static com.hazelcast.client.protocol.compatibility.ReferenceObjects.mapStoreConfig;
-import static com.hazelcast.client.protocol.compatibility.ReferenceObjects.members;
-import static com.hazelcast.client.protocol.compatibility.ReferenceObjects.nearCacheConfig;
-import static com.hazelcast.client.protocol.compatibility.ReferenceObjects.queryCacheConfigs;
-import static com.hazelcast.client.protocol.compatibility.ReferenceObjects.queryCacheEventDatas;
-import static com.hazelcast.client.protocol.compatibility.ReferenceObjects.queueStoreConfig;
-import static com.hazelcast.client.protocol.compatibility.ReferenceObjects.ringbufferStore;
-import static com.hazelcast.client.protocol.compatibility.ReferenceObjects.strings;
-import static com.hazelcast.client.protocol.compatibility.ReferenceObjects.taskHandlers;
-import static com.hazelcast.client.protocol.compatibility.ReferenceObjects.timedExpiryPolicyFactoryConfig;
-import static com.hazelcast.client.protocol.compatibility.ReferenceObjects.uuids;
-import static com.hazelcast.client.protocol.compatibility.ReferenceObjects.wanReplicationRef;
+import static org.junit.Assert.assertTrue;
+import static com.hazelcast.client.protocol.compatibility.ReferenceObjects.*;
 
 
 public class BinaryCompatibilityFileGenerator {
@@ -75,7 +58,7 @@ public class BinaryCompatibilityFileGenerator {
         DataOutputStream outputStream = new DataOutputStream(out);
 
 {
-    ClientMessage clientMessage = ClientAuthenticationCodec.encodeRequest(    aString ,    aString ,    aString ,    aString ,    aBoolean ,    aString ,    aByte ,    aString   );
+    ClientMessage clientMessage = ClientAuthenticationCodec.encodeRequest(    aString ,    aString ,    aString ,    aString ,    aBoolean ,    aString ,    aByte ,    aString ,    aString ,    aListOfStringToString   );
      outputStream.writeInt(clientMessage.getFrameLength());
      outputStream.write(clientMessage.buffer().byteArray(), 0 , clientMessage.getFrameLength());
 }
@@ -87,7 +70,7 @@ public class BinaryCompatibilityFileGenerator {
 
 
 {
-    ClientMessage clientMessage = ClientAuthenticationCustomCodec.encodeRequest(    aData ,    aString ,    aString ,    aBoolean ,    aString ,    aByte ,    aString   );
+    ClientMessage clientMessage = ClientAuthenticationCustomCodec.encodeRequest(    aData ,    aString ,    aString ,    aBoolean ,    aString ,    aByte ,    aString ,    aString ,    aListOfStringToString   );
      outputStream.writeInt(clientMessage.getFrameLength());
      outputStream.write(clientMessage.buffer().byteArray(), 0 , clientMessage.getFrameLength());
 }
@@ -717,7 +700,7 @@ public class BinaryCompatibilityFileGenerator {
      outputStream.write(clientMessage.buffer().byteArray(), 0 , clientMessage.getFrameLength());
 }
 {
-    ClientMessage clientMessage = MapGetEntryViewCodec.encodeResponse(    anEntryView   );
+    ClientMessage clientMessage = MapGetEntryViewCodec.encodeResponse(    anEntryView ,    aLong   );
     outputStream.writeInt(clientMessage.getFrameLength());
     outputStream.write(clientMessage.buffer().byteArray(), 0 , clientMessage.getFrameLength());
 }
@@ -1198,6 +1181,66 @@ public class BinaryCompatibilityFileGenerator {
 }
 {
     ClientMessage clientMessage = MapEventJournalReadCodec.encodeResponse(    anInt ,    datas ,    arrLongs ,    aLong   );
+    outputStream.writeInt(clientMessage.getFrameLength());
+    outputStream.write(clientMessage.buffer().byteArray(), 0 , clientMessage.getFrameLength());
+}
+
+
+{
+    ClientMessage clientMessage = MapSetTtlCodec.encodeRequest(    aString ,    aData ,    aLong   );
+     outputStream.writeInt(clientMessage.getFrameLength());
+     outputStream.write(clientMessage.buffer().byteArray(), 0 , clientMessage.getFrameLength());
+}
+{
+    ClientMessage clientMessage = MapSetTtlCodec.encodeResponse(    aBoolean   );
+    outputStream.writeInt(clientMessage.getFrameLength());
+    outputStream.write(clientMessage.buffer().byteArray(), 0 , clientMessage.getFrameLength());
+}
+
+
+{
+    ClientMessage clientMessage = MapPutWithMaxIdleCodec.encodeRequest(    aString ,    aData ,    aData ,    aLong ,    aLong ,    aLong   );
+     outputStream.writeInt(clientMessage.getFrameLength());
+     outputStream.write(clientMessage.buffer().byteArray(), 0 , clientMessage.getFrameLength());
+}
+{
+    ClientMessage clientMessage = MapPutWithMaxIdleCodec.encodeResponse(    aData   );
+    outputStream.writeInt(clientMessage.getFrameLength());
+    outputStream.write(clientMessage.buffer().byteArray(), 0 , clientMessage.getFrameLength());
+}
+
+
+{
+    ClientMessage clientMessage = MapPutTransientWithMaxIdleCodec.encodeRequest(    aString ,    aData ,    aData ,    aLong ,    aLong ,    aLong   );
+     outputStream.writeInt(clientMessage.getFrameLength());
+     outputStream.write(clientMessage.buffer().byteArray(), 0 , clientMessage.getFrameLength());
+}
+{
+    ClientMessage clientMessage = MapPutTransientWithMaxIdleCodec.encodeResponse(    aData   );
+    outputStream.writeInt(clientMessage.getFrameLength());
+    outputStream.write(clientMessage.buffer().byteArray(), 0 , clientMessage.getFrameLength());
+}
+
+
+{
+    ClientMessage clientMessage = MapPutIfAbsentWithMaxIdleCodec.encodeRequest(    aString ,    aData ,    aData ,    aLong ,    aLong ,    aLong   );
+     outputStream.writeInt(clientMessage.getFrameLength());
+     outputStream.write(clientMessage.buffer().byteArray(), 0 , clientMessage.getFrameLength());
+}
+{
+    ClientMessage clientMessage = MapPutIfAbsentWithMaxIdleCodec.encodeResponse(    aData   );
+    outputStream.writeInt(clientMessage.getFrameLength());
+    outputStream.write(clientMessage.buffer().byteArray(), 0 , clientMessage.getFrameLength());
+}
+
+
+{
+    ClientMessage clientMessage = MapSetWithMaxIdleCodec.encodeRequest(    aString ,    aData ,    aData ,    aLong ,    aLong ,    aLong   );
+     outputStream.writeInt(clientMessage.getFrameLength());
+     outputStream.write(clientMessage.buffer().byteArray(), 0 , clientMessage.getFrameLength());
+}
+{
+    ClientMessage clientMessage = MapSetWithMaxIdleCodec.encodeResponse(    aData   );
     outputStream.writeInt(clientMessage.getFrameLength());
     outputStream.write(clientMessage.buffer().byteArray(), 0 , clientMessage.getFrameLength());
 }
@@ -4079,6 +4122,18 @@ public class BinaryCompatibilityFileGenerator {
 
 
 {
+    ClientMessage clientMessage = CacheSetExpiryPolicyCodec.encodeRequest(    aString ,    datas ,    aData   );
+     outputStream.writeInt(clientMessage.getFrameLength());
+     outputStream.write(clientMessage.buffer().byteArray(), 0 , clientMessage.getFrameLength());
+}
+{
+    ClientMessage clientMessage = CacheSetExpiryPolicyCodec.encodeResponse(    aBoolean   );
+    outputStream.writeInt(clientMessage.getFrameLength());
+    outputStream.write(clientMessage.buffer().byteArray(), 0 , clientMessage.getFrameLength());
+}
+
+
+{
     ClientMessage clientMessage = XATransactionClearRemoteCodec.encodeRequest(    anXid   );
      outputStream.writeInt(clientMessage.getFrameLength());
      outputStream.write(clientMessage.buffer().byteArray(), 0 , clientMessage.getFrameLength());
@@ -4961,6 +5016,18 @@ public class BinaryCompatibilityFileGenerator {
 }
 {
     ClientMessage clientMessage = DynamicConfigAddPNCounterConfigCodec.encodeResponse( );
+    outputStream.writeInt(clientMessage.getFrameLength());
+    outputStream.write(clientMessage.buffer().byteArray(), 0 , clientMessage.getFrameLength());
+}
+
+
+{
+    ClientMessage clientMessage = DynamicConfigAddMerkleTreeConfigCodec.encodeRequest(    aString ,    aBoolean ,    anInt   );
+     outputStream.writeInt(clientMessage.getFrameLength());
+     outputStream.write(clientMessage.buffer().byteArray(), 0 , clientMessage.getFrameLength());
+}
+{
+    ClientMessage clientMessage = DynamicConfigAddMerkleTreeConfigCodec.encodeResponse( );
     outputStream.writeInt(clientMessage.getFrameLength());
     outputStream.write(clientMessage.buffer().byteArray(), 0 , clientMessage.getFrameLength());
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2008-2018, Hazelcast, Inc. All Rights Reserved.
+ * Copyright (c) 2008-2019, Hazelcast, Inc. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -19,15 +19,17 @@ package com.hazelcast.instance;
 import com.hazelcast.cluster.ClusterState;
 import com.hazelcast.hotrestart.HotRestartService;
 import com.hazelcast.hotrestart.InternalHotRestartService;
+import com.hazelcast.internal.ascii.TextCommandService;
 import com.hazelcast.internal.cluster.impl.JoinMessage;
 import com.hazelcast.internal.cluster.impl.JoinRequest;
 import com.hazelcast.internal.diagnostics.Diagnostics;
 import com.hazelcast.internal.dynamicconfig.DynamicConfigListener;
+import com.hazelcast.internal.jmx.ManagementService;
 import com.hazelcast.internal.management.ManagementCenterConnectionFactory;
 import com.hazelcast.internal.management.TimedMemberStateFactory;
-import com.hazelcast.internal.networking.ChannelFactory;
-import com.hazelcast.internal.networking.ChannelInboundHandler;
-import com.hazelcast.internal.networking.ChannelOutboundHandler;
+import com.hazelcast.internal.networking.ChannelInitializer;
+import com.hazelcast.internal.networking.InboundHandler;
+import com.hazelcast.internal.networking.OutboundHandler;
 import com.hazelcast.internal.serialization.InternalSerializationService;
 import com.hazelcast.memory.MemoryStats;
 import com.hazelcast.nio.Address;
@@ -130,29 +132,38 @@ public interface NodeExtension {
     MemberSocketInterceptor getMemberSocketInterceptor();
 
     /**
-     * Returns <tt>ChannelFactory</tt> instance to be used by this <tt>Node</tt>.
+     * Creates a <tt>InboundHandler</tt> for given <tt>Connection</tt> instance.
      *
-     * @return ChannelFactory
-     */
-    ChannelFactory getChannelFactory();
-
-    /**
-     * Creates a <tt>ChannelInboundHandler</tt> for given <tt>Connection</tt> instance.
+     * For TLS and other enterprise features, instead of returning the regular protocol decoder, a TLS decoder
+     * can be returned. This is the first item in the chain.
      *
      * @param connection tcp-ip connection
      * @param ioService  IOService
-     * @return the created ChannelInboundHandler.
+     * @return the created InboundHandler.
      */
-    ChannelInboundHandler createInboundHandler(TcpIpConnection connection, IOService ioService);
+    InboundHandler[] createInboundHandlers(TcpIpConnection connection, IOService ioService);
 
     /**
-     * Creates a <tt>ChannelOutboundHandler</tt> for given <tt>Connection</tt> instance.
+     * Creates a <tt>OutboundHandler</tt> for given <tt>Connection</tt> instance.
      *
      * @param connection tcp-ip connection
      * @param ioService  IOService
-     * @return the created ChannelOutboundHandler
+     * @return the created OutboundHandler
      */
-    ChannelOutboundHandler createOutboundHandler(TcpIpConnection connection, IOService ioService);
+    OutboundHandler[] createOutboundHandlers(TcpIpConnection connection, IOService ioService);
+
+
+    /**
+     * Creates the ChannelInitializer.
+     *
+     * Currently there is a single global channel instance per member; but as soon
+     * as WAN is going to run on different ports, we probably need multiple
+     * ChannelInitializers.
+     *
+     * @param ioService
+     * @return
+     */
+    ChannelInitializer createChannelInitializer(IOService ioService);
 
     /**
      * Called on thread start to inject/intercept extension specific logic,
@@ -186,13 +197,49 @@ public interface NodeExtension {
     void validateJoinRequest(JoinMessage joinMessage);
 
     /**
-     * Called when cluster state is changed
+     * Called when initial cluster state is received while joining the cluster.
      *
-     * @param newState new state
-     * @param isTransient status of the change. A cluster state change may be transient if it has been done temporarily
-     *                         during system operations such cluster start etc.
+     * @param initialState initial cluster state
+     */
+    void onInitialClusterState(ClusterState initialState);
+
+    /**
+     * Called before starting a cluster state change transaction. Called only
+     * on the member that initiated the state change.
+     *
+     * @param currState the state before the change
+     * @param requestedState the requested cluster state
+     * @param isTransient whether the change will be recorded in persistent storage, affecting the
+     *                    initial state after cluster restart. Transient changes happen during
+     *                    system operations such as an orderly all-cluster shutdown.
+     */
+    void beforeClusterStateChange(ClusterState currState, ClusterState requestedState, boolean isTransient);
+
+    /**
+     * Called during the commit phase of the cluster state change transaction,
+     * just after updating the value of the cluster state on the local member,
+     * while still holding the cluster lock. Called on all cluster members.
+     *
+     * @param newState the new cluster state
+     * @param isTransient whether the change will be recorded in persistent storage, affecting the
+     *                    initial state after cluster restart. Transient changes happen during
+     *                    system operations such as an orderly all-cluster shutdown.
      */
     void onClusterStateChange(ClusterState newState, boolean isTransient);
+
+    /**
+     * Called after the cluster state change transaction has completed
+     * (successfully or otherwise). Called only on the member that initiated
+     * the state change.
+     *
+     * @param oldState the state before the change
+     * @param newState the new cluster state, can be equal to {@code oldState} if the
+     *                 state change transaction failed
+     * @param isTransient whether the change will be recorded in persistent storage, affecting the
+     *                    initial state after cluster restart. Transient changes happen during
+     *                    system operations such as an orderly all-cluster shutdown.
+     */
+    void afterClusterStateChange(ClusterState oldState, ClusterState newState, boolean isTransient);
 
     /**
      * Called synchronously when partition state (partition assignments, version etc) changes
@@ -247,6 +294,10 @@ public interface NodeExtension {
 
     ManagementCenterConnectionFactory getManagementCenterConnectionFactory();
 
+    ManagementService createJMXManagementService(HazelcastInstanceImpl instance);
+
+    TextCommandService createTextCommandService();
+
     /** Returns a byte array processor for incoming data on the Multicast joiner */
     ByteArrayProcessor createMulticastInputProcessor(IOService ioService);
 
@@ -267,4 +318,9 @@ public interface NodeExtension {
      * @param diagnostics the diagnostics on which plugins should be registered
      */
     void registerPlugins(Diagnostics diagnostics);
+
+    /**
+     * Send PhoneHome ping from OS or EE instance to PhoneHome application
+     */
+    void sendPhoneHome();
 }

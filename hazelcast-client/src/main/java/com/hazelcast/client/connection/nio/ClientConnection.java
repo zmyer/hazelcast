@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2008-2018, Hazelcast, Inc. All Rights Reserved.
+ * Copyright (c) 2008-2019, Hazelcast, Inc. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -17,9 +17,8 @@
 package com.hazelcast.client.connection.nio;
 
 import com.hazelcast.client.connection.ClientConnectionManager;
-import com.hazelcast.client.impl.HazelcastClientInstanceImpl;
+import com.hazelcast.client.impl.clientside.HazelcastClientInstanceImpl;
 import com.hazelcast.client.impl.protocol.ClientMessage;
-import com.hazelcast.client.spi.impl.ClientResponseHandler;
 import com.hazelcast.client.spi.impl.listener.AbstractClientListenerService;
 import com.hazelcast.core.LifecycleService;
 import com.hazelcast.instance.BuildInfo;
@@ -31,6 +30,7 @@ import com.hazelcast.logging.ILogger;
 import com.hazelcast.nio.Address;
 import com.hazelcast.nio.Connection;
 import com.hazelcast.nio.ConnectionType;
+import com.hazelcast.util.function.Consumer;
 
 import java.io.EOFException;
 import java.io.IOException;
@@ -55,7 +55,7 @@ public class ClientConnection implements Connection {
     private final LifecycleService lifecycleService;
     private final HazelcastClientInstanceImpl client;
     private final long startTime = System.currentTimeMillis();
-    private final ClientResponseHandler responseHandler;
+    private final Consumer<ClientMessage> responseHandler;
 
     private volatile Address remoteEndpoint;
     private volatile boolean isAuthenticatedAsOwner;
@@ -232,7 +232,7 @@ public class ClientConnection implements Connection {
             AbstractClientListenerService listenerService = (AbstractClientListenerService) client.getListenerService();
             listenerService.handleClientMessage(message);
         } else {
-            responseHandler.handle(message);
+            responseHandler.accept(message);
         }
     }
 

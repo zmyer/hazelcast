@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2008-2018, Hazelcast, Inc. All Rights Reserved.
+ * Copyright (c) 2008-2019, Hazelcast, Inc. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -26,6 +26,7 @@ import java.lang.management.ManagementFactory;
 import java.util.Collections;
 import java.util.Set;
 
+import static com.hazelcast.internal.metrics.ProbeLevel.INFO;
 import static com.hazelcast.internal.metrics.ProbeLevel.MANDATORY;
 import static com.hazelcast.util.Preconditions.checkNotNull;
 import static com.hazelcast.util.SetUtil.createHashSet;
@@ -66,7 +67,7 @@ public final class GarbageCollectionMetricSet {
         checkNotNull(metricsRegistry, "metricsRegistry");
 
         GcStats stats = new GcStats();
-        metricsRegistry.scheduleAtFixedRate(stats, PUBLISH_FREQUENCY_SECONDS, SECONDS);
+        metricsRegistry.scheduleAtFixedRate(stats, PUBLISH_FREQUENCY_SECONDS, SECONDS, INFO);
         metricsRegistry.scanAndRegister(stats, "gc");
     }
 

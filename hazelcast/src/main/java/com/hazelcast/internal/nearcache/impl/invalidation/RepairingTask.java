@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2008-2018, Hazelcast, Inc. All Rights Reserved.
+ * Copyright (c) 2008-2019, Hazelcast, Inc. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -24,6 +24,7 @@ import com.hazelcast.spi.properties.HazelcastProperties;
 import com.hazelcast.spi.properties.HazelcastProperty;
 import com.hazelcast.spi.serialization.SerializationService;
 import com.hazelcast.util.ConstructorFunction;
+import com.hazelcast.util.ContextMutexFactory;
 
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
@@ -31,7 +32,7 @@ import java.util.concurrent.RejectedExecutionException;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 
-import static com.hazelcast.util.ConcurrencyUtil.getOrPutIfAbsent;
+import static com.hazelcast.util.ConcurrencyUtil.getOrPutSynchronized;
 import static com.hazelcast.util.Preconditions.checkNotNegative;
 import static java.lang.String.format;
 import static java.lang.System.nanoTime;
@@ -75,20 +76,21 @@ public final class RepairingTask implements Runnable {
     private final String localUuid;
     private final ILogger logger;
     private final TaskScheduler scheduler;
-    private final MetaDataFetcher metaDataFetcher;
+    private final InvalidationMetaDataFetcher invalidationMetaDataFetcher;
     private final SerializationService serializationService;
     private final MinimalPartitionService partitionService;
     private final AtomicBoolean running = new AtomicBoolean(false);
     private final ConcurrentMap<String, RepairingHandler> handlers = new ConcurrentHashMap<String, RepairingHandler>();
+    private final ContextMutexFactory contextMutexFactory = new ContextMutexFactory();
 
     private volatile long lastAntiEntropyRunNanos;
 
-    public RepairingTask(HazelcastProperties properties, MetaDataFetcher metaDataFetcher, TaskScheduler scheduler,
-                         SerializationService serializationService, MinimalPartitionService partitionService, String localUuid,
-                         ILogger logger) {
+    public RepairingTask(HazelcastProperties properties, InvalidationMetaDataFetcher invalidationMetaDataFetcher,
+                         TaskScheduler scheduler, SerializationService serializationService,
+                         MinimalPartitionService partitionService, String localUuid, ILogger logger) {
         this.reconciliationIntervalNanos = SECONDS.toNanos(getReconciliationIntervalSeconds(properties));
         this.maxToleratedMissCount = getMaxToleratedMissCount(properties);
-        this.metaDataFetcher = metaDataFetcher;
+        this.invalidationMetaDataFetcher = invalidationMetaDataFetcher;
         this.scheduler = scheduler;
         this.serializationService = serializationService;
         this.partitionService = partitionService;
@@ -120,7 +122,9 @@ public final class RepairingTask implements Runnable {
     public void run() {
         try {
             fixSequenceGaps();
-            runAntiEntropyIfNeeded();
+            if (isAntiEntropyNeeded()) {
+                runAntiEntropy();
+            }
         } finally {
             if (running.get()) {
                 scheduleNextRun();
@@ -144,16 +148,18 @@ public final class RepairingTask implements Runnable {
      * Periodically sends generic operations to cluster members to get latest
      * invalidation metadata.
      */
-    private void runAntiEntropyIfNeeded() {
+    private void runAntiEntropy() {
+        invalidationMetaDataFetcher.fetchMetadata(handlers);
+        lastAntiEntropyRunNanos = nanoTime();
+    }
+
+    private boolean isAntiEntropyNeeded() {
         if (reconciliationIntervalNanos == 0) {
-            return;
+            return false;
         }
 
-        long sinceLastRun = nanoTime() - lastAntiEntropyRunNanos;
-        if (sinceLastRun >= reconciliationIntervalNanos) {
-            metaDataFetcher.fetchMetadata(handlers);
-            lastAntiEntropyRunNanos = nanoTime();
-        }
+        long sinceLastRunNanos = nanoTime() - lastAntiEntropyRunNanos;
+        return sinceLastRunNanos >= reconciliationIntervalNanos;
     }
 
     private void scheduleNextRun() {
@@ -188,7 +194,8 @@ public final class RepairingTask implements Runnable {
     }
 
     public <K, V> RepairingHandler registerAndGetHandler(String dataStructureName, NearCache<K, V> nearCache) {
-        RepairingHandler handler = getOrPutIfAbsent(handlers, dataStructureName, new HandlerConstructor<K, V>(nearCache));
+        RepairingHandler handler = getOrPutSynchronized(handlers, dataStructureName,
+                contextMutexFactory, new HandlerConstructor(nearCache));
 
         if (running.compareAndSet(false, true)) {
             scheduleNextRun();
@@ -212,7 +219,7 @@ public final class RepairingTask implements Runnable {
 
         boolean initialized = false;
         try {
-            metaDataFetcher.init(handler);
+            invalidationMetaDataFetcher.init(handler);
             initialized = true;
         } catch (Exception e) {
             logger.warning(e);
@@ -251,7 +258,7 @@ public final class RepairingTask implements Runnable {
                             long delay = roundNumber * RESCHEDULE_FAILED_INITIALIZATION_AFTER_MILLIS;
                             scheduler.schedule(this, delay, MILLISECONDS);
                         }
-                        // else don't reschedule this task again and fallback to anti-entropy (see #runAntiEntropyIfNeeded)
+                        // else don't reschedule this task again and fallback to anti-entropy (see #runAntiEntropy)
                         // if we haven't managed to initialize repairing handler so far.
                     }
                 }
@@ -274,22 +281,20 @@ public final class RepairingTask implements Runnable {
      * Every handler represents a single Near Cache.
      */
     private boolean isAboveMaxToleratedMissCount(RepairingHandler handler) {
-        int partition = 0;
-        long missCount = 0;
+        long totalMissCount = 0;
 
-        do {
-            MetaDataContainer metaData = handler.getMetaDataContainer(partition);
-            missCount += metaData.getMissedSequenceCount();
+        for (int partitionId = 0; partitionId < partitionCount; partitionId++) {
+            MetaDataContainer metaData = handler.getMetaDataContainer(partitionId);
+            totalMissCount += metaData.getMissedSequenceCount();
 
-            if (missCount > maxToleratedMissCount) {
+            if (totalMissCount > maxToleratedMissCount) {
                 if (logger.isFinestEnabled()) {
                     logger.finest(format("Above tolerated miss count:[map=%s,missCount=%d,maxToleratedMissCount=%d]",
-                            handler.getName(), missCount, maxToleratedMissCount));
+                            handler.getName(), totalMissCount, maxToleratedMissCount));
                 }
                 return true;
             }
-        } while (++partition < partitionCount);
-
+        }
         return false;
     }
 
@@ -305,8 +310,8 @@ public final class RepairingTask implements Runnable {
     }
 
     // used in tests
-    public MetaDataFetcher getMetaDataFetcher() {
-        return metaDataFetcher;
+    public InvalidationMetaDataFetcher getInvalidationMetaDataFetcher() {
+        return invalidationMetaDataFetcher;
     }
 
     // used in tests

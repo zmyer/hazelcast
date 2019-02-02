@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2008-2018, Hazelcast, Inc. All Rights Reserved.
+ * Copyright (c) 2008-2019, Hazelcast, Inc. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,6 +16,7 @@
 
 package com.hazelcast.query.impl;
 
+import com.hazelcast.monitor.impl.IndexOperationStats;
 import com.hazelcast.nio.serialization.Data;
 
 import java.util.Set;
@@ -25,9 +26,9 @@ import java.util.Set;
  */
 public interface IndexStore {
 
-    void newIndex(Object newValue, QueryableEntry entry);
-    void updateIndex(Object oldValue, Object newValue, QueryableEntry entry);
-    void removeIndex(Object oldValue, Data indexKey);
+    void newIndex(Object newValue, QueryableEntry entry, IndexOperationStats operationStats);
+    void updateIndex(Object oldValue, Object newValue, QueryableEntry entry, IndexOperationStats operationStats);
+    void removeIndex(Object oldValue, Data indexKey, IndexOperationStats operationStats);
     void clear();
     void destroy();
 

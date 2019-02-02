@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2008-2018, Hazelcast, Inc. All Rights Reserved.
+ * Copyright (c) 2008-2019, Hazelcast, Inc. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -28,6 +28,7 @@ import com.hazelcast.core.IMap;
 import com.hazelcast.core.ManagedContext;
 import com.hazelcast.internal.journal.EventJournalInitialSubscriberState;
 import com.hazelcast.internal.journal.EventJournalReader;
+import com.hazelcast.internal.util.SimpleCompletedFuture;
 import com.hazelcast.map.EntryProcessor;
 import com.hazelcast.map.MapInterceptor;
 import com.hazelcast.map.QueryCache;
@@ -74,6 +75,7 @@ import com.hazelcast.util.executor.DelegatingFuture;
 
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
@@ -83,9 +85,12 @@ import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 
 import static com.hazelcast.config.InMemoryFormat.NATIVE;
+import static com.hazelcast.internal.cluster.Versions.V3_11;
 import static com.hazelcast.map.impl.MapService.SERVICE_NAME;
 import static com.hazelcast.map.impl.query.QueryResultUtils.transformToSet;
 import static com.hazelcast.map.impl.querycache.subscriber.QueryCacheRequest.newQueryCacheRequest;
+import static com.hazelcast.map.impl.recordstore.RecordStore.DEFAULT_MAX_IDLE;
+import static com.hazelcast.util.ExceptionUtil.rethrow;
 import static com.hazelcast.util.MapUtil.createHashMap;
 import static com.hazelcast.util.Preconditions.checkNoNullInside;
 import static com.hazelcast.util.Preconditions.checkNotInstanceOf;
@@ -127,7 +132,22 @@ public class MapProxyImpl<K, V> extends MapProxySupport<K, V> implements EventJo
         checkNotNull(value, NULL_VALUE_IS_NOT_ALLOWED);
 
         Data valueData = toData(value);
-        Data result = putInternal(key, valueData, ttl, timeunit);
+        Data result = putInternal(key, valueData, ttl, timeunit, DEFAULT_MAX_IDLE, TimeUnit.MILLISECONDS);
+        return toObject(result);
+    }
+
+    @Override
+    public V put(K key, V value, long ttl, TimeUnit ttlUnit, long maxIdle, TimeUnit maxIdleUnit) {
+        if (isClusterVersionLessThan(V3_11)) {
+            throw new UnsupportedOperationException("put with Max-Idle operation is available "
+                    + "when cluster version is 3.11 or higher");
+        }
+
+        checkNotNull(key, NULL_KEY_IS_NOT_ALLOWED);
+        checkNotNull(value, NULL_VALUE_IS_NOT_ALLOWED);
+
+        Data valueData = toData(value);
+        Data result = putInternal(key, valueData, ttl, ttlUnit, maxIdle, maxIdleUnit);
         return toObject(result);
     }
 
@@ -151,7 +171,22 @@ public class MapProxyImpl<K, V> extends MapProxySupport<K, V> implements EventJo
         checkNotNull(value, NULL_VALUE_IS_NOT_ALLOWED);
 
         Data valueData = toData(value);
-        Data result = putIfAbsentInternal(key, valueData, ttl, timeunit);
+        Data result = putIfAbsentInternal(key, valueData, ttl, timeunit, DEFAULT_MAX_IDLE, TimeUnit.MILLISECONDS);
+        return toObject(result);
+    }
+
+    @Override
+    public V putIfAbsent(K key, V value, long ttl, TimeUnit timeunit, long maxIdle, TimeUnit maxIdleUnit) {
+        if (isClusterVersionLessThan(V3_11)) {
+            throw new UnsupportedOperationException("putIfAbsent with Max-Idle operation is available "
+                    + "when cluster version is 3.11 or higher");
+        }
+
+        checkNotNull(key, NULL_KEY_IS_NOT_ALLOWED);
+        checkNotNull(value, NULL_VALUE_IS_NOT_ALLOWED);
+
+        Data valueData = toData(value);
+        Data result = putIfAbsentInternal(key, valueData, ttl, timeunit, maxIdle, maxIdleUnit);
         return toObject(result);
     }
 
@@ -161,7 +196,21 @@ public class MapProxyImpl<K, V> extends MapProxySupport<K, V> implements EventJo
         checkNotNull(value, NULL_VALUE_IS_NOT_ALLOWED);
 
         Data valueData = toData(value);
-        putTransientInternal(key, valueData, ttl, timeunit);
+        putTransientInternal(key, valueData, ttl, timeunit, DEFAULT_MAX_IDLE, TimeUnit.MILLISECONDS);
+    }
+
+    @Override
+    public void putTransient(K key, V value, long ttl, TimeUnit ttlUnit, long maxIdle, TimeUnit maxIdleUnit) {
+        if (isClusterVersionLessThan(V3_11)) {
+            throw new UnsupportedOperationException("putTransient with Max-Idle operation is available "
+                    + "when cluster version is 3.11 or higher");
+        }
+
+        checkNotNull(key, NULL_KEY_IS_NOT_ALLOWED);
+        checkNotNull(value, NULL_VALUE_IS_NOT_ALLOWED);
+
+        Data valueData = toData(value);
+        putTransientInternal(key, valueData, ttl, ttlUnit, maxIdle, maxIdleUnit);
     }
 
     @Override
@@ -190,12 +239,26 @@ public class MapProxyImpl<K, V> extends MapProxySupport<K, V> implements EventJo
     }
 
     @Override
-    public void set(K key, V value, long ttl, TimeUnit timeunit) {
+    public void set(K key, V value, long ttl, TimeUnit ttlUnit) {
         checkNotNull(key, NULL_KEY_IS_NOT_ALLOWED);
         checkNotNull(value, NULL_VALUE_IS_NOT_ALLOWED);
 
         Data valueData = toData(value);
-        setInternal(key, valueData, ttl, timeunit);
+        setInternal(key, valueData, ttl, ttlUnit, DEFAULT_MAX_IDLE, TimeUnit.MILLISECONDS);
+    }
+
+    @Override
+    public void set(K key, V value, long ttl, TimeUnit ttlUnit, long maxIdle, TimeUnit maxIdleUnit) {
+        if (isClusterVersionLessThan(V3_11)) {
+            throw new UnsupportedOperationException("set with Max-Idle operation is available "
+                    + "when cluster version is 3.11 or higher");
+        }
+
+        checkNotNull(key, NULL_KEY_IS_NOT_ALLOWED);
+        checkNotNull(value, NULL_VALUE_IS_NOT_ALLOWED);
+
+        Data valueData = toData(value);
+        setInternal(key, valueData, ttl, ttlUnit, maxIdle, maxIdleUnit);
     }
 
     @Override
@@ -303,7 +366,25 @@ public class MapProxyImpl<K, V> extends MapProxySupport<K, V> implements EventJo
         checkNotNull(value, NULL_VALUE_IS_NOT_ALLOWED);
 
         Data valueData = toData(value);
-        return new DelegatingFuture<V>(putAsyncInternal(key, valueData, ttl, timeunit), serializationService);
+        return new DelegatingFuture<V>(
+                putAsyncInternal(key, valueData, ttl, timeunit, DEFAULT_MAX_IDLE, TimeUnit.MILLISECONDS),
+                serializationService);
+    }
+
+    @Override
+    public ICompletableFuture<V> putAsync(K key, V value, long ttl, TimeUnit ttlUnit, long maxIdle, TimeUnit maxIdleUnit) {
+        if (isClusterVersionLessThan(V3_11)) {
+            throw new UnsupportedOperationException("putAsync with Max-Idle operation is available "
+                    + "when cluster version is 3.11 or higher");
+        }
+
+        checkNotNull(key, NULL_KEY_IS_NOT_ALLOWED);
+        checkNotNull(value, NULL_VALUE_IS_NOT_ALLOWED);
+
+        Data valueData = toData(value);
+        return new DelegatingFuture<V>(
+                putAsyncInternal(key, valueData, ttl, ttlUnit, maxIdle, maxIdleUnit),
+                serializationService);
     }
 
     @Override
@@ -317,7 +398,25 @@ public class MapProxyImpl<K, V> extends MapProxySupport<K, V> implements EventJo
         checkNotNull(value, NULL_VALUE_IS_NOT_ALLOWED);
 
         Data valueData = toData(value);
-        return new DelegatingFuture<Void>(setAsyncInternal(key, valueData, ttl, timeunit), serializationService);
+        return new DelegatingFuture<Void>(
+                setAsyncInternal(key, valueData, ttl, timeunit, DEFAULT_MAX_IDLE, TimeUnit.MILLISECONDS),
+                serializationService);
+    }
+
+    @Override
+    public ICompletableFuture<Void> setAsync(K key, V value, long ttl, TimeUnit ttlUnit, long maxIdle, TimeUnit maxIdleUnit) {
+        if (isClusterVersionLessThan(V3_11)) {
+            throw new UnsupportedOperationException("setAsync with Max-Idle operation is available "
+                    + "when cluster version is 3.11 or higher");
+        }
+
+        checkNotNull(key, NULL_KEY_IS_NOT_ALLOWED);
+        checkNotNull(value, NULL_VALUE_IS_NOT_ALLOWED);
+
+        Data valueData = toData(value);
+        return new DelegatingFuture<Void>(
+                setAsyncInternal(key, valueData, ttl, ttlUnit, maxIdle, maxIdleUnit),
+                serializationService);
     }
 
     @Override
@@ -345,6 +444,13 @@ public class MapProxyImpl<K, V> extends MapProxySupport<K, V> implements EventJo
             result.put(key, value);
         }
         return result;
+    }
+
+    @Override
+    public boolean setTtl(K key, long ttl, TimeUnit timeunit) {
+        checkNotNull(key);
+        checkNotNull(timeunit);
+        return setTtlInternal(key, ttl, timeunit);
     }
 
     @Override
@@ -655,14 +761,25 @@ public class MapProxyImpl<K, V> extends MapProxySupport<K, V> implements EventJo
 
     @Override
     public Map<K, Object> executeOnKeys(Set<K> keys, EntryProcessor entryProcessor) {
+        try {
+            return submitToKeys(keys, entryProcessor).get();
+        } catch (Exception e) {
+            throw rethrow(e);
+        }
+    }
+
+    /**
+     * Async version of {@link #executeOnKeys}.
+     */
+    public ICompletableFuture<Map<K, Object>> submitToKeys(Set<K> keys, EntryProcessor entryProcessor) {
         checkNotNull(keys, NULL_KEYS_ARE_NOT_ALLOWED);
+        if (keys.isEmpty()) {
+            return new SimpleCompletedFuture<Map<K, Object>>(Collections.<K, Object>emptyMap());
+        }
         handleHazelcastInstanceAwareParams(entryProcessor);
 
-        if (keys.isEmpty()) {
-            return emptyMap();
-        }
         Set<Data> dataKeys = createHashSet(keys.size());
-        return executeOnKeysInternal(keys, dataKeys, entryProcessor);
+        return submitToKeysInternal(keys, dataKeys, entryProcessor);
     }
 
     @Override

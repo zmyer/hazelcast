@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2008-2018, Hazelcast, Inc. All Rights Reserved.
+ * Copyright (c) 2008-2019, Hazelcast, Inc. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -555,8 +555,8 @@ public class ClientReplicatedMapProxy<K, V> extends ClientProxy implements Repli
         }
 
         @Override
-        public void handle(Data keyData, Data valueData, Data oldValueData, Data mergingValue, int eventTypeId, String uuid,
-                           int numberOfAffectedEntries) {
+        public void handleEntryEventV10(Data keyData, Data valueData, Data oldValueData, Data mergingValue,
+                                        int eventTypeId, String uuid, int numberOfAffectedEntries) {
             Member member = getContext().getClusterService().getMember(uuid);
             EntryEventType eventType = EntryEventType.getByType(eventTypeId);
             EntryEvent<K, V> entryEvent = new DataAwareEntryEvent<K, V>(member, eventTypeId, name, keyData, valueData,
@@ -611,8 +611,8 @@ public class ClientReplicatedMapProxy<K, V> extends ClientProxy implements Repli
         }
 
         @Override
-        public void handle(Data dataKey, Data value, Data oldValue, Data mergingValue, int eventType, String uuid,
-                           int numberOfAffectedEntries) {
+        public void handleEntryEventV10(Data dataKey, Data value, Data oldValue, Data mergingValue,
+                                        int eventType, String uuid, int numberOfAffectedEntries) {
             EntryEventType entryEventType = EntryEventType.getByType(eventType);
             switch (entryEventType) {
                 case ADDED:

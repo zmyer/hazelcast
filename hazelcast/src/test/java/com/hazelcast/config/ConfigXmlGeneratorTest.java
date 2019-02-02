@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2008-2018, Hazelcast, Inc. All Rights Reserved.
+ * Copyright (c) 2008-2019, Hazelcast, Inc. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -20,6 +20,7 @@ import com.hazelcast.config.CacheSimpleConfig.ExpiryPolicyFactoryConfig;
 import com.hazelcast.config.CacheSimpleConfig.ExpiryPolicyFactoryConfig.DurationConfig;
 import com.hazelcast.config.CacheSimpleConfig.ExpiryPolicyFactoryConfig.TimedExpiryPolicyFactoryConfig;
 import com.hazelcast.config.ConfigCompatibilityChecker.EventJournalConfigChecker;
+import com.hazelcast.config.ConfigCompatibilityChecker.MapMerkleTreeConfigChecker;
 import com.hazelcast.memory.MemorySize;
 import com.hazelcast.memory.MemoryUnit;
 import com.hazelcast.quorum.QuorumType;
@@ -418,6 +419,7 @@ public class ConfigXmlGeneratorTest {
     public void testManagementCenterConfigGenerator() {
         ManagementCenterConfig managementCenterConfig = new ManagementCenterConfig()
                 .setEnabled(true)
+                .setScriptingEnabled(false)
                 .setUpdateInterval(8)
                 .setUrl("http://foomybar.ber")
                 .setMutualAuthConfig(
@@ -436,6 +438,7 @@ public class ConfigXmlGeneratorTest {
 
         ManagementCenterConfig xmlManCenterConfig = xmlConfig.getManagementCenterConfig();
         assertEquals(managementCenterConfig.isEnabled(), xmlManCenterConfig.isEnabled());
+        assertEquals(managementCenterConfig.isScriptingEnabled(), xmlManCenterConfig.isScriptingEnabled());
         assertEquals(managementCenterConfig.getUpdateInterval(), xmlManCenterConfig.getUpdateInterval());
         assertEquals(managementCenterConfig.getUrl(), xmlManCenterConfig.getUrl());
         assertEquals(managementCenterConfig.getMutualAuthConfig().isEnabled(), xmlManCenterConfig.getMutualAuthConfig().isEnabled());
@@ -1119,15 +1122,43 @@ public class ConfigXmlGeneratorTest {
                 .setWanConsumerConfig(new WanConsumerConfig().setClassName("dummyClass").setProperties(props));
         WanPublisherConfig publisherConfig = new WanPublisherConfig()
                 .setGroupName("dummyGroup")
+                .setPublisherId("dummyPublisherId")
                 .setClassName("dummyClass")
                 .setAwsConfig(getDummyAwsConfig())
+                .setInitialPublisherState(WanPublisherState.STOPPED)
                 .setDiscoveryConfig(getDummyDiscoveryConfig());
-        wanConfig.setWanPublisherConfigs(Collections.singletonList(publisherConfig));
+        publisherConfig.getWanSyncConfig()
+                       .setConsistencyCheckStrategy(ConsistencyCheckStrategy.MERKLE_TREES);
+        WanConsumerConfig wanConsumerConfig = new WanConsumerConfig()
+                .setClassName("dummyClass")
+                .setProperties(props)
+                .setPersistWanReplicatedData(false);
+
+        wanConfig
+                .setWanConsumerConfig(wanConsumerConfig)
+                .setWanPublisherConfigs(Collections.singletonList(publisherConfig));
 
         Config config = new Config().addWanReplicationConfig(wanConfig);
         Config xmlConfig = getNewConfigViaXMLGenerator(config);
 
-        ConfigCompatibilityChecker.checkWanConfigs(config.getWanReplicationConfigs(), xmlConfig.getWanReplicationConfigs());
+        ConfigCompatibilityChecker.checkWanConfigs(
+                config.getWanReplicationConfigs(),
+                xmlConfig.getWanReplicationConfigs());
+    }
+
+    @Test
+    public void testMapMerkleTree() {
+        String mapName = "mapName";
+        MerkleTreeConfig expectedConfig = new MerkleTreeConfig()
+                .setMapName(mapName)
+                .setEnabled(true)
+                .setDepth(10);
+        Config config = new Config().addMerkleTreeConfig(expectedConfig);
+        Config xmlConfig = getNewConfigViaXMLGenerator(config);
+
+        MerkleTreeConfig actualConfig = xmlConfig.getMapMerkleTreeConfig(mapName);
+        assertTrue(new MapMerkleTreeConfigChecker().check(expectedConfig, actualConfig));
+        assertEquals(expectedConfig, actualConfig);
     }
 
     @Test

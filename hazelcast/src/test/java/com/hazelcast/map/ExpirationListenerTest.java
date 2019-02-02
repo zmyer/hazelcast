@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2008-2018, Hazelcast, Inc. All Rights Reserved.
+ * Copyright (c) 2008-2019, Hazelcast, Inc. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -63,6 +63,32 @@ public class ExpirationListenerTest extends HazelcastTestSupport {
 
         for (int i = 0; i < numberOfPutOperations; i++) {
             map.put(i, i, 100, TimeUnit.MILLISECONDS);
+        }
+
+        // wait expiration of entries
+        sleepAtLeastMillis(200);
+
+        // trigger immediate fire of expiration events by touching them
+        for (int i = 0; i < numberOfPutOperations; i++) {
+            map.get(i);
+        }
+
+        assertOpenEventually(expirationEventArrivalCount);
+    }
+
+    @Test
+    public void test_whenTTLisModified_ExpirationListenernotified_afterExpirationOfEntries() throws Exception {
+        int numberOfPutOperations = 1000;
+        CountDownLatch expirationEventArrivalCount = new CountDownLatch(numberOfPutOperations);
+
+        map.addEntryListener(new ExpirationListener(expirationEventArrivalCount), true);
+
+        for (int i = 0; i < numberOfPutOperations; i++) {
+            map.put(i, i);
+        }
+
+        for (int i = 0; i < numberOfPutOperations; i++) {
+            map.setTtl(i, 100, TimeUnit.MILLISECONDS);
         }
 
         // wait expiration of entries

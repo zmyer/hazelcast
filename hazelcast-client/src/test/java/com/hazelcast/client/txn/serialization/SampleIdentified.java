@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2008-2018, Hazelcast, Inc. All Rights Reserved.
+ * Copyright (c) 2008-2019, Hazelcast, Inc. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,7 +16,6 @@
 
 package com.hazelcast.client.txn.serialization;
 
-
 import com.hazelcast.nio.ObjectDataInput;
 import com.hazelcast.nio.ObjectDataOutput;
 import com.hazelcast.nio.serialization.IdentifiedDataSerializable;
@@ -27,6 +26,7 @@ class SampleIdentified implements IdentifiedDataSerializable {
 
     public static final int FACTORY_ID = 1;
     public static final int CLASS_ID = 1;
+
     private int amount;
 
     public SampleIdentified() {
@@ -77,8 +77,8 @@ class SampleIdentified implements IdentifiedDataSerializable {
 
     @Override
     public String toString() {
-        return "SampleIdentified{" +
-                "amount=" + amount +
-                '}';
+        return "SampleIdentified{"
+                + "amount=" + amount
+                + '}';
     }
 }

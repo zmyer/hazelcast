@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2008-2018, Hazelcast, Inc. All Rights Reserved.
+ * Copyright (c) 2008-2019, Hazelcast, Inc. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -21,12 +21,12 @@ import com.hazelcast.cluster.ClusterState;
 import com.hazelcast.core.HazelcastInstance;
 import com.hazelcast.hotrestart.BackupTaskState;
 import com.hazelcast.hotrestart.BackupTaskStatus;
+import com.hazelcast.internal.management.TimedMemberState;
 import com.hazelcast.internal.management.TimedMemberStateFactory;
 import com.hazelcast.internal.management.dto.ClientEndPointDTO;
 import com.hazelcast.internal.management.dto.ClusterHotRestartStatusDTO;
 import com.hazelcast.monitor.HotRestartState;
 import com.hazelcast.monitor.NodeState;
-import com.hazelcast.monitor.TimedMemberState;
 import com.hazelcast.monitor.WanSyncState;
 import com.hazelcast.test.HazelcastParallelClassRunner;
 import com.hazelcast.test.HazelcastTestSupport;
@@ -42,11 +42,11 @@ import org.junit.runner.RunWith;
 
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
 
 import static com.hazelcast.config.HotRestartClusterDataRecoveryPolicy.FULL_RECOVERY_ONLY;
-import static com.hazelcast.instance.TestUtil.getHazelcastInstanceImpl;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
@@ -76,6 +76,8 @@ public class MemberStateImplTest extends HazelcastTestSupport {
         client.uuid = "abc123456";
         client.address = "localhost";
         client.clientType = "undefined";
+        client.name = "aClient";
+        client.attributes = Collections.singletonMap("attrKey", "attrValue");
         clients.add(client);
 
         Map<String, Long> runtimeProps = new HashMap<String, Long>();
@@ -87,7 +89,8 @@ public class MemberStateImplTest extends HazelcastTestSupport {
         MemberVersion memberVersion = MemberVersion.of("3.8.0");
         NodeState state = new NodeStateImpl(clusterState, nodeState, clusterVersion, memberVersion);
         final BackupTaskStatus backupTaskStatus = new BackupTaskStatus(BackupTaskState.IN_PROGRESS, 5, 10);
-        final HotRestartStateImpl hotRestartState = new HotRestartStateImpl(backupTaskStatus, false);
+        final String backupDirectory = "/hot/backup/dir";
+        final HotRestartStateImpl hotRestartState = new HotRestartStateImpl(backupTaskStatus, true, backupDirectory);
         final WanSyncState wanSyncState = new WanSyncStateImpl(WanSyncStatus.IN_PROGRESS, 86, "atob", "B");
 
         Map<String, String> clientStats = new HashMap<String, String>();
@@ -143,6 +146,8 @@ public class MemberStateImplTest extends HazelcastTestSupport {
         assertEquals("abc123456", client.uuid);
         assertEquals("localhost", client.address);
         assertEquals("undefined", client.clientType);
+        assertEquals("aClient", client.name);
+        assertEquals("attrValue", client.attributes.get("attrKey"));
 
         NodeState deserializedState = deserialized.getNodeState();
         assertEquals(clusterState, deserializedState.getClusterState());
@@ -151,7 +156,9 @@ public class MemberStateImplTest extends HazelcastTestSupport {
         assertEquals(memberVersion, deserializedState.getMemberVersion());
 
         final HotRestartState deserializedHotRestartState = deserialized.getHotRestartState();
+        assertTrue(deserializedHotRestartState.isHotBackupEnabled());
         assertEquals(backupTaskStatus, deserializedHotRestartState.getBackupTaskStatus());
+        assertEquals(backupDirectory, deserializedHotRestartState.getBackupDirectory());
 
         final WanSyncState deserializedWanSyncState = deserialized.getWanSyncState();
         assertEquals(WanSyncStatus.IN_PROGRESS, deserializedWanSyncState.getStatus());

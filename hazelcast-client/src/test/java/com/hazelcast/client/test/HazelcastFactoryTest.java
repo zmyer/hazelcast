@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2008-2018, Hazelcast, Inc. All Rights Reserved.
+ * Copyright (c) 2008-2019, Hazelcast, Inc. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -90,9 +90,9 @@ public class HazelcastFactoryTest extends HazelcastTestSupport {
                 touchRandomNode(client1);
                 touchRandomNode(client2);
 
-                int actual = instance1.getClientService().getConnectedClients().size() +
-                        instance2.getClientService().getConnectedClients().size() +
-                        instance3.getClientService().getConnectedClients().size();
+                int actual = instance1.getClientService().getConnectedClients().size()
+                        + instance2.getClientService().getConnectedClients().size()
+                        + instance3.getClientService().getConnectedClients().size();
                 assertEquals(2, actual);
             }
         });

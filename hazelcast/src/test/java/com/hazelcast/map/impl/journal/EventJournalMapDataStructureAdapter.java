@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2008-2018, Hazelcast, Inc. All Rights Reserved.
+ * Copyright (c) 2008-2019, Hazelcast, Inc. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -27,6 +27,7 @@ import com.hazelcast.projection.Projection;
 import com.hazelcast.ringbuffer.ReadResultSet;
 import com.hazelcast.spi.ObjectNamespace;
 
+import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
@@ -58,6 +59,21 @@ public class EventJournalMapDataStructureAdapter<K, V>
     @Override
     public V put(K key, V value, long ttl, TimeUnit timeunit) {
         return map.put(key, value, ttl, timeunit);
+    }
+
+    @Override
+    public void putAll(Map<K, V> map) {
+        this.map.putAll(map);
+    }
+
+    @Override
+    public void load(K key) {
+        map.get(key);
+    }
+
+    @Override
+    public void loadAll(Set<K> keys) {
+        map.loadAll(keys, true);
     }
 
     @Override

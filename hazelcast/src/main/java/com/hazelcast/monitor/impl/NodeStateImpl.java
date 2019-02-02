@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2008-2018, Hazelcast, Inc. All Rights Reserved.
+ * Copyright (c) 2008-2019, Hazelcast, Inc. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,10 +16,10 @@
 
 package com.hazelcast.monitor.impl;
 
-import com.eclipsesource.json.JsonArray;
-import com.eclipsesource.json.JsonObject;
-import com.eclipsesource.json.JsonValue;
 import com.hazelcast.cluster.ClusterState;
+import com.hazelcast.internal.json.JsonArray;
+import com.hazelcast.internal.json.JsonObject;
+import com.hazelcast.internal.json.JsonValue;
 import com.hazelcast.monitor.NodeState;
 import com.hazelcast.version.MemberVersion;
 import com.hazelcast.version.Version;
@@ -40,7 +40,7 @@ public class NodeStateImpl implements NodeState {
     private Version clusterVersion;
     private MemberVersion memberVersion;
 
-    private Map<String, List<String>> weakConfigs;
+    private Map<String, List<String>> weakSecretsConfigs;
 
     public NodeStateImpl() {
     }
@@ -51,14 +51,14 @@ public class NodeStateImpl implements NodeState {
     }
 
     public NodeStateImpl(ClusterState clusterState, com.hazelcast.instance.NodeState nodeState,
-                         Version clusterVersion, MemberVersion memberVersion, Map<String, List<String>> weakConfigs) {
+                         Version clusterVersion, MemberVersion memberVersion, Map<String,
+                         List<String>> weakSecretsConfigs) {
         this.clusterState = clusterState;
         this.nodeState = nodeState;
         this.clusterVersion = clusterVersion;
         this.memberVersion = memberVersion;
-        this.weakConfigs = weakConfigs;
+        this.weakSecretsConfigs = weakSecretsConfigs;
     }
-
 
     @Override
     public ClusterState getClusterState() {
@@ -88,7 +88,7 @@ public class NodeStateImpl implements NodeState {
         root.add("memberVersion", memberVersion.toString());
 
         JsonObject weaknesses = new JsonObject();
-        for (Map.Entry<String, List<String>> entry : weakConfigs.entrySet()) {
+        for (Map.Entry<String, List<String>> entry : weakSecretsConfigs.entrySet()) {
             JsonArray values = new JsonArray();
             for (String value : entry.getValue()) {
                 values.add(value);
@@ -119,7 +119,7 @@ public class NodeStateImpl implements NodeState {
             memberVersion = MemberVersion.of(jsonNodeVersion);
         }
 
-        weakConfigs = new HashMap<String, List<String>>();
+        weakSecretsConfigs = new HashMap<String, List<String>>();
         JsonValue jsonWeakConfigs = json.get("weakConfigs");
         if (jsonWeakConfigs != null) {
             JsonObject weakConfigsJsObj = jsonWeakConfigs.asObject();
@@ -128,7 +128,7 @@ public class NodeStateImpl implements NodeState {
                 for (JsonValue value : member.getValue().asArray()) {
                     weaknesses.add(value.asString());
                 }
-                weakConfigs.put(member.getName(), weaknesses);
+                weakSecretsConfigs.put(member.getName(), weaknesses);
             }
         }
     }

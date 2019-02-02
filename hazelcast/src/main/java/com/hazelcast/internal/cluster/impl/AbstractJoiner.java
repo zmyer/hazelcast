@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2008-2018, Hazelcast, Inc. All Rights Reserved.
+ * Copyright (c) 2008-2019, Hazelcast, Inc. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -133,9 +133,9 @@ public abstract class AbstractJoiner implements Joiner {
     public final void join() {
         blacklistedAddresses.clear();
         doJoin();
-        if (!clusterService.isJoined() && shouldResetHotRestartData()) {
+        if (!clusterService.isJoined() && isMemberExcludedFromHotRestart()) {
             logger.warning("Could not join to the cluster because hot restart data must be reset.");
-            node.getNodeExtension().getInternalHotRestartService().resetHotRestartData();
+            node.getNodeExtension().getInternalHotRestartService().forceStartBeforeJoin();
             reset();
             doJoin();
         }
@@ -143,10 +143,10 @@ public abstract class AbstractJoiner implements Joiner {
     }
 
     protected final boolean shouldRetry() {
-        return node.isRunning() && !clusterService.isJoined() && !shouldResetHotRestartData();
+        return node.isRunning() && !clusterService.isJoined() && !isMemberExcludedFromHotRestart();
     }
 
-    private boolean shouldResetHotRestartData() {
+    private boolean isMemberExcludedFromHotRestart() {
         final NodeExtension nodeExtension = node.getNodeExtension();
         return !nodeExtension.isStartCompleted()
                 && nodeExtension.getInternalHotRestartService().isMemberExcluded(node.getThisAddress(), node.getThisUuid());

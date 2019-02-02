@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2008-2018, Hazelcast, Inc. All Rights Reserved.
+ * Copyright (c) 2008-2019, Hazelcast, Inc. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -48,6 +48,7 @@ import static com.hazelcast.util.StringUtil.timeToString;
  * is going to be executed; this logic will be placed in the
  * {@link Operation#run()} method.
  */
+@SuppressWarnings({"checkstyle:methodcount", "checkstyle:magicnumber"})
 public abstract class Operation implements DataSerializable {
 
     /**
@@ -140,7 +141,7 @@ public abstract class Operation implements DataSerializable {
      * The main difference between a run and call, is that the returned
      * CallStatus from the call can tell something about the actual execution.
      * For example it could tell that some waiting is required in case of a
-     * {@link BlockingOperation}. Or that the actual execution the work is
+     * {@link BlockingOperation}. Or that the actual execution work is
      * offloaded to some executor in case of an
      * {@link com.hazelcast.core.Offloadable}
      * {@link com.hazelcast.map.impl.operation.EntryOperation}.
@@ -180,7 +181,7 @@ public abstract class Operation implements DataSerializable {
     }
 
     /**
-     * Method is intended to be subclassed. If it returns {@code true},
+     * Method is intended to be overridden. If it returns {@code true},
      * {@link #getResponse()} will be called right after {@link #run()} method.
      * If it returns {@code false}, {@link #sendResponse(Object)} must be
      * called later to finish the operation.
@@ -226,7 +227,7 @@ public abstract class Operation implements DataSerializable {
     }
 
     /**
-     * Returns the ID of the partition that this Operation will be executed upon.
+     * Returns the ID of the partition that this Operation will be executed on.
      *
      * If the partitionId is equal or larger than 0, it means that it is tied to
      * a specific partition: for example, a map.get('foo'). If it is smaller than
@@ -266,7 +267,7 @@ public abstract class Operation implements DataSerializable {
     public final Operation setReplicaIndex(int replicaIndex) {
         if (replicaIndex < 0 || replicaIndex >= InternalPartition.MAX_REPLICA_COUNT) {
             throw new IllegalArgumentException("Replica index is out of range [0-"
-                    + (InternalPartition.MAX_REPLICA_COUNT - 1) + "]");
+                    + (InternalPartition.MAX_REPLICA_COUNT - 1) + "]: " + replicaIndex);
         }
 
         setFlag(replicaIndex != 0, BITMASK_REPLICA_INDEX_SET);
@@ -280,10 +281,10 @@ public abstract class Operation implements DataSerializable {
      * execution of that operation.
      * <ul>
      * <li>Initially the call ID is zero.</li>
-     * <li>When an Invocation of the operation is created, call ID is assigned
-     * a positive value.</li>
-     * <li>When the invocation ends, the operation is {@link #deactivate()}d,
-     * but the call ID is preserved.</li>
+     * <li>When an Invocation of the operation is created, a positive call ID is
+     * assigned</li>
+     * <li>When the invocation ends, the operation is {@link #deactivate}d,
+     * and the call ID is negated.</li>
      * <li>The same operation may be involved in a further invocation (retrying);
      * this will assign a new call ID and reactivate the operation.</li>
      * </ul>
@@ -457,7 +458,7 @@ public abstract class Operation implements DataSerializable {
     }
 
     /**
-     * Gets the time in milliseconds since this invocation started.
+     * Gets the time in milliseconds when this invocation started.
      *
      * For more information, see {@link ClusterClock#getClusterTime()}.
      *
@@ -475,10 +476,10 @@ public abstract class Operation implements DataSerializable {
 
     /**
      * Gets the call timeout in milliseconds. For example, if a call should start
-     * execution within 60 seconds otherwise it should be aborted, then the
-     * call-timeout is 60000 milliseconds. Once an operation starts execution and
-     * runs for a long period (e.g. 5 minutes with an IExecutorService execute
-     * operation), then the call timeout isn't relevant any longer.
+     * execution within 60 seconds or it should be aborted otherwise, then the
+     * call timeout is 60000 milliseconds. Once the operation execution starts,
+     * the call timeout is no longer relevant, even if the execution takes a long
+     * time.
      *
      * For more information about the default value, see
      * {@link GroupProperty#OPERATION_CALL_TIMEOUT_MILLIS}
@@ -510,7 +511,7 @@ public abstract class Operation implements DataSerializable {
      * no waiting at all.
      *
      * The wait timeout is the amount of time a {@link BlockingOperation} is
-     * allowed to parked in the
+     * allowed to be parked in the
      * {@link com.hazelcast.spi.impl.operationparker.OperationParker}.
      *
      * Examples:
@@ -520,8 +521,8 @@ public abstract class Operation implements DataSerializable {
      * <li>in case of ILock.tryLock(), the wait timeout is 0.</li>
      * </ol>
      *
-     * The waitTimeout only has meaning for blocking operations. For non
-     * blocking operations the value is undefined.
+     * The waitTimeout is only relevant for blocking operations. For non
+     * blocking operations the value is ignored.
      *
      * @return the wait timeout.
      */
@@ -542,8 +543,8 @@ public abstract class Operation implements DataSerializable {
 
     /**
      * Called when an <tt>Exception</tt>/<tt>Error</tt> is thrown
-     * during an invocation. Invocation process will continue, retry
-     * or fail according to returned <tt>ExceptionAction</tt> result.
+     * during an invocation. Invocation process will continue, it will retry
+     * or fail according to returned <tt>ExceptionAction</tt>.
      * <p/>
      * This method is called on caller side of the invocation.
      *
@@ -592,7 +593,7 @@ public abstract class Operation implements DataSerializable {
      * operation execution.
      * <p/>
      * By default this method does nothing.
-     * Operation implementations can override this behaviour due to their needs.
+     * Operation implementations can override this behaviour according to their needs.
      * <p/>
      * This method is called on node & thread that's executing the operation.
      *
@@ -603,7 +604,7 @@ public abstract class Operation implements DataSerializable {
 
     /**
      * Logs <tt>Exception</tt>/<tt>Error</tt> thrown during operation execution.
-     * Operation implementations can override this behaviour due to their needs.
+     * Operation implementations can override this behaviour according to their needs.
      * <p/>
      * This method is called on node & thread that's executing the operation.
      *
@@ -633,10 +634,21 @@ public abstract class Operation implements DataSerializable {
     }
 
     @Override
+    @SuppressWarnings("checkstyle:npathcomplexity")
     public final void writeData(ObjectDataOutput out) throws IOException {
         // THIS HAS TO BE THE FIRST VALUE IN THE STREAM! DO NOT CHANGE!
         // It is used to return deserialization exceptions to the caller.
         out.writeLong(callId);
+
+        // Adjust the flags and the service name if an explicit service name is
+        // required.
+        if (!isFlagSet(BITMASK_SERVICE_NAME_SET) && requiresExplicitServiceName()) {
+            String explicitServiceName = getServiceName();
+            if (explicitServiceName != null) {
+                this.serviceName = explicitServiceName;
+                setFlag(true, BITMASK_SERVICE_NAME_SET);
+            }
+        }
 
         // write state next, so that it is first available on reading.
         out.writeShort(flags);
@@ -675,6 +687,7 @@ public abstract class Operation implements DataSerializable {
     }
 
     @Override
+    @SuppressWarnings("checkstyle:npathcomplexity")
     public final void readData(ObjectDataInput in) throws IOException {
         // THIS HAS TO BE THE FIRST VALUE IN THE STREAM! DO NOT CHANGE!
         // It is used to return deserialization exceptions to the caller.
@@ -715,6 +728,22 @@ public abstract class Operation implements DataSerializable {
         readInternal(in);
     }
 
+    /**
+     * Returns {@code true} to force the explicit service name serialization
+     * for this operation, {@code false} otherwise.
+     * <p>
+     * Usually, the method should be overridden if {@link #getServiceName} is
+     * also overridden, but it was not overridden in the previous HZ version,
+     * i.e. the service name was provided using an explicit external call to
+     * {@link #setServiceName}. This mechanism is required to maintain the
+     * backward compatibility of the serialized representation of the operation
+     * since the service name is not serialized if it matches the one returned
+     * by {@link #getServiceName}.
+     */
+    protected boolean requiresExplicitServiceName() {
+        return false;
+    }
+
     protected void writeInternal(ObjectDataOutput out) throws IOException {
     }
 
@@ -728,7 +757,7 @@ public abstract class Operation implements DataSerializable {
      * implementation does nothing so one is not forced to provide an empty
      * implementation.
      *
-     * It is a good practice always to call the super.toString(stringBuffer)
+     * It is a good practice to always call the super.toString(stringBuffer)
      * when implementing this method to make sure that the super class can
      * inject content if needed.
      *

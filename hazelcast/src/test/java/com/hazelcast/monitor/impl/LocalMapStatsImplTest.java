@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2008-2018, Hazelcast, Inc. All Rights Reserved.
+ * Copyright (c) 2008-2019, Hazelcast, Inc. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,7 +16,7 @@
 
 package com.hazelcast.monitor.impl;
 
-import com.eclipsesource.json.JsonObject;
+import com.hazelcast.internal.json.JsonObject;
 import com.hazelcast.test.HazelcastParallelClassRunner;
 import com.hazelcast.test.annotation.ParallelTest;
 import com.hazelcast.test.annotation.QuickTest;
@@ -24,6 +24,9 @@ import org.junit.Before;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
+
+import java.util.HashMap;
+import java.util.Map;
 
 import static java.util.concurrent.TimeUnit.MILLISECONDS;
 import static org.junit.Assert.assertEquals;
@@ -67,6 +70,13 @@ public class LocalMapStatsImplTest {
 
         localMapStats.setHeapCost(7461762);
         localMapStats.setNearCacheStats(new NearCacheStatsImpl());
+
+        localMapStats.setQueryCount(10);
+        localMapStats.setIndexedQueryCount(5);
+        Map<String, LocalIndexStatsImpl> indexStats = new HashMap<String, LocalIndexStatsImpl>();
+        LocalIndexStatsImpl index = new LocalIndexStatsImpl();
+        indexStats.put("index", index);
+        localMapStats.setIndexStats(indexStats);
     }
 
     @Test
@@ -99,6 +109,11 @@ public class LocalMapStatsImplTest {
         assertEquals(7461762, localMapStats.getHeapCost());
         assertNotNull(localMapStats.getNearCacheStats());
         assertNotNull(localMapStats.toString());
+
+        assertEquals(10, localMapStats.getQueryCount());
+        assertEquals(5, localMapStats.getIndexedQueryCount());
+        assertNotNull(localMapStats.getIndexStats());
+        assertEquals(1, localMapStats.getIndexStats().size());
     }
 
     @Test
@@ -135,5 +150,10 @@ public class LocalMapStatsImplTest {
         assertEquals(7461762, deserialized.getHeapCost());
         assertNotNull(deserialized.getNearCacheStats());
         assertNotNull(deserialized.toString());
+
+        assertEquals(10, deserialized.getQueryCount());
+        assertEquals(5, deserialized.getIndexedQueryCount());
+        assertNotNull(deserialized.getIndexStats());
+        assertEquals(1, deserialized.getIndexStats().size());
     }
 }

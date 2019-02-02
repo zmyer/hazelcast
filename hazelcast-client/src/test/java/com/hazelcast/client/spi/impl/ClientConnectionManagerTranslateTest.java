@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2008-2018, Hazelcast, Inc. All Rights Reserved.
+ * Copyright (c) 2008-2019, Hazelcast, Inc. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,9 +16,11 @@
 
 package com.hazelcast.client.spi.impl;
 
+import com.google.common.collect.ImmutableList;
 import com.hazelcast.client.HazelcastClient;
 import com.hazelcast.client.connection.AddressProvider;
 import com.hazelcast.client.connection.AddressTranslator;
+import com.hazelcast.client.connection.Addresses;
 import com.hazelcast.client.connection.nio.ClientConnectionManagerImpl;
 import com.hazelcast.client.spi.ClientContext;
 import com.hazelcast.client.test.ClientTestSupport;
@@ -35,10 +37,10 @@ import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
 
 import java.net.UnknownHostException;
-import java.util.Collection;
-import java.util.Collections;
 
 import static junit.framework.TestCase.assertNotNull;
+import static org.mockito.Mockito.spy;
+import static org.mockito.Mockito.when;
 
 @RunWith(HazelcastSerialClassRunner.class)
 @Category(QuickTest.class)
@@ -52,14 +54,14 @@ public class ClientConnectionManagerTranslateTest extends ClientTestSupport {
     public void setup() throws Exception {
         Hazelcast.newHazelcastInstance();
         HazelcastInstance client = HazelcastClient.newHazelcastClient();
-        Collection<AddressProvider> list = Collections.<AddressProvider>singletonList(new TestAddressProvider());
+        TestAddressProvider testAddressProvider = new TestAddressProvider();
 
         TestAddressTranslator translator = new TestAddressTranslator();
         clientConnectionManager =
-                new ClientConnectionManagerImpl(getHazelcastClientInstanceImpl(client),
-                        translator, list);
-        clientConnectionManager.start(new ClientContext(getHazelcastClientInstanceImpl(client)));
-        clientConnectionManager.connectToCluster();
+                new ClientConnectionManagerImpl(getHazelcastClientInstanceImpl(client), translator, testAddressProvider);
+        ClientContext clientContext = spy(new ClientContext(getHazelcastClientInstanceImpl(client)));
+        when(clientContext.getConnectionManager()).thenReturn(clientConnectionManager);
+        clientConnectionManager.start(clientContext);
 
         translator.shouldTranslate = true;
 
@@ -98,9 +100,9 @@ public class ClientConnectionManagerTranslateTest extends ClientTestSupport {
 
     private class TestAddressProvider implements AddressProvider {
         @Override
-        public Collection<Address> loadAddresses() {
+        public Addresses loadAddresses() {
             try {
-                return Collections.singletonList(new Address("127.0.0.1", 5701));
+                return new Addresses(ImmutableList.of(new Address("127.0.0.1", 5701)));
             } catch (UnknownHostException e) {
                 return null;
             }

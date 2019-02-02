@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2008-2018, Hazelcast, Inc. All Rights Reserved.
+ * Copyright (c) 2008-2019, Hazelcast, Inc. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -86,8 +86,8 @@ public class IsolatedLoggingRule implements TestRule {
         setOrClearProperty(LOGGING_TYPE_PROPERTY, type);
     }
 
-    public void setLoggingClass(Class<? extends LoggerFactory> class_) {
-        setOrClearProperty(LOGGING_CLASS_PROPERTY, class_ == null ? null : class_.getName());
+    public void setLoggingClass(Class<? extends LoggerFactory> clazz) {
+        setOrClearProperty(LOGGING_CLASS_PROPERTY, clazz == null ? null : clazz.getName());
     }
 
     public LoggerFactory getLoggerFactory() {

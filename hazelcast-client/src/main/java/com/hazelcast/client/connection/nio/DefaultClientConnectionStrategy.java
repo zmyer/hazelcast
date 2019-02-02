@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2008-2018, Hazelcast, Inc. All Rights Reserved.
+ * Copyright (c) 2008-2019, Hazelcast, Inc. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -19,6 +19,7 @@ package com.hazelcast.client.connection.nio;
 import com.hazelcast.client.HazelcastClientOfflineException;
 import com.hazelcast.client.config.ClientConnectionStrategyConfig;
 import com.hazelcast.client.connection.ClientConnectionStrategy;
+import com.hazelcast.client.spi.ClientContext;
 import com.hazelcast.nio.Address;
 
 import java.util.concurrent.RejectedExecutionException;
@@ -32,17 +33,25 @@ import static com.hazelcast.client.config.ClientConnectionStrategyConfig.Reconne
 public class DefaultClientConnectionStrategy extends ClientConnectionStrategy {
 
     private volatile boolean disconnectedFromCluster;
-    private boolean clientStartAsync;
+    private boolean asyncStart;
     private ClientConnectionStrategyConfig.ReconnectMode reconnectMode;
+    private ClusterConnector connector;
+
+    @Override
+    public void init(ClientContext clientContext) {
+        super.init(clientContext);
+        ClientConnectionManagerImpl connectionManager = (ClientConnectionManagerImpl) clientContext.getConnectionManager();
+        this.connector = connectionManager.getClusterConnector();
+        this.asyncStart = clientConnectionStrategyConfig.isAsyncStart();
+        this.reconnectMode = clientConnectionStrategyConfig.getReconnectMode();
+    }
 
     @Override
     public void start() {
-        clientStartAsync = clientConnectionStrategyConfig.isAsyncStart();
-        reconnectMode = clientConnectionStrategyConfig.getReconnectMode();
-        if (clientStartAsync) {
-            clientContext.getConnectionManager().connectToClusterAsync();
+        if (asyncStart) {
+            connector.connectToClusterAsync();
         } else {
-            clientContext.getConnectionManager().connectToCluster();
+            connector.connectToCluster();
         }
     }
 
@@ -51,7 +60,7 @@ public class DefaultClientConnectionStrategy extends ClientConnectionStrategy {
         if (isClusterAvailable()) {
             return;
         }
-        if (clientStartAsync && !disconnectedFromCluster) {
+        if (asyncStart && !disconnectedFromCluster) {
             throw new HazelcastClientOfflineException("Client is connecting to cluster.");
         }
         if (reconnectMode == ASYNC && disconnectedFromCluster) {
@@ -70,7 +79,11 @@ public class DefaultClientConnectionStrategy extends ClientConnectionStrategy {
     }
 
     @Override
-    public void onConnectToCluster() {
+    public void beforeConnectToCluster(Address target) {
+    }
+
+    @Override
+    public void onClusterConnect() {
     }
 
     @Override
@@ -82,7 +95,7 @@ public class DefaultClientConnectionStrategy extends ClientConnectionStrategy {
         }
         if (clientContext.getLifecycleService().isRunning()) {
             try {
-                clientContext.getConnectionManager().connectToClusterAsync();
+                connector.connectToClusterAsync();
             } catch (RejectedExecutionException r) {
                 shutdownWithExternalThread();
             }

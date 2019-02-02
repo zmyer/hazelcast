@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2008-2018, Hazelcast, Inc. All Rights Reserved.
+ * Copyright (c) 2008-2019, Hazelcast, Inc. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -55,8 +55,8 @@ public abstract class CacheConfigHelper {
         cacheConfig.setInMemoryFormat(InMemoryFormat.OBJECT);
         cacheConfig.setBackupCount(3);
         cacheConfig.setAsyncBackupCount(2);
-        cacheConfig.setWanReplicationRef(new WanReplicationRef(randomName(), "com.hazelcast.MergePolicy",
-                Collections.singletonList("filter"), true));
+        cacheConfig.setWanReplicationRef(new WanReplicationRef(randomName(),
+                "com.hazelcast.MergePolicy", Collections.singletonList("filter"), true));
         cacheConfig.addCacheEntryListenerConfiguration(new MutableCacheEntryListenerConfiguration(
                 new CacheConfigTest.EntryListenerFactory(), null, false, true));
         cacheConfig.setMergePolicy("mergePolicy");

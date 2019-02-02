@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2008-2018, Hazelcast, Inc. All Rights Reserved.
+ * Copyright (c) 2008-2019, Hazelcast, Inc. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -34,12 +34,13 @@ import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
 
+import static com.hazelcast.config.AliasedDiscoveryConfigUtils.aliasedDiscoveryConfigsFrom;
 import static com.hazelcast.internal.config.ConfigUtils.lookupByPattern;
 import static java.text.MessageFormat.format;
 import static java.util.Collections.singletonMap;
 import static org.codehaus.groovy.runtime.InvokerHelper.asList;
 
-class ConfigCompatibilityChecker {
+public class ConfigCompatibilityChecker {
 
     /**
      * Checks if two {@link Config} instances are compatible.
@@ -47,7 +48,7 @@ class ConfigCompatibilityChecker {
      * This mostly means that the config values will have the same impact on the behaviour of the system,
      * but are not necessarily the same (e.g. a {@code null} value is sometimes the same as an empty
      * collection or a disabled config).
-     * <p>
+     *
      * <b>Note:</b> This method checks MOST but NOT ALL configuration. As such it is best used in test
      * scenarios to cover as much config checks as possible automatically.
      *
@@ -108,6 +109,8 @@ class ConfigCompatibilityChecker {
                 new MapEventJournalConfigChecker());
         checkCompatibleConfigs("cache event journal", c1, c2, c1.getCacheEventJournalConfigs(), c2.getCacheEventJournalConfigs(),
                 new CacheEventJournalConfigChecker());
+        checkCompatibleConfigs("map merkle tree", c1, c2, c1.getMapMerkleTreeConfigs(), c2.getMapMerkleTreeConfigs(),
+                new MapMerkleTreeConfigChecker());
         checkCompatibleConfigs("multimap", c1, c2, c1.getMultiMapConfigs(), c2.getMultiMapConfigs(), new MultimapConfigChecker());
         checkCompatibleConfigs("replicated map", c1, c2, c1.getReplicatedMapConfigs(), c2.getReplicatedMapConfigs(),
                 new ReplicatedMapConfigChecker());
@@ -258,6 +261,22 @@ class ConfigCompatibilityChecker {
         @Override
         RingbufferConfig getDefault(Config c) {
             return c.getRingbufferConfig("default");
+        }
+    }
+
+    public static class MapMerkleTreeConfigChecker extends ConfigChecker<MerkleTreeConfig> {
+        @Override
+        boolean check(MerkleTreeConfig c1, MerkleTreeConfig c2) {
+            boolean c1Disabled = c1 == null || !c1.isEnabled();
+            boolean c2Disabled = c2 == null || !c2.isEnabled();
+            return c1 == c2 || (c1Disabled && c2Disabled) || (c1 != null && c2 != null
+                    && nullSafeEqual(c1.getMapName(), c2.getMapName())
+                    && nullSafeEqual(c1.getDepth(), c2.getDepth()));
+        }
+
+        @Override
+        MerkleTreeConfig getDefault(Config c) {
+            return c.getMapMerkleTreeConfig("default");
         }
     }
 
@@ -849,9 +868,9 @@ class ConfigCompatibilityChecker {
         }
     }
 
-    private static class DiscoveryStrategyConfigChecker extends ConfigChecker<DiscoveryStrategyConfig> {
+    public static class DiscoveryStrategyConfigChecker extends ConfigChecker<DiscoveryStrategyConfig> {
         @Override
-        boolean check(DiscoveryStrategyConfig c1, DiscoveryStrategyConfig c2) {
+        public boolean check(DiscoveryStrategyConfig c1, DiscoveryStrategyConfig c2) {
             return c1 == c2 || !(c1 == null || c2 == null)
                     && nullSafeEqual(c1.getClassName(), c2.getClassName())
                     && nullSafeEqual(c1.getProperties(), c2.getProperties());
@@ -873,6 +892,14 @@ class ConfigCompatibilityChecker {
                     && nullSafeEqual(c1.getClassName(), c2.getClassName())
                     && nullSafeEqual(c1.getTypeClass(), c2.getTypeClass())
                     && nullSafeEqual(c1.getTypeClassName(), c2.getTypeClassName());
+        }
+    }
+
+    public static class WanSyncConfigChecker extends ConfigChecker<WanSyncConfig> {
+        @Override
+        public boolean check(WanSyncConfig c1, WanSyncConfig c2) {
+            return c1 == c2 || !(c1 == null || c2 == null)
+                    && nullSafeEqual(c1.getConsistencyCheckStrategy(), c2.getConsistencyCheckStrategy());
         }
     }
 
@@ -907,7 +934,8 @@ class ConfigCompatibilityChecker {
             return c1 == c2 || !(c1 == null || c2 == null)
                     && isCompatible(c1.getMulticastConfig(), c2.getMulticastConfig())
                     && isCompatible(c1.getTcpIpConfig(), c2.getTcpIpConfig())
-                    && new AwsConfigChecker().check(c1.getAwsConfig(), c2.getAwsConfig())
+                    && new AliasedDiscoveryConfigsChecker().check(AliasedDiscoveryConfigUtils.aliasedDiscoveryConfigsFrom(c1), AliasedDiscoveryConfigUtils
+                    .aliasedDiscoveryConfigsFrom(c2))
                     && new DiscoveryConfigChecker().check(c1.getDiscoveryConfig(), c2.getDiscoveryConfig());
         }
 
@@ -968,9 +996,9 @@ class ConfigCompatibilityChecker {
         }
     }
 
-    private static class DiscoveryConfigChecker extends ConfigChecker<DiscoveryConfig> {
+    public static class DiscoveryConfigChecker extends ConfigChecker<DiscoveryConfig> {
         @Override
-        boolean check(DiscoveryConfig c1, DiscoveryConfig c2) {
+        public boolean check(DiscoveryConfig c1, DiscoveryConfig c2) {
             boolean c1Disabled = c1 == null || !c1.isEnabled();
             boolean c2Disabled = c2 == null || !c2.isEnabled();
             return c1 == c2 || (c1Disabled && c2Disabled) || (c1 != null && c2 != null
@@ -981,51 +1009,84 @@ class ConfigCompatibilityChecker {
         }
     }
 
-    private static class AwsConfigChecker extends ConfigChecker<AwsConfig> {
+    public static class AliasedDiscoveryConfigsChecker extends ConfigChecker<List<AliasedDiscoveryConfig<?>>> {
+
         @Override
-        boolean check(AwsConfig c1, AwsConfig c2) {
+        boolean check(List<AliasedDiscoveryConfig<?>> t1, List<AliasedDiscoveryConfig<?>> t2) {
+            Map<String, AliasedDiscoveryConfig> m1 = mapByTag(t1);
+            Map<String, AliasedDiscoveryConfig> m2 = mapByTag(t2);
+
+            if (m1.size() != m2.size()) {
+                return false;
+            }
+
+            for (String tag : m1.keySet()) {
+                AliasedDiscoveryConfig c1 = m1.get(tag);
+                AliasedDiscoveryConfig c2 = m2.get(tag);
+                if (!check(c1, c2)) {
+                    return false;
+                }
+            }
+
+            return true;
+        }
+
+        private static Map<String, AliasedDiscoveryConfig> mapByTag(List<AliasedDiscoveryConfig<?>> configs) {
+            Map<String, AliasedDiscoveryConfig> result = new HashMap<String, AliasedDiscoveryConfig>();
+            for (AliasedDiscoveryConfig c : configs) {
+                if (c.isEnabled()) {
+                    result.put(c.getTag(), c);
+                }
+            }
+            return result;
+        }
+
+        public static boolean check(AliasedDiscoveryConfig c1, AliasedDiscoveryConfig c2) {
             boolean c1Disabled = c1 == null || !c1.isEnabled();
             boolean c2Disabled = c2 == null || !c2.isEnabled();
             return c1 == c2 || (c1Disabled && c2Disabled) || (c1 != null && c2 != null
-                    && nullSafeEqual(c1.getAccessKey(), c2.getAccessKey())
-                    && nullSafeEqual(c1.getSecretKey(), c2.getSecretKey())
-                    && nullSafeEqual(c1.getRegion(), c2.getRegion())
-                    && nullSafeEqual(c1.getSecurityGroupName(), c2.getSecurityGroupName())
-                    && nullSafeEqual(c1.getTagKey(), c2.getTagKey())
-                    && nullSafeEqual(c1.getTagValue(), c2.getTagValue())
-                    && nullSafeEqual(c1.getHostHeader(), c2.getHostHeader())
-                    && nullSafeEqual(c1.getIamRole(), c2.getIamRole())
-                    && nullSafeEqual(c1.getConnectionTimeoutSeconds(), c2.getConnectionTimeoutSeconds()));
+                    && nullSafeEqual(c1.getTag(), c2.getTag())
+                    && nullSafeEqual(c1.isUsePublicIp(), c2.isUsePublicIp())
+                    && nullSafeEqual(c1.getProperties(), c2.getProperties()));
         }
     }
 
-    private static class WanReplicationConfigChecker extends ConfigChecker<WanReplicationConfig> {
+    public static class WanReplicationConfigChecker extends ConfigChecker<WanReplicationConfig> {
+        private static final WanConsumerConfigChecker WAN_CONSUMER_CONFIG_CHECKER = new WanConsumerConfigChecker();
+
         @Override
-        boolean check(WanReplicationConfig c1, WanReplicationConfig c2) {
+        public boolean check(WanReplicationConfig c1, WanReplicationConfig c2) {
             return c1 == c2 || !(c1 == null || c2 == null)
                     && nullSafeEqual(c1.getName(), c2.getName())
-                    && isCompatible(c1.getWanConsumerConfig(), c2.getWanConsumerConfig())
+                    && WAN_CONSUMER_CONFIG_CHECKER.check(c1.getWanConsumerConfig(), c2.getWanConsumerConfig())
                     && isCollectionCompatible(c1.getWanPublisherConfigs(), c2.getWanPublisherConfigs(),
                     new WanPublisherConfigChecker());
         }
+    }
 
-        private boolean isCompatible(WanConsumerConfig c1, WanConsumerConfig c2) {
+    public static class WanConsumerConfigChecker extends ConfigChecker<WanConsumerConfig> {
+        @Override
+        public boolean check(WanConsumerConfig c1, WanConsumerConfig c2) {
             return c1 == c2 || !(c1 == null || c2 == null)
                     && nullSafeEqual(c1.getClassName(), c2.getClassName())
                     && nullSafeEqual(c1.getImplementation(), c2.getImplementation())
+                    && nullSafeEqual(c1.isPersistWanReplicatedData(), c2.isPersistWanReplicatedData())
                     && nullSafeEqual(c1.getProperties(), c2.getProperties());
         }
     }
 
-    private static class WanPublisherConfigChecker extends ConfigChecker<WanPublisherConfig> {
+    public static class WanPublisherConfigChecker extends ConfigChecker<WanPublisherConfig> {
         @Override
-        boolean check(WanPublisherConfig c1, WanPublisherConfig c2) {
+        public boolean check(WanPublisherConfig c1, WanPublisherConfig c2) {
             return c1 == c2 || !(c1 == null || c2 == null)
                     && nullSafeEqual(c1.getGroupName(), c2.getGroupName())
+                    && nullSafeEqual(c1.getPublisherId(), c2.getPublisherId())
                     && nullSafeEqual(c1.getQueueCapacity(), c2.getQueueCapacity())
                     && nullSafeEqual(c1.getQueueFullBehavior(), c2.getQueueFullBehavior())
-                    && new AwsConfigChecker().check(c1.getAwsConfig(), c2.getAwsConfig())
+                    && nullSafeEqual(c1.getInitialPublisherState(), c2.getInitialPublisherState())
+                    && new AliasedDiscoveryConfigsChecker().check(aliasedDiscoveryConfigsFrom(c1), aliasedDiscoveryConfigsFrom(c2))
                     && new DiscoveryConfigChecker().check(c1.getDiscoveryConfig(), c2.getDiscoveryConfig())
+                    && new WanSyncConfigChecker().check(c1.getWanSyncConfig(), c2.getWanSyncConfig())
                     && nullSafeEqual(c1.getClassName(), c2.getClassName())
                     && nullSafeEqual(c1.getImplementation(), c2.getImplementation())
                     && nullSafeEqual(c1.getProperties(), c2.getProperties());
@@ -1242,6 +1303,7 @@ class ConfigCompatibilityChecker {
             boolean c1Disabled = c1 == null || !c1.isEnabled();
             boolean c2Disabled = c2 == null || !c2.isEnabled();
             return c1 == c2 || (c1Disabled && c2Disabled) || (c1 != null && c2 != null
+                    && (c1.isScriptingEnabled() == c2.isScriptingEnabled())
                     && nullSafeEqual(c1.getUrl(), c2.getUrl())
                     && nullSafeEqual(c1.getUpdateInterval(), c2.getUpdateInterval()));
         }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2008-2018, Hazelcast, Inc. All Rights Reserved.
+ * Copyright (c) 2008-2019, Hazelcast, Inc. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -22,14 +22,18 @@ import com.hazelcast.core.HazelcastInstance;
 import com.hazelcast.core.Member;
 import com.hazelcast.instance.HazelcastInstanceImpl;
 import com.hazelcast.instance.Node;
+import com.hazelcast.monitor.LocalWanPublisherStats;
+import com.hazelcast.monitor.LocalWanStats;
 import com.hazelcast.spi.ExecutionService;
 import com.hazelcast.spi.impl.operationservice.InternalOperationService;
+import com.hazelcast.wan.WanReplicationService;
 
 import java.io.File;
 import java.net.URL;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.Map.Entry;
 import java.util.Set;
 
 import static com.hazelcast.internal.jmx.ManagementService.quote;
@@ -39,6 +43,7 @@ import static com.hazelcast.util.MapUtil.createHashMap;
  * Management bean for {@link com.hazelcast.core.HazelcastInstance}
  */
 @ManagedDescription("HazelcastInstance")
+@SuppressWarnings("checkstyle:methodcount")
 public class InstanceMBean extends HazelcastMBean<HazelcastInstanceImpl> {
 
     private static final int INITIAL_CAPACITY = 3;
@@ -55,6 +60,8 @@ public class InstanceMBean extends HazelcastMBean<HazelcastInstanceImpl> {
     private ManagedExecutorServiceMBean asyncExecutorMBean;
     private ManagedExecutorServiceMBean scheduledExecutorMBean;
     private ManagedExecutorServiceMBean clientExecutorMBean;
+    private ManagedExecutorServiceMBean clientQueryExecutorMBean;
+    private ManagedExecutorServiceMBean clientBlockingExecutorMBean;
     private ManagedExecutorServiceMBean queryExecutorMBean;
     private ManagedExecutorServiceMBean ioExecutorMBean;
     private ManagedExecutorServiceMBean offloadableExecutorMBean;
@@ -70,6 +77,29 @@ public class InstanceMBean extends HazelcastMBean<HazelcastInstanceImpl> {
         InternalOperationService operationService = node.nodeEngine.getOperationService();
         createMBeans(hazelcastInstance, managementService, node, executionService, operationService);
         registerMBeans();
+        registerWanPublisherMBeans(node.nodeEngine.getWanReplicationService());
+    }
+
+    /**
+     * Registers managed beans for all WAN publishers, if any.
+     *
+     * @param wanReplicationService the WAN replication service
+     */
+    private void registerWanPublisherMBeans(WanReplicationService wanReplicationService) {
+        final Map<String, LocalWanStats> wanStats = wanReplicationService.getStats();
+        if (wanStats == null) {
+            return;
+        }
+
+        for (Entry<String, LocalWanStats> replicationStatsEntry : wanStats.entrySet()) {
+            final String wanReplicationName = replicationStatsEntry.getKey();
+            final LocalWanStats localWanStats = replicationStatsEntry.getValue();
+            final Map<String, LocalWanPublisherStats> publisherStats = localWanStats.getLocalWanPublisherStats();
+
+            for (String targetGroupName : publisherStats.keySet()) {
+                register(new WanPublisherMBean(wanReplicationService, wanReplicationName, targetGroupName, service));
+            }
+        }
     }
 
     private void createMBeans(HazelcastInstanceImpl hazelcastInstance, ManagementService managementService, Node node,
@@ -89,6 +119,10 @@ public class InstanceMBean extends HazelcastMBean<HazelcastInstanceImpl> {
                 hazelcastInstance, executionService.getExecutor(ExecutionService.SCHEDULED_EXECUTOR), service);
         this.clientExecutorMBean = new ManagedExecutorServiceMBean(
                 hazelcastInstance, executionService.getExecutor(ExecutionService.CLIENT_EXECUTOR), service);
+        this.clientQueryExecutorMBean = new ManagedExecutorServiceMBean(
+                hazelcastInstance, executionService.getExecutor(ExecutionService.CLIENT_QUERY_EXECUTOR), service);
+        this.clientBlockingExecutorMBean = new ManagedExecutorServiceMBean(
+                hazelcastInstance, executionService.getExecutor(ExecutionService.CLIENT_BLOCKING_EXECUTOR), service);
         this.queryExecutorMBean = new ManagedExecutorServiceMBean(
                 hazelcastInstance, executionService.getExecutor(ExecutionService.QUERY_EXECUTOR), service);
         this.ioExecutorMBean = new ManagedExecutorServiceMBean(
@@ -109,6 +143,8 @@ public class InstanceMBean extends HazelcastMBean<HazelcastInstanceImpl> {
         register(asyncExecutorMBean);
         register(scheduledExecutorMBean);
         register(clientExecutorMBean);
+        register(clientQueryExecutorMBean);
+        register(clientBlockingExecutorMBean);
         register(queryExecutorMBean);
         register(ioExecutorMBean);
         register(offloadableExecutorMBean);
@@ -140,6 +176,14 @@ public class InstanceMBean extends HazelcastMBean<HazelcastInstanceImpl> {
 
     public ManagedExecutorServiceMBean getClientExecutorMBean() {
         return clientExecutorMBean;
+    }
+
+    public ManagedExecutorServiceMBean getClientQueryExecutorMBean() {
+        return clientQueryExecutorMBean;
+    }
+
+    public ManagedExecutorServiceMBean getClientBlockingExecutorMBean() {
+        return clientBlockingExecutorMBean;
     }
 
     public ManagedExecutorServiceMBean getQueryExecutorMBean() {

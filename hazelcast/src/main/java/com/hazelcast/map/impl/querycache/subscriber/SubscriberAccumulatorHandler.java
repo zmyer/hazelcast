@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2008-2018, Hazelcast, Inc. All Rights Reserved.
+ * Copyright (c) 2008-2019, Hazelcast, Inc. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -86,11 +86,11 @@ class SubscriberAccumulatorHandler implements AccumulatorHandler<QueryCacheEvent
             case UPDATED:
             case MERGED:
             case LOADED:
-                queryCache.setInternal(keyData, valueData, false, entryEventType);
+                queryCache.set(keyData, valueData, entryEventType);
                 break;
             case REMOVED:
             case EVICTED:
-                queryCache.deleteInternal(keyData, false, entryEventType);
+                queryCache.delete(keyData, entryEventType);
                 break;
             case CLEAR_ALL:
                 handleMapWideEvent(eventData, entryEventType, clearAllRemovedCountHolders);
@@ -146,7 +146,7 @@ class SubscriberAccumulatorHandler implements AccumulatorHandler<QueryCacheEvent
      */
     private boolean noMissingMapWideEvent(AtomicReferenceArray<Queue<Integer>> removedCountHolders) {
         for (int i = 0; i < partitionCount; i++) {
-            if (removedCountHolders.get(i).size() < 1) {
+            if (removedCountHolders.get(i).isEmpty()) {
                 // means we still have not-received map-wide event for this partition
                 return false;
             }

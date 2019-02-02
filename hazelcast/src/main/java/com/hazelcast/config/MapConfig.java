@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2008-2018, Hazelcast, Inc. All Rights Reserved.
+ * Copyright (c) 2008-2019, Hazelcast, Inc. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,11 +16,7 @@
 
 package com.hazelcast.config;
 
-import com.hazelcast.internal.cluster.Versions;
-import com.hazelcast.map.eviction.LFUEvictionPolicy;
-import com.hazelcast.map.eviction.LRUEvictionPolicy;
 import com.hazelcast.map.eviction.MapEvictionPolicy;
-import com.hazelcast.map.eviction.RandomEvictionPolicy;
 import com.hazelcast.map.merge.PutIfAbsentMapMergePolicy;
 import com.hazelcast.nio.ObjectDataInput;
 import com.hazelcast.nio.ObjectDataOutput;
@@ -46,18 +42,18 @@ import static com.hazelcast.util.Preconditions.isNotNull;
 /**
  * Contains the configuration for an {@link com.hazelcast.core.IMap}.
  */
-public class MapConfig implements SplitBrainMergeTypeProvider, IdentifiedDataSerializable, Versioned {
+public class MapConfig implements SplitBrainMergeTypeProvider, IdentifiedDataSerializable, Versioned, NamedConfig {
 
     /**
-     * The number of minimum backup counter
+     * The minimum number of backups
      */
     public static final int MIN_BACKUP_COUNT = 0;
     /**
-     * The number of default backup counter
+     * The default number of backups
      */
     public static final int DEFAULT_BACKUP_COUNT = 1;
     /**
-     * The number of maximum backup counter
+     * The maximum number of backups
      */
     public static final int MAX_BACKUP_COUNT = IPartition.MAX_BACKUP_COUNT;
 
@@ -168,12 +164,11 @@ public class MapConfig implements SplitBrainMergeTypeProvider, IdentifiedDataSer
     private transient boolean optimizeQueryExplicitlyInvoked;
     private transient boolean setCacheDeserializedValuesExplicitlyInvoked;
 
+    public MapConfig() {
+    }
 
     public MapConfig(String name) {
         this.name = name;
-    }
-
-    public MapConfig() {
     }
 
     public MapConfig(MapConfig config) {
@@ -459,29 +454,13 @@ public class MapConfig implements SplitBrainMergeTypeProvider, IdentifiedDataSer
     }
 
     /**
-     * Sets the {@link EvictionPolicy}.
+     * Sets the {@link EvictionPolicy}. Default value is {@link EvictionPolicy#NONE}.
      *
      * @param evictionPolicy the evictionPolicy to set
      */
     public MapConfig setEvictionPolicy(EvictionPolicy evictionPolicy) {
         this.evictionPolicy = checkNotNull(evictionPolicy, "evictionPolicy cannot be null");
-        this.mapEvictionPolicy = findMatchingMapEvictionPolicy(evictionPolicy);
         return this;
-    }
-
-    private static MapEvictionPolicy findMatchingMapEvictionPolicy(EvictionPolicy evictionPolicy) {
-        switch (evictionPolicy) {
-            case LRU:
-                return LRUEvictionPolicy.INSTANCE;
-            case LFU:
-                return LFUEvictionPolicy.INSTANCE;
-            case RANDOM:
-                return RandomEvictionPolicy.INSTANCE;
-            case NONE:
-                return null;
-            default:
-                throw new IllegalArgumentException("Not known eviction policy: " + evictionPolicy);
-        }
     }
 
     /**
@@ -1068,12 +1047,7 @@ public class MapConfig implements SplitBrainMergeTypeProvider, IdentifiedDataSer
         out.writeObject(nearCacheConfig);
         out.writeBoolean(readBackupData);
         out.writeUTF(cacheDeserializedValues.name());
-        // RU_COMPAT_3_9
-        if (out.getVersion().isGreaterOrEqual(Versions.V3_10)) {
-            out.writeObject(mergePolicyConfig);
-        } else {
-            out.writeUTF(mergePolicyConfig.getPolicy());
-        }
+        out.writeObject(mergePolicyConfig);
         out.writeUTF(inMemoryFormat.name());
         out.writeObject(wanReplicationRef);
         writeNullableList(entryListenerConfigs, out);
@@ -1101,12 +1075,7 @@ public class MapConfig implements SplitBrainMergeTypeProvider, IdentifiedDataSer
         nearCacheConfig = in.readObject();
         readBackupData = in.readBoolean();
         cacheDeserializedValues = CacheDeserializedValues.valueOf(in.readUTF());
-        // RU_COMPAT_3_9
-        if (in.getVersion().isGreaterOrEqual(Versions.V3_10)) {
-            mergePolicyConfig = in.readObject();
-        } else {
-            mergePolicyConfig.setPolicy(in.readUTF());
-        }
+        mergePolicyConfig = in.readObject();
         inMemoryFormat = InMemoryFormat.valueOf(in.readUTF());
         wanReplicationRef = in.readObject();
         entryListenerConfigs = readNullableList(in);

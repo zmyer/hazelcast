@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2008-2018, Hazelcast, Inc. All Rights Reserved.
+ * Copyright (c) 2008-2019, Hazelcast, Inc. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -23,7 +23,7 @@ import com.hazelcast.core.IMap;
 import com.hazelcast.instance.HazelcastInstanceFactory;
 import com.hazelcast.internal.networking.nio.MigratablePipeline;
 import com.hazelcast.internal.networking.nio.NioChannel;
-import com.hazelcast.internal.networking.nio.NioEventLoopGroup;
+import com.hazelcast.internal.networking.nio.NioNetworking;
 import com.hazelcast.internal.networking.nio.NioInboundPipeline;
 import com.hazelcast.internal.networking.nio.NioOutboundPipeline;
 import com.hazelcast.internal.networking.nio.NioThread;
@@ -155,7 +155,7 @@ public class IOBalancerStressTest extends HazelcastTestSupport {
     }
 
     private String debug(TcpIpConnectionManager connectionManager) {
-        NioEventLoopGroup threadingModel = (NioEventLoopGroup) connectionManager.getEventLoopGroup();
+        NioNetworking threadingModel = (NioNetworking) connectionManager.getNetworking();
 
         StringBuilder sb = new StringBuilder();
         sb.append("in owners\n");

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2008-2018, Hazelcast, Inc. All Rights Reserved.
+ * Copyright (c) 2008-2019, Hazelcast, Inc. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -25,7 +25,7 @@ import com.hazelcast.client.LoadBalancer;
 import com.hazelcast.client.cache.impl.ClientCacheProxyFactory;
 import com.hazelcast.client.config.ClientConfig;
 import com.hazelcast.client.config.ProxyFactoryConfig;
-import com.hazelcast.client.impl.HazelcastClientInstanceImpl;
+import com.hazelcast.client.impl.clientside.HazelcastClientInstanceImpl;
 import com.hazelcast.client.impl.protocol.ClientMessage;
 import com.hazelcast.client.impl.protocol.codec.ClientAddDistributedObjectListenerCodec;
 import com.hazelcast.client.impl.protocol.codec.ClientCreateProxiesCodec;
@@ -116,7 +116,8 @@ import static java.lang.Thread.currentThread;
  * The ProxyManager handles client proxy instantiation and retrieval at start and runtime by registering
  * corresponding service manager names and their {@link com.hazelcast.client.spi.ClientProxyFactory}s.
  */
-@SuppressWarnings({"checkstyle:classfanoutcomplexity", "checkstyle:classdataabstractioncoupling"})
+@SuppressWarnings({"checkstyle:classfanoutcomplexity",
+        "checkstyle:classdataabstractioncoupling", "checkstyle:methodcount"})
 public final class ProxyManager {
 
     private static final String PROVIDER_ID = ClientProxyDescriptorProvider.class.getCanonicalName();
@@ -402,7 +403,11 @@ public final class ProxyManager {
                 }
 
                 if (retryable) {
-                    sleepForProxyInitRetry();
+                    try {
+                        Thread.sleep(invocationRetryPauseMillis);
+                    } catch (InterruptedException ignored) {
+                        currentThread().interrupt();
+                    }
                 } else {
                     throw e;
                 }
@@ -416,14 +421,6 @@ public final class ProxyManager {
 
     private boolean isRetryable(final Throwable t) {
         return ClientInvocation.isRetrySafeException(t);
-    }
-
-    private void sleepForProxyInitRetry() {
-        try {
-            Thread.sleep(invocationRetryPauseMillis);
-        } catch (InterruptedException ignored) {
-            currentThread().interrupt();
-        }
     }
 
     private void initialize(ClientProxy clientProxy) throws Exception {
@@ -489,6 +486,14 @@ public final class ProxyManager {
         }
         ClientMessage clientMessage = ClientCreateProxiesCodec.encodeRequest(proxyEntries);
         new ClientInvocation(client, clientMessage, null, ownerConnection).invokeUrgent();
+        createCachesOnCluster();
+    }
+
+    private void createCachesOnCluster() {
+        ClientCacheProxyFactory proxyFactory = (ClientCacheProxyFactory) getClientProxyFactory(ICacheService.SERVICE_NAME);
+        if (proxyFactory != null) {
+            proxyFactory.recreateCachesOnCluster();
+        }
     }
 
     private final class DistributedObjectEventHandler extends ClientAddDistributedObjectListenerCodec.AbstractEventHandler
@@ -503,7 +508,7 @@ public final class ProxyManager {
         }
 
         @Override
-        public void handle(String name, String serviceName, String eventTypeName) {
+        public void handleDistributedObjectEventV10(String name, String serviceName, String eventTypeName) {
             final ObjectNamespace ns = new DistributedObjectNamespace(serviceName, name);
             ClientProxyFuture future = proxies.get(ns);
             ClientProxy proxy = future == null ? null : future.get();

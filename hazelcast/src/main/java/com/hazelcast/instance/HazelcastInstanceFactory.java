@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2008-2018, Hazelcast, Inc. All Rights Reserved.
+ * Copyright (c) 2008-2019, Hazelcast, Inc. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -22,6 +22,8 @@ import com.hazelcast.core.DuplicateInstanceNameException;
 import com.hazelcast.core.HazelcastInstance;
 import com.hazelcast.core.Member;
 import com.hazelcast.internal.jmx.ManagementService;
+import com.hazelcast.internal.util.ModularJavaUtils;
+import com.hazelcast.logging.Logger;
 import com.hazelcast.spi.annotation.PrivateApi;
 import com.hazelcast.spi.properties.GroupProperty;
 import com.hazelcast.util.ExceptionUtil;
@@ -57,6 +59,10 @@ public final class HazelcastInstanceFactory {
 
     private static final AtomicInteger FACTORY_ID_GEN = new AtomicInteger();
     private static final ConcurrentMap<String, InstanceFuture> INSTANCE_MAP = new ConcurrentHashMap<String, InstanceFuture>(5);
+
+    static {
+        ModularJavaUtils.checkJavaInternalAccess(Logger.getLogger(HazelcastInstanceFactory.class));
+    }
 
     private HazelcastInstanceFactory() {
     }

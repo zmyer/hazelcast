@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2008-2018, Hazelcast, Inc. All Rights Reserved.
+ * Copyright (c) 2008-2019, Hazelcast, Inc. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -84,11 +84,11 @@ public class MergePolicyTest extends HazelcastTestSupport {
         IMap<Object, Object> map2 = h2.getMap(mapName);
         map1.put("key1", "value");
         // prevent updating at the same time
-        sleepAtLeastMillis(1);
+        sleepAtLeastMillis(1000);
         map2.put("key1", "LatestUpdatedValue");
         map2.put("key2", "value2");
         // prevent updating at the same time
-        sleepAtLeastMillis(1);
+        sleepAtLeastMillis(1000);
         map1.put("key2", "LatestUpdatedValue2");
 
         // allow merge process to continue

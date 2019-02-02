@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2008-2018, Hazelcast, Inc. All Rights Reserved.
+ * Copyright (c) 2008-2019, Hazelcast, Inc. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -19,7 +19,7 @@ package com.hazelcast.nio.tcp;
 import com.hazelcast.instance.BuildInfoProvider;
 import com.hazelcast.internal.metrics.MetricsRegistry;
 import com.hazelcast.internal.metrics.impl.MetricsRegistryImpl;
-import com.hazelcast.internal.networking.nio.Select_NioEventLoopGroupFactory;
+import com.hazelcast.internal.networking.nio.Select_NioNetworkingFactory;
 import com.hazelcast.internal.serialization.InternalSerializationService;
 import com.hazelcast.internal.serialization.impl.DefaultSerializationServiceBuilder;
 import com.hazelcast.logging.ILogger;
@@ -31,6 +31,7 @@ import com.hazelcast.test.HazelcastTestSupport;
 import org.junit.After;
 import org.junit.Before;
 
+import java.io.IOException;
 import java.net.SocketAddress;
 import java.util.concurrent.atomic.AtomicReference;
 
@@ -41,7 +42,10 @@ import static org.junit.Assert.fail;
 @SuppressWarnings("WeakerAccess")
 public abstract class TcpIpConnection_AbstractTest extends HazelcastTestSupport {
 
-    protected EventLoopGroupFactory eventLoopGroupFactory = new Select_NioEventLoopGroupFactory();
+    private static final int PORT_NUMBER_UPPER_LIMIT = 5799;
+    private int portNumber = 5701;
+
+    protected NetworkingFactory networkingFactory = new Select_NioNetworkingFactory();
 
     protected ILogger logger;
     protected LoggingServiceImpl loggingService;
@@ -65,24 +69,24 @@ public abstract class TcpIpConnection_AbstractTest extends HazelcastTestSupport 
 
     @Before
     public void setup() throws Exception {
-        addressA = new Address("127.0.0.1", 5701);
-        addressB = new Address("127.0.0.1", 5702);
-        addressC = new Address("127.0.0.1", 5703);
 
         loggingService = new LoggingServiceImpl("somegroup", "log4j2", BuildInfoProvider.getBuildInfo());
         logger = loggingService.getLogger(TcpIpConnection_AbstractTest.class);
 
         metricsRegistryA = newMetricsRegistry();
-        connManagerA = newConnectionManager(addressA.getPort(), metricsRegistryA);
+        connManagerA = newConnectionManager(metricsRegistryA);
         ioServiceA = (MockIOService) connManagerA.getIoService();
+        addressA = ioServiceA.getThisAddress();
 
         metricsRegistryB = newMetricsRegistry();
-        connManagerB = newConnectionManager(addressB.getPort(), metricsRegistryB);
+        connManagerB = newConnectionManager(metricsRegistryB);
         ioServiceB = (MockIOService) connManagerB.getIoService();
+        addressB = ioServiceB.getThisAddress();
 
         metricsRegistryC = newMetricsRegistry();
-        connManagerC = newConnectionManager(addressC.getPort(), metricsRegistryC);
-        ioServiceC = (MockIOService) connManagerB.getIoService();
+        connManagerC = newConnectionManager(metricsRegistryC);
+        ioServiceC = (MockIOService) connManagerC.getIoService();
+        addressC = ioServiceC.getThisAddress();
 
         serializationService = new DefaultSerializationServiceBuilder()
                 .addDataSerializableFactory(TestDataFactory.FACTORY_ID, new TestDataFactory())
@@ -110,15 +114,24 @@ public abstract class TcpIpConnection_AbstractTest extends HazelcastTestSupport 
         return new MetricsRegistryImpl(loggingService.getLogger(MetricsRegistryImpl.class), INFO);
     }
 
-    protected TcpIpConnectionManager newConnectionManager(int port, MetricsRegistry metricsRegistry) throws Exception {
-        MockIOService ioService = new MockIOService(port, eventLoopGroupFactory.createChannelFactory());
+    protected TcpIpConnectionManager newConnectionManager(MetricsRegistry metricsRegistry) throws Exception {
+        MockIOService ioService = null;
+        while (ioService == null) {
+            try {
+                ioService = new MockIOService(portNumber++);
+            } catch (IOException e) {
+                if (portNumber >= PORT_NUMBER_UPPER_LIMIT) {
+                    throw e;
+                }
+            }
+        }
 
         return new TcpIpConnectionManager(
                 ioService,
                 ioService.serverSocketChannel,
                 ioService.loggingService,
                 metricsRegistry,
-                eventLoopGroupFactory.create(ioService, metricsRegistry));
+                networkingFactory.create(ioService, metricsRegistry));
     }
 
     // ====================== support ========================================

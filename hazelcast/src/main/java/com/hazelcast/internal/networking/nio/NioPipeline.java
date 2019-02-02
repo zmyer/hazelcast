@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2008-2018, Hazelcast, Inc. All Rights Reserved.
+ * Copyright (c) 2008-2019, Hazelcast, Inc. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -19,11 +19,11 @@ package com.hazelcast.internal.networking.nio;
 import com.hazelcast.internal.metrics.Probe;
 import com.hazelcast.internal.networking.Channel;
 import com.hazelcast.internal.networking.ChannelErrorHandler;
+import com.hazelcast.internal.networking.ChannelHandler;
 import com.hazelcast.internal.networking.nio.iobalancer.IOBalancer;
 import com.hazelcast.internal.util.counters.SwCounter;
 import com.hazelcast.logging.ILogger;
 
-import java.io.Closeable;
 import java.io.IOException;
 import java.nio.channels.SelectionKey;
 import java.nio.channels.Selector;
@@ -34,7 +34,7 @@ import static com.hazelcast.internal.metrics.ProbeLevel.DEBUG;
 import static com.hazelcast.internal.util.counters.SwCounter.newSwCounter;
 import static java.lang.Thread.currentThread;
 
-public abstract class NioPipeline implements MigratablePipeline, Closeable, Runnable {
+public abstract class NioPipeline implements MigratablePipeline, Runnable {
 
     protected static final int LOAD_BALANCING_HANDLE = 0;
     protected static final int LOAD_BALANCING_BYTE = 1;
@@ -43,17 +43,19 @@ public abstract class NioPipeline implements MigratablePipeline, Closeable, Runn
     // for the time being we configure using a int until we have decided which load strategy to use.
     protected final int loadType = Integer.getInteger("hazelcast.io.load", LOAD_BALANCING_BYTE);
 
+    // the number of time the NioPipeline.process() method has been called.
     @Probe
-    final SwCounter processCount = newSwCounter();
-    final ILogger logger;
-    final Channel channel;
-
-    volatile NioThread owner;
-    private SelectionKey selectionKey;
-    private final SocketChannel socketChannel;
+    protected final SwCounter processCount = newSwCounter();
+    protected final ILogger logger;
+    protected final NioChannel channel;
+    protected final SocketChannel socketChannel;
+    // needs to be volatile because it can accessed concurrently (only the owner will modify). Owner can be null if the
+    // pipeline is being migrated.
+    protected volatile NioThread owner;
+    protected SelectionKey selectionKey;
+    private final ChannelErrorHandler errorHandler;
     private final int initialOps;
     private final IOBalancer ioBalancer;
-    private final ChannelErrorHandler errorHandler;
     private final AtomicReference<TaskNode> delayedTaskStack = new AtomicReference<TaskNode>();
     @Probe
     private volatile int ownerId;
@@ -95,6 +97,14 @@ public abstract class NioPipeline implements MigratablePipeline, Closeable, Runn
         return selectionKey == null ? -1 : selectionKey.readyOps();
     }
 
+    /**
+     * Returns the {@link NioThread} owning this pipeline.
+     * It can be null when the pipeline is being migrated between threads.
+     * <p>
+     * Owner is the thread executing the pipeline.
+     *
+     * @return thread owning the pipeline or <code>null</code> when the pipeline is being migrated
+     */
     @Override
     public NioThread owner() {
         return owner;
@@ -140,9 +150,8 @@ public abstract class NioPipeline implements MigratablePipeline, Closeable, Runn
     abstract void publishMetrics();
 
     /**
-     * Called when there are bytes available for reading, or space available to
-     * write.
-     *
+     * Called when the pipeline needs to be processed.
+     * <p>
      * Any exception that leads to a termination of the connection like an
      * IOException should not be dealt with in the handle method but should
      * be propagated. The reason behind this is that the handle logic already
@@ -154,29 +163,16 @@ public abstract class NioPipeline implements MigratablePipeline, Closeable, Runn
     abstract void process() throws Exception;
 
     /**
-     * Forces this NioPipeline to wakeup by scheduling this on the owner using
-     * {@link NioThread#addTaskAndWakeup(Runnable)}
-     *
-     * This method can be called by any thread. It is a pretty expensive method
-     * because it will cause the {@link Selector#wakeup()} method to be called.
-     *
-     * This call can safely be made during the migration of the pipeline.
-     */
-    final void wakeup() {
-        addTaskAndWakeup(this);
-    }
-
-    /**
      * Adds a task to be executed on the {@link NioThread owner}.
-     *
+     * <p>
      * This task is scheduled on the task queue of the owning {@link NioThread}.
-     *
+     * <p>
      * If the pipeline is currently migrating, this method will make sure the
      * task ends up at the new owner.
-     *
+     * <p>
      * It is extremely important that this task takes very little time because
      * otherwise it could cause a lot of problems in the IOSystem.
-     *
+     * <p>
      * This method can be called by any thread. It is a pretty expensive method
      * because it will cause the {@link Selector#wakeup()} method to be called.
      *
@@ -240,23 +236,23 @@ public abstract class NioPipeline implements MigratablePipeline, Closeable, Runn
     }
 
     /**
-     * Is called when the {@link #process()} throws an exception.
-     *
+     * Is called when the {@link #process()} throws a {@link Throwable}.
+     * <p>
      * This method should only be called by the current {@link NioThread owner}.
-     *
-     * The idiom to use a handler is:
+     * <p>
+     * The idiom to use a pipeline is:
      * <code>
      * try{
-     *     handler.handle();
+     * pipeline.process();
      * } catch(Throwable t) {
-     *    handler.onError(t);
+     * pipeline.onError(t);
      * }
      * </code>
      *
-     * @param cause
+     * @param error
      */
-    public void onError(Throwable cause) {
-        if (cause instanceof InterruptedException) {
+    public void onError(Throwable error) {
+        if (error instanceof InterruptedException) {
             currentThread().interrupt();
         }
 
@@ -264,8 +260,28 @@ public abstract class NioPipeline implements MigratablePipeline, Closeable, Runn
             selectionKey.cancel();
         }
 
-        errorHandler.onError(channel, cause);
+        // mechanism for the handlers to intercept and modify the
+        // throwable.
+        try {
+            for (ChannelHandler handler : handlers()) {
+                handler.interceptError(error);
+            }
+        } catch (Throwable newError) {
+            error = newError;
+        }
+
+        errorHandler.onError(channel, error);
     }
+
+    /**
+     * Returns an Iterable that can iterate over each {@link ChannelHandler} of
+     * the pipeline.
+     * <p>
+     * This method is called only by the {@link #onError(Throwable)}.
+     *
+     * @return the Iterable.
+     */
+    protected abstract Iterable<? extends ChannelHandler> handlers();
 
     /**
      * Migrates this pipeline to a different owner.

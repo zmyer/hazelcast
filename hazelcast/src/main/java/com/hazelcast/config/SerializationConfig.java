@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2008-2018, Hazelcast, Inc. All Rights Reserved.
+ * Copyright (c) 2008-2019, Hazelcast, Inc. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -370,7 +370,7 @@ public class SerializationConfig {
     }
 
     /**
-     * Not that configuring use native byte order as enabled will override the byte order set by this method.
+     * Note that configuring use native byte order as enabled will override the byte order set by this method.
      *
      * @param byteOrder that serialization will use
      * @return configured {@link com.hazelcast.config.SerializerConfig} for chaining

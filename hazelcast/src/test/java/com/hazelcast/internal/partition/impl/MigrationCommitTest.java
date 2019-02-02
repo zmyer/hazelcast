@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2008-2018, Hazelcast, Inc. All Rights Reserved.
+ * Copyright (c) 2008-2019, Hazelcast, Inc. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -461,7 +461,7 @@ public class MigrationCommitTest extends HazelcastTestSupport {
                 InternalPartitionServiceImpl partitionService = (InternalPartitionServiceImpl) getPartitionService(hz1);
                 boolean found = false;
                 for (MigrationInfo migrationInfo : partitionService.getMigrationManager().getCompletedMigrationsCopy()) {
-                    if (migrationInfo.getStatus() == SUCCESS && migrationInfo.getDestination().equals(getAddress(hz3))) {
+                    if (migrationInfo.getStatus() == SUCCESS && migrationInfo.getDestinationAddress().equals(getAddress(hz3))) {
                         found = true;
                     }
                 }

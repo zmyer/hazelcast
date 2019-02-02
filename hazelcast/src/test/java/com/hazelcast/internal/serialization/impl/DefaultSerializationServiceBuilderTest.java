@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2008-2018, Hazelcast, Inc. All Rights Reserved.
+ * Copyright (c) 2008-2019, Hazelcast, Inc. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -29,31 +29,34 @@ import org.junit.runner.RunWith;
 
 import java.nio.ByteOrder;
 
+import static com.hazelcast.internal.serialization.impl.DefaultSerializationServiceBuilder.DEFAULT_BYTE_ORDER;
 import static org.junit.Assert.assertEquals;
 
 @RunWith(HazelcastParallelClassRunner.class)
 @Category({QuickTest.class, ParallelTest.class})
 public class DefaultSerializationServiceBuilderTest {
 
+    private final String BYTE_ORDER_OVERRRIDE_PROPERTY = "hazelcast.serialization.byteOrder";
+
     @Test
     public void test_byteOrderIsOverridden_whenLittleEndian() {
-        System.setProperty("hazelcast.serialization.byteOrder", "LITTLE_ENDIAN");
+        System.setProperty(BYTE_ORDER_OVERRRIDE_PROPERTY, "LITTLE_ENDIAN");
         try {
             InternalSerializationService serializationService = getSerializationServiceBuilder().build();
             assertEquals(ByteOrder.LITTLE_ENDIAN, serializationService.getByteOrder());
         } finally {
-            System.clearProperty("hazelcast.serialization.byteOrder");
+            System.clearProperty(BYTE_ORDER_OVERRRIDE_PROPERTY);
         }
     }
 
     @Test
     public void test_byteOrderIsOverridden_whenBigEndian() {
-        System.setProperty("hazelcast.serialization.byteOrder", "BIG_ENDIAN");
+        System.setProperty(BYTE_ORDER_OVERRRIDE_PROPERTY, "BIG_ENDIAN");
         try {
             InternalSerializationService serializationService = getSerializationServiceBuilder().build();
             assertEquals(ByteOrder.BIG_ENDIAN, serializationService.getByteOrder());
         } finally {
-            System.clearProperty("hazelcast.serialization.byteOrder");
+            System.clearProperty(BYTE_ORDER_OVERRRIDE_PROPERTY);
         }
     }
 
@@ -87,6 +90,28 @@ public class DefaultSerializationServiceBuilderTest {
     @Test(expected = IllegalArgumentException.class)
     public void test_exceptionThrown_whenInitialOutputBufferSizeNegative() {
         getSerializationServiceBuilder().setInitialOutputBufferSize(-1);
+    }
+
+    @Test
+    public void test_nullByteOrder() {
+        String override = System.getProperty(BYTE_ORDER_OVERRRIDE_PROPERTY);
+        System.clearProperty(BYTE_ORDER_OVERRRIDE_PROPERTY);
+        try {
+            InternalSerializationService serializationService = getSerializationServiceBuilder()
+                    .setByteOrder(null).build();
+            assertEquals(DEFAULT_BYTE_ORDER, serializationService.getByteOrder());
+        } finally {
+            if (override != null) {
+                System.setProperty(BYTE_ORDER_OVERRRIDE_PROPERTY, override);
+            }
+        }
+    }
+
+    @Test
+    public void test_useNativeByteOrder() {
+        ByteOrder nativeOrder = ByteOrder.nativeOrder();
+        InternalSerializationService serializationService = getSerializationServiceBuilder().setUseNativeByteOrder(true).build();
+        assertEquals(nativeOrder, serializationService.getByteOrder());
     }
 
     protected SerializationServiceBuilder getSerializationServiceBuilder() {

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2008-2018, Hazelcast, Inc. All Rights Reserved.
+ * Copyright (c) 2008-2019, Hazelcast, Inc. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,19 +16,20 @@
 
 package com.hazelcast.config;
 
+import com.hazelcast.config.PermissionConfig.PermissionType;
 import com.hazelcast.config.helpers.DummyMapStore;
 import com.hazelcast.core.HazelcastInstance;
 import com.hazelcast.core.IMap;
 import com.hazelcast.internal.cluster.Versions;
+import com.hazelcast.nio.IOUtil;
 import com.hazelcast.quorum.QuorumType;
 import com.hazelcast.quorum.impl.ProbabilisticQuorumFunction;
 import com.hazelcast.quorum.impl.RecentlyActiveQuorumFunction;
 import com.hazelcast.test.HazelcastParallelClassRunner;
 import com.hazelcast.test.HazelcastTestSupport;
+import com.hazelcast.test.annotation.ParallelTest;
 import com.hazelcast.test.annotation.QuickTest;
 import com.hazelcast.topic.TopicOverloadPolicy;
-
-import org.hamcrest.CoreMatchers;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
@@ -47,27 +48,30 @@ import java.io.PrintWriter;
 import java.io.Writer;
 import java.net.URL;
 import java.text.MessageFormat;
+import java.util.Arrays;
+import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Properties;
+import java.util.Set;
 
 import static com.hazelcast.config.EvictionConfig.MaxSizePolicy.ENTRY_COUNT;
 import static com.hazelcast.config.EvictionPolicy.LRU;
 import static com.hazelcast.config.PermissionConfig.PermissionType.CACHE;
 import static com.hazelcast.config.PermissionConfig.PermissionType.CONFIG;
+import static com.hazelcast.config.WANQueueFullBehavior.DISCARD_AFTER_MUTATION;
 import static com.hazelcast.instance.BuildInfoProvider.HAZELCAST_INTERNAL_OVERRIDE_VERSION;
 import static java.io.File.createTempFile;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
-import static org.junit.Assert.assertThat;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
 @RunWith(HazelcastParallelClassRunner.class)
-@Category(QuickTest.class)
+@Category({QuickTest.class, ParallelTest.class})
 @SuppressWarnings({"WeakerAccess", "deprecation"})
 public class XMLConfigBuilderTest extends HazelcastTestSupport {
 
@@ -198,9 +202,99 @@ public class XMLConfigBuilderTest extends HazelcastTestSupport {
                 + HAZELCAST_END_TAG;
 
         Config config = buildConfig(xml);
-        AwsConfig aws = config.getNetworkConfig().getJoin().getAwsConfig();
-        assertTrue(aws.isEnabled());
-        assertAwsConfig(aws);
+
+        AwsConfig awsConfig = config.getNetworkConfig().getJoin().getAwsConfig();
+        assertTrue(awsConfig.isEnabled());
+        assertAwsConfig(awsConfig);
+    }
+
+    @Test
+    public void readGcpConfig() {
+        String xml = HAZELCAST_START_TAG
+                + "    <network>\n"
+                + "        <join>\n"
+                + "            <multicast enabled=\"false\"/>\n"
+                + "            <tcp-ip enabled=\"false\"/>\n"
+                + "            <gcp enabled=\"true\">\n"
+                + "                <zones>us-east1-b</zones>\n"
+                + "            </gcp>\n"
+                + "        </join>\n"
+                + "    </network>"
+                + HAZELCAST_END_TAG;
+
+        Config config = buildConfig(xml);
+
+        GcpConfig gcpConfig = config.getNetworkConfig().getJoin().getGcpConfig();
+
+        assertTrue(gcpConfig.isEnabled());
+        assertFalse(gcpConfig.isUsePublicIp());
+        assertEquals("us-east1-b", gcpConfig.getProperty("zones"));
+    }
+
+    @Test
+    public void readAzureConfig() {
+        String xml = HAZELCAST_START_TAG
+                + "    <network>\n"
+                + "        <join>\n"
+                + "            <multicast enabled=\"false\"/>\n"
+                + "            <tcp-ip enabled=\"false\"/>\n"
+                + "            <azure enabled=\"true\">\n"
+                + "                <client-id>123456789!</client-id>\n"
+                + "            </azure>\n"
+                + "        </join>\n"
+                + "    </network>"
+                + HAZELCAST_END_TAG;
+
+        Config config = buildConfig(xml);
+
+        AzureConfig azureConfig = config.getNetworkConfig().getJoin().getAzureConfig();
+
+        assertTrue(azureConfig.isEnabled());
+        assertEquals("123456789!", azureConfig.getProperty("client-id"));
+    }
+
+    @Test
+    public void readKubernetesConfig() {
+        String xml = HAZELCAST_START_TAG
+                + "    <network>\n"
+                + "        <join>\n"
+                + "            <multicast enabled=\"false\"/>\n"
+                + "            <tcp-ip enabled=\"false\"/>\n"
+                + "            <kubernetes enabled=\"true\">\n"
+                + "                <namespace>hazelcast</namespace>\n"
+                + "            </kubernetes>\n"
+                + "        </join>\n"
+                + "    </network>"
+                + HAZELCAST_END_TAG;
+
+        Config config = buildConfig(xml);
+
+        KubernetesConfig kubernetesConfig = config.getNetworkConfig().getJoin().getKubernetesConfig();
+
+        assertTrue(kubernetesConfig.isEnabled());
+        assertEquals("hazelcast", kubernetesConfig.getProperty("namespace"));
+    }
+
+    @Test
+    public void readEurekaConfig() {
+        String xml = HAZELCAST_START_TAG
+                + "    <network>\n"
+                + "        <join>\n"
+                + "            <multicast enabled=\"false\"/>\n"
+                + "            <tcp-ip enabled=\"false\"/>\n"
+                + "            <eureka enabled=\"true\">\n"
+                + "                <namespace>hazelcast</namespace>\n"
+                + "            </eureka>\n"
+                + "        </join>\n"
+                + "    </network>"
+                + HAZELCAST_END_TAG;
+
+        Config config = buildConfig(xml);
+
+        EurekaConfig eurekaConfig = config.getNetworkConfig().getJoin().getEurekaConfig();
+
+        assertTrue(eurekaConfig.isEnabled());
+        assertEquals("hazelcast", eurekaConfig.getProperty("namespace"));
     }
 
     @Test
@@ -264,6 +358,28 @@ public class XMLConfigBuilderTest extends HazelcastTestSupport {
         assertEquals("com.hazelcast.nio.ssl.BasicSSLContextFactory", sslConfig.getFactoryClassName());
         assertEquals(1, sslConfig.getProperties().size());
         assertEquals("TLS", sslConfig.getProperties().get("protocol"));
+    }
+
+    @Test
+    public void testSymmetricEncryptionConfig() {
+        String xml = HAZELCAST_START_TAG
+                + "    <network>\n"
+                + "      <symmetric-encryption enabled=\"true\">\n"
+                + "        <algorithm>AES</algorithm>\n"
+                + "        <salt>thesalt</salt>\n"
+                + "        <password>thepass</password>\n"
+                + "        <iteration-count>7531</iteration-count>\n"
+                + "      </symmetric-encryption>"
+                + "    </network>\n"
+                + HAZELCAST_END_TAG;
+
+        Config config = buildConfig(xml);
+        SymmetricEncryptionConfig symmetricEncryptionConfig = config.getNetworkConfig().getSymmetricEncryptionConfig();
+        assertTrue(symmetricEncryptionConfig.isEnabled());
+        assertEquals("AES", symmetricEncryptionConfig.getAlgorithm());
+        assertEquals("thesalt", symmetricEncryptionConfig.getSalt());
+        assertEquals("thepass", symmetricEncryptionConfig.getPassword());
+        assertEquals(7531, symmetricEncryptionConfig.getIterationCount());
     }
 
     @Test
@@ -648,7 +764,7 @@ public class XMLConfigBuilderTest extends HazelcastTestSupport {
     @Test
     public void testManagementCenterConfig() {
         String xml = HAZELCAST_START_TAG
-                + "<management-center enabled=\"true\">"
+                + "<management-center enabled=\"true\" scripting-enabled='false'>"
                 + "someUrl"
                 + "</management-center>"
                 + HAZELCAST_END_TAG;
@@ -657,6 +773,7 @@ public class XMLConfigBuilderTest extends HazelcastTestSupport {
         ManagementCenterConfig manCenterCfg = config.getManagementCenterConfig();
 
         assertTrue(manCenterCfg.isEnabled());
+        assertFalse(manCenterCfg.isScriptingEnabled());
         assertEquals("someUrl", manCenterCfg.getUrl());
     }
 
@@ -1117,13 +1234,112 @@ public class XMLConfigBuilderTest extends HazelcastTestSupport {
                 + HAZELCAST_END_TAG;
 
         Config config = buildConfig(xml);
-        WanReplicationRef wanRef = config.getMapConfig(mapName).getWanReplicationRef();
+        MapConfig mapConfig = config.getMapConfig(mapName);
+        WanReplicationRef wanRef = mapConfig.getWanReplicationRef();
 
         assertEquals(refName, wanRef.getName());
         assertEquals(mergePolicy, wanRef.getMergePolicy());
         assertTrue(wanRef.isRepublishingEnabled());
         assertEquals(1, wanRef.getFilters().size());
         assertEquals("com.example.SampleFilter", wanRef.getFilters().get(0));
+    }
+
+    @Test
+    public void testWanReplicationConfig() {
+        String configName  = "test";
+        String xml = HAZELCAST_START_TAG
+                + "  <wan-replication name=\"" + configName + "\">\n"
+                + "        <wan-publisher group-name=\"nyc\" publisher-id=\"publisherId\">\n"
+                + "            <class-name>PublisherClassName</class-name>\n"
+                + "            <queue-capacity>15000</queue-capacity>\n"
+                + "            <queue-full-behavior>DISCARD_AFTER_MUTATION</queue-full-behavior>\n"
+                + "            <initial-publisher-state>STOPPED</initial-publisher-state>\n"
+                + "            <properties>\n"
+                + "                <property name=\"propName1\">propValue1</property>\n"
+                + "            </properties>\n"
+                + "        </wan-publisher>\n"
+                + "        <wan-consumer>\n"
+                + "            <class-name>ConsumerClassName</class-name>\n"
+                + "            <properties>\n"
+                + "                <property name=\"propName1\">propValue1</property>\n"
+                + "            </properties>\n"
+                + "        </wan-consumer>\n"
+                + "    </wan-replication>\n"
+                + HAZELCAST_END_TAG;
+
+        Config config = buildConfig(xml);
+        WanReplicationConfig wanReplicationConfig = config.getWanReplicationConfig(configName);
+
+        assertEquals(configName, wanReplicationConfig.getName());
+
+        WanConsumerConfig consumerConfig = wanReplicationConfig.getWanConsumerConfig();
+        assertNotNull(consumerConfig);
+        assertEquals("ConsumerClassName", consumerConfig.getClassName());
+
+        Map<String, Comparable> properties = consumerConfig.getProperties();
+        assertNotNull(properties);
+        assertEquals(1, properties.size());
+        assertEquals("propValue1", properties.get("propName1"));
+
+        List<WanPublisherConfig> publishers = wanReplicationConfig.getWanPublisherConfigs();
+        assertNotNull(publishers);
+        assertEquals(1, publishers.size());
+        WanPublisherConfig publisherConfig = publishers.get(0);
+        assertEquals("PublisherClassName", publisherConfig.getClassName());
+        assertEquals("nyc", publisherConfig.getGroupName());
+        assertEquals("publisherId", publisherConfig.getPublisherId());
+        assertEquals(15000, publisherConfig.getQueueCapacity());
+        assertEquals(DISCARD_AFTER_MUTATION, publisherConfig.getQueueFullBehavior());
+        assertEquals(WanPublisherState.STOPPED, publisherConfig.getInitialPublisherState());
+
+        properties = publisherConfig.getProperties();
+        assertNotNull(properties);
+        assertEquals(1, properties.size());
+        assertEquals("propValue1", properties.get("propName1"));
+    }
+
+    @Test
+    public void default_value_of_persist_wan_replicated_data_is_false() {
+        String configName  = "test";
+        String xml = HAZELCAST_START_TAG
+                + "  <wan-replication name=\"" + configName + "\">\n"
+                + "        <wan-consumer>\n"
+                + "        </wan-consumer>\n"
+                + "    </wan-replication>\n"
+                + HAZELCAST_END_TAG;
+
+        Config config = buildConfig(xml);
+        WanReplicationConfig wanReplicationConfig = config.getWanReplicationConfig(configName);
+        WanConsumerConfig consumerConfig = wanReplicationConfig.getWanConsumerConfig();
+        assertFalse(consumerConfig.isPersistWanReplicatedData());
+    }
+
+
+    @Test
+    public void testWanReplicationSyncConfig() {
+        String configName  = "test";
+        String xml = HAZELCAST_START_TAG
+                + "  <wan-replication name=\"" + configName + "\">\n"
+                + "        <wan-publisher group-name=\"nyc\">\n"
+                + "            <class-name>PublisherClassName</class-name>\n"
+                + "            <wan-sync>\n"
+                + "                <consistency-check-strategy>MERKLE_TREES</consistency-check-strategy>\n"
+                + "            </wan-sync>\n"
+                + "        </wan-publisher>\n"
+                + "    </wan-replication>\n"
+                + HAZELCAST_END_TAG;
+
+        Config config = buildConfig(xml);
+        WanReplicationConfig wanReplicationConfig = config.getWanReplicationConfig(configName);
+
+        assertEquals(configName, wanReplicationConfig.getName());
+
+        List<WanPublisherConfig> publishers = wanReplicationConfig.getWanPublisherConfigs();
+        assertNotNull(publishers);
+        assertEquals(1, publishers.size());
+        WanPublisherConfig publisherConfig = publishers.get(0);
+        assertEquals(ConsistencyCheckStrategy.MERKLE_TREES, publisherConfig.getWanSyncConfig()
+                                                                           .getConsistencyCheckStrategy());
     }
 
     @Test
@@ -1143,6 +1359,23 @@ public class XMLConfigBuilderTest extends HazelcastTestSupport {
         assertTrue(journalConfig.isEnabled());
         assertEquals(120, journalConfig.getCapacity());
         assertEquals(20, journalConfig.getTimeToLiveSeconds());
+    }
+
+    @Test
+    public void testMapMerkleTreeConfig() {
+        String mapName = "mapName";
+        String xml = HAZELCAST_START_TAG
+                + "<merkle-tree enabled=\"true\">\n"
+                + "    <mapName>" + mapName + "</mapName>\n"
+                + "    <depth>20</depth>\n"
+                + "</merkle-tree>"
+                + HAZELCAST_END_TAG;
+
+        Config config = buildConfig(xml);
+        MerkleTreeConfig treeConfig = config.getMapMerkleTreeConfig(mapName);
+
+        assertTrue(treeConfig.isEnabled());
+        assertEquals(20, treeConfig.getDepth());
     }
 
     @Test
@@ -1358,7 +1591,7 @@ public class XMLConfigBuilderTest extends HazelcastTestSupport {
     public void testWanConfig() {
         String xml = HAZELCAST_START_TAG
                 + "   <wan-replication name=\"my-wan-cluster\">\n"
-                + "      <wan-publisher group-name=\"istanbul\">\n"
+                + "      <wan-publisher group-name=\"istanbul\" publisher-id=\"istanbulPublisherId\">\n"
                 + "         <class-name>com.hazelcast.wan.custom.WanPublisher</class-name>\n"
                 + "         <queue-full-behavior>THROW_EXCEPTION</queue-full-behavior>\n"
                 + "         <queue-capacity>21</queue-capacity>\n"
@@ -1391,12 +1624,14 @@ public class XMLConfigBuilderTest extends HazelcastTestSupport {
                 + "      <wan-publisher group-name=\"ankara\">\n"
                 + "         <class-name>com.hazelcast.wan.custom.WanPublisher</class-name>\n"
                 + "         <queue-full-behavior>THROW_EXCEPTION_ONLY_IF_REPLICATION_ACTIVE</queue-full-behavior>\n"
+                + "         <initial-publisher-state>STOPPED</initial-publisher-state>\n"
                 + "      </wan-publisher>\n"
                 + "      <wan-consumer>\n"
                 + "         <class-name>com.hazelcast.wan.custom.WanConsumer</class-name>\n"
                 + "         <properties>\n"
                 + "            <property name=\"custom.prop.consumer\">prop.consumer</property>\n"
                 + "         </properties>\n"
+                + "      <persist-wan-replicated-data>false</persist-wan-replicated-data>\n"
                 + "      </wan-consumer>\n"
                 + "   </wan-replication>"
                 + HAZELCAST_END_TAG;
@@ -1409,8 +1644,10 @@ public class XMLConfigBuilderTest extends HazelcastTestSupport {
         assertEquals(2, publisherConfigs.size());
         WanPublisherConfig publisherConfig1 = publisherConfigs.get(0);
         assertEquals("istanbul", publisherConfig1.getGroupName());
+        assertEquals("istanbulPublisherId", publisherConfig1.getPublisherId());
         assertEquals("com.hazelcast.wan.custom.WanPublisher", publisherConfig1.getClassName());
         assertEquals(WANQueueFullBehavior.THROW_EXCEPTION, publisherConfig1.getQueueFullBehavior());
+        assertEquals(WanPublisherState.REPLICATING, publisherConfig1.getInitialPublisherState());
         assertEquals(21, publisherConfig1.getQueueCapacity());
         Map<String, Comparable> pubProperties = publisherConfig1.getProperties();
         assertEquals("prop.publisher", pubProperties.get("custom.prop.publisher"));
@@ -1418,16 +1655,23 @@ public class XMLConfigBuilderTest extends HazelcastTestSupport {
         assertEquals("2", pubProperties.get("maxEndpoints"));
         assertFalse(publisherConfig1.getAwsConfig().isEnabled());
         assertAwsConfig(publisherConfig1.getAwsConfig());
+        assertFalse(publisherConfig1.getGcpConfig().isEnabled());
+        assertFalse(publisherConfig1.getAzureConfig().isEnabled());
+        assertFalse(publisherConfig1.getKubernetesConfig().isEnabled());
+        assertFalse(publisherConfig1.getEurekaConfig().isEnabled());
         assertDiscoveryConfig(publisherConfig1.getDiscoveryConfig());
 
         WanPublisherConfig publisherConfig2 = publisherConfigs.get(1);
         assertEquals("ankara", publisherConfig2.getGroupName());
+        assertNull(publisherConfig2.getPublisherId());
         assertEquals(WANQueueFullBehavior.THROW_EXCEPTION_ONLY_IF_REPLICATION_ACTIVE, publisherConfig2.getQueueFullBehavior());
+        assertEquals(WanPublisherState.STOPPED, publisherConfig2.getInitialPublisherState());
 
         WanConsumerConfig consumerConfig = wanConfig.getWanConsumerConfig();
         assertEquals("com.hazelcast.wan.custom.WanConsumer", consumerConfig.getClassName());
         Map<String, Comparable> consProperties = consumerConfig.getProperties();
         assertEquals("prop.consumer", consProperties.get("custom.prop.consumer"));
+        assertFalse(consumerConfig.isPersistWanReplicatedData());
     }
 
     private void assertDiscoveryConfig(DiscoveryConfig c) {
@@ -1444,15 +1688,15 @@ public class XMLConfigBuilderTest extends HazelcastTestSupport {
     }
 
     private void assertAwsConfig(AwsConfig aws) {
-        assertEquals(10, aws.getConnectionTimeoutSeconds());
-        assertEquals("sample-access-key", aws.getAccessKey());
-        assertEquals("sample-secret-key", aws.getSecretKey());
-        assertEquals("sample-region", aws.getRegion());
-        assertEquals("sample-header", aws.getHostHeader());
-        assertEquals("sample-group", aws.getSecurityGroupName());
-        assertEquals("sample-tag-key", aws.getTagKey());
-        assertEquals("sample-tag-value", aws.getTagValue());
-        assertEquals("sample-role", aws.getIamRole());
+        assertEquals("sample-access-key", aws.getProperties().get("access-key"));
+        assertEquals("sample-secret-key", aws.getProperties().get("secret-key"));
+        assertEquals("sample-role", aws.getProperties().get("iam-role"));
+        assertEquals("sample-region", aws.getProperties().get("region"));
+        assertEquals("sample-header", aws.getProperties().get("host-header"));
+        assertEquals("sample-group", aws.getProperties().get("security-group-name"));
+        assertEquals("sample-tag-key", aws.getProperties().get("tag-key"));
+        assertEquals("sample-tag-value", aws.getProperties().get("tag-value"));
+        assertEquals("10", aws.getProperties().get("connection-timeout-seconds"));
     }
 
     @Test
@@ -1817,7 +2061,8 @@ public class XMLConfigBuilderTest extends HazelcastTestSupport {
                 + "        <value-collection-type>SET</value-collection-type>"
                 + "        <quorum-ref>customQuorumRule</quorum-ref>"
                 + "        <entry-listeners>\n"
-                + "            <entry-listener include-value=\"true\" local=\"true\">com.hazelcast.examples.EntryListener</entry-listener>\n"
+                +
+                "            <entry-listener include-value=\"true\" local=\"true\">com.hazelcast.examples.EntryListener</entry-listener>\n"
                 + "          </entry-listeners>"
                 + "        <merge-policy batch-size=\"23\">CustomMergePolicy</merge-policy>"
                 + "  </multimap>"
@@ -1989,7 +2234,8 @@ public class XMLConfigBuilderTest extends HazelcastTestSupport {
                 + "            <partition-lost-listener>com.your-package.YourPartitionLostListener</partition-lost-listener>\n"
                 + "          </partition-lost-listeners>"
                 + "        <entry-listeners>\n"
-                + "            <entry-listener include-value=\"false\" local=\"false\">com.your-package.MyEntryListener</entry-listener>\n"
+                +
+                "            <entry-listener include-value=\"false\" local=\"false\">com.your-package.MyEntryListener</entry-listener>\n"
                 + "          </entry-listeners>"
                 + "    </map>\n"
                 + HAZELCAST_END_TAG;
@@ -2405,9 +2651,10 @@ public class XMLConfigBuilderTest extends HazelcastTestSupport {
                 + "      </java-serialization-filter>\n"
                 + "  </serialization>\n"
                 + HAZELCAST_END_TAG;
-        
+
         Config config = new InMemoryXmlConfig(xml);
-        JavaSerializationFilterConfig javaSerializationFilterConfig = config.getSerializationConfig().getJavaSerializationFilterConfig();
+        JavaSerializationFilterConfig javaSerializationFilterConfig
+                = config.getSerializationConfig().getJavaSerializationFilterConfig();
         assertNotNull(javaSerializationFilterConfig);
         ClassFilter blackList = javaSerializationFilterConfig.getBlacklist();
         assertNotNull(blackList);
@@ -2542,6 +2789,23 @@ public class XMLConfigBuilderTest extends HazelcastTestSupport {
         PermissionConfig expected = new PermissionConfig(CONFIG, "*", "dev");
         expected.getEndpoints().add("127.0.0.1");
         assertPermissionConfig(expected, config);
+    }
+
+    @Test
+    public void testAllPermissionsCovered() {
+        InputStream xmlResource = XMLConfigBuilderTest.class.getClassLoader().getResourceAsStream("hazelcast-fullconfig.xml");
+        Config config = null;
+        try {
+            config = new XmlConfigBuilder(xmlResource).build();
+        } finally {
+            IOUtil.closeResource(xmlResource);
+        }
+        Set<PermissionType> permTypes = new HashSet<PermissionType>(Arrays.asList(PermissionType.values()));
+        for (PermissionConfig pc : config.getSecurityConfig().getClientPermissionConfigs()) {
+            permTypes.remove(pc.getType());
+        }
+        assertTrue("All permission types should be listed in hazelcast-fullconfig.xml. Not found ones: " + permTypes,
+                permTypes.isEmpty());
     }
 
     @Test(expected = InvalidConfigurationException.class)

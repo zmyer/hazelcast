@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2008-2018, Hazelcast, Inc. All Rights Reserved.
+ * Copyright (c) 2008-2019, Hazelcast, Inc. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -17,18 +17,18 @@
 package com.hazelcast.wan;
 
 import com.hazelcast.nio.serialization.Data;
-import com.hazelcast.wan.impl.WanEventCounter;
+import com.hazelcast.wan.impl.DistributedServiceWanEventCounters;
 
 /**
  * Interface for all WAN replication messages
  */
 public interface ReplicationEventObject {
     /**
-     * Increments the count for the related event in the {@code eventCounter}
+     * Increments the count for the related event in the {@code counters}
      *
-     * @param eventCounter the WAN event counter
+     * @param counters the WAN event counter
      */
-    void incrementEventCount(WanEventCounter eventCounter);
+    void incrementEventCount(DistributedServiceWanEventCounters counters);
 
     /**
      * Returns the key for the entry on which the event occurred.

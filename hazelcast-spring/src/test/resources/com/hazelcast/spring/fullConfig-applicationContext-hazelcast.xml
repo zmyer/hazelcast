@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!--
-  ~ Copyright (c) 2008-2018, Hazelcast, Inc. All Rights Reserved.
+  ~ Copyright (c) 2008-2019, Hazelcast, Inc. All Rights Reserved.
   ~
   ~ Licensed under the Apache License, Version 2.0 (the "License");
   ~ you may not use this file except in compliance with the License.
@@ -24,7 +24,7 @@
         http://www.hazelcast.com/schema/sample
         hazelcast-sample-service.xsd
         http://www.hazelcast.com/schema/spring
-        http://www.hazelcast.com/schema/spring/hazelcast-spring.xsd">
+        http://www.hazelcast.com/schema/spring/hazelcast-spring-3.12.xsd">
 
     <bean class="org.springframework.beans.factory.config.PropertyPlaceholderConfigurer"
           p:systemPropertiesModeName="SYSTEM_PROPERTIES_MODE_OVERRIDE">
@@ -42,7 +42,7 @@
                     name="${cluster.group.name}"
                     password="${cluster.group.password}"/>
             <hz:license-key>HAZELCAST_ENTERPRISE_LICENSE_KEY</hz:license-key>
-            <hz:management-center enabled="true" update-interval="2">
+            <hz:management-center enabled="true" update-interval="2" scripting-enabled="false">
                 <hz:url>myserver:80</hz:url>
                 <hz:mutual-auth enabled="true">
                     <hz:factory-class-name>who.let.the.cat.out.class</hz:factory-class-name>
@@ -58,9 +58,12 @@
                 <hz:property name="hazelcast.partition.count">277</hz:property>
             </hz:properties>
             <hz:wan-replication name="testWan">
-                <hz:wan-publisher group-name="tokyo" class-name="com.hazelcast.enterprise.wan.replication.WanBatchReplication">
+                <hz:wan-publisher group-name="tokyo"
+                                  publisher-id="tokyoPublisherId"
+                                  class-name="com.hazelcast.enterprise.wan.replication.WanBatchReplication">
                     <hz:queue-full-behavior>THROW_EXCEPTION</hz:queue-full-behavior>
                     <hz:queue-capacity>1000</hz:queue-capacity>
+                    <hz:initial-publisher-state>STOPPED</hz:initial-publisher-state>
                     <hz:properties>
                         <hz:property name="batch.size">50</hz:property>
                         <hz:property name="batch.max.delay.millis">3000</hz:property>
@@ -72,7 +75,9 @@
                         <hz:property name="group.password">pass</hz:property>
                     </hz:properties>
                 </hz:wan-publisher>
-                <hz:wan-publisher group-name="istanbul" class-name="com.hazelcast.wan.custom.CustomPublisher">
+                <hz:wan-publisher group-name="istanbul"
+                                  publisher-id="istanbulPublisherId"
+                                  class-name="com.hazelcast.wan.custom.CustomPublisher">
                     <hz:queue-full-behavior>THROW_EXCEPTION_ONLY_IF_REPLICATION_ACTIVE</hz:queue-full-behavior>
                     <hz:aws enabled="false"
                             access-key="sample-access-key"
@@ -83,6 +88,23 @@
                             tag-key="sample-tag-key"
                             tag-value="sample-tag-value"
                             iam-role="sample-role"/>
+                    <hz:gcp enabled="false"
+                            zones="us-east1-b,us-east1-c"/>
+                    <hz:azure enabled="false"
+                              client-id="CLIENT_ID"
+                              client-secret="CLIENT_SECRET"
+                              tenant-id="TENANT_ID"
+                              subscription-id="SUB_ID"
+                              cluster-id="HZLCAST001"
+                              group-name="GROUP-NAME"/>
+                    <hz:kubernetes enabled="false"
+                                   namespace="MY-KUBERNETES-NAMESPACE"
+                                   service-name="MY-SERVICE-NAME"
+                                   service-label-name="MY-SERVICE-LABEL-NAME"
+                                   service-label-value="MY-SERVICE-LABEL-VALUE"/>
+                    <hz:eureka enabled="false"
+                               self-registration="true"
+                               namespace="hazelcast"/>
                     <hz:discovery-strategies>
                         <hz:node-filter implementation="dummyNodeFilter"/>
                         <hz:discovery-strategy discovery-strategy-factory="dummyDiscoveryStrategyFactory">
@@ -108,14 +130,23 @@
                 <hz:wan-publisher group-name="ankara" class-name="com.hazelcast.enterprise.wan.replication.WanBatchReplication">
                     <hz:queue-capacity>${wan.queue.capacity}</hz:queue-capacity>
                 </hz:wan-publisher>
-                <hz:wan-consumer class-name="com.hazelcast.wan.custom.WanConsumer">
+                <hz:wan-consumer class-name="com.hazelcast.wan.custom.WanConsumer"
+                                 persist-wan-replicated-data="true">
                     <hz:properties>
                         <hz:property name="custom.prop.consumer">prop.consumer</hz:property>
                     </hz:properties>
                 </hz:wan-consumer>
             </hz:wan-replication>
             <hz:wan-replication name="testWan2">
-                <hz:wan-consumer implementation="wanConsumer"/>
+                <hz:wan-publisher group-name="tokyo" class-name="PublisherClassName">
+                    <hz:wan-sync>
+                        <hz:consistency-check-strategy>MERKLE_TREES</hz:consistency-check-strategy>
+                    </hz:wan-sync>
+                </hz:wan-publisher>
+                <hz:wan-consumer implementation="wanConsumer" persist-wan-replicated-data="false"/>
+            </hz:wan-replication>
+            <hz:wan-replication name="testWan3">
+                <hz:wan-consumer persist-wan-replicated-data="false"/>
             </hz:wan-replication>
             <hz:network port="${cluster.port}" port-auto-increment="false" port-count="42">
                 <hz:outbound-ports>
@@ -144,6 +175,23 @@
                             tag-key="sample-tag-key"
                             tag-value="sample-tag-value"
                             iam-role="sample-role"/>
+                    <hz:gcp enabled="false"
+                            zones="us-east1-b,us-east1-c"/>
+                    <hz:azure enabled="false"
+                              client-id="CLIENT_ID"
+                              client-secret="CLIENT_SECRET"
+                              tenant-id="TENANT_ID"
+                              subscription-id="SUB_ID"
+                              cluster-id="HZLCAST001"
+                              group-name="GROUP-NAME"/>
+                    <hz:kubernetes enabled="false"
+                                   namespace="MY-KUBERNETES-NAMESPACE"
+                                   service-name="MY-SERVICE-NAME"
+                                   service-label-name="MY-SERVICE-LABEL-NAME"
+                                   service-label-value="MY-SERVICE-LABEL-VALUE"/>
+                    <hz:eureka enabled="false"
+                               self-registration="true"
+                               namespace="hazelcast"/>
                     <hz:discovery-strategies>
                         <hz:node-filter implementation="dummyNodeFilter"/>
                         <hz:discovery-strategy discovery-strategy-factory="dummyDiscoveryStrategyFactory">
@@ -360,6 +408,10 @@
                 </hz:entry-listeners>
             </hz:map>
 
+            <hz:map name="testMapNoWanMergePolicy">
+                <hz:wan-replication-ref name="testWan" />
+            </hz:map>
+
             <hz:map name="lfuEvictionMap" eviction-policy="LFU"/>
             <hz:map name="lruEvictionMap" eviction-policy="LRU"/>
             <hz:map name="noneEvictionMap" eviction-policy="NONE"/>
@@ -462,7 +514,8 @@
             </hz:map>
 
             <hz:cache name="testCache" disable-per-entry-invalidation-events="true">
-                <hz:wan-replication-ref name="testWan" merge-policy="PUT_IF_ABSENT" republishing-enabled="false">
+                <hz:wan-replication-ref name="testWan" merge-policy="PUT_IF_ABSENT"
+                                        republishing-enabled="false">
                     <hz:filters>
                         <hz:filter-impl>com.example.SampleFilter</hz:filter-impl>
                     </hz:filters>
@@ -473,6 +526,8 @@
 
             <hz:event-journal map-name="mapName" cache-name="cacheName" enabled="true"
                               capacity="123" time-to-live-seconds="321"/>
+
+            <hz:merkle-tree map-name="mapName" enabled="true" depth="15"/>
 
             <hz:multimap name="testMultimap" value-collection-type="LIST" binary="false" statistics-enabled="false">
                 <hz:entry-listeners>
@@ -578,6 +633,109 @@
                             <hz:action>create</hz:action>
                         </hz:actions>
                     </hz:pn-counter-permission>
+                    <hz:all-permissions principal="admin">
+                        <hz:endpoints>
+                            <hz:endpoint>127.0.0.1</hz:endpoint>
+                        </hz:endpoints>
+                    </hz:all-permissions>
+                    <hz:config-permission principal="deployer"/>
+                    <hz:transaction-permission principal="deployer"/>
+                    <hz:map-permission name="custom" principal="dev">
+                        <hz:endpoints>
+                            <hz:endpoint>127.0.0.1</hz:endpoint>
+                        </hz:endpoints>
+                        <hz:actions>
+                            <hz:action>create</hz:action>
+                            <hz:action>destroy</hz:action>
+                            <hz:action>put</hz:action>
+                            <hz:action>read</hz:action>
+                        </hz:actions>
+                    </hz:map-permission>
+                    <hz:queue-permission name="*">
+                        <hz:actions>
+                            <hz:action>all</hz:action>
+                        </hz:actions>
+                    </hz:queue-permission>
+                    <hz:topic-permission name="*">
+                        <hz:actions>
+                            <hz:action>all</hz:action>
+                        </hz:actions>
+                    </hz:topic-permission>
+                    <hz:multimap-permission name="*">
+                        <hz:actions>
+                            <hz:action>all</hz:action>
+                        </hz:actions>
+                    </hz:multimap-permission>
+                    <hz:list-permission name="*">
+                        <hz:actions>
+                            <hz:action>all</hz:action>
+                        </hz:actions>
+                    </hz:list-permission>
+                    <hz:set-permission name="*">
+                        <hz:actions>
+                            <hz:action>all</hz:action>
+                        </hz:actions>
+                    </hz:set-permission>
+                    <hz:id-generator-permission name="*">
+                        <hz:actions>
+                            <hz:action>all</hz:action>
+                        </hz:actions>
+                    </hz:id-generator-permission>
+                    <hz:flake-id-generator-permission name="*">
+                        <hz:actions>
+                            <hz:action>all</hz:action>
+                        </hz:actions>
+                    </hz:flake-id-generator-permission>
+                    <hz:lock-permission name="*">
+                        <hz:actions>
+                            <hz:action>all</hz:action>
+                        </hz:actions>
+                    </hz:lock-permission>
+                    <hz:atomic-long-permission name="*">
+                        <hz:actions>
+                            <hz:action>all</hz:action>
+                        </hz:actions>
+                    </hz:atomic-long-permission>
+                    <hz:countdown-latch-permission name="*">
+                        <hz:actions>
+                            <hz:action>all</hz:action>
+                        </hz:actions>
+                    </hz:countdown-latch-permission>
+                    <hz:semaphore-permission name="*">
+                        <hz:actions>
+                            <hz:action>all</hz:action>
+                        </hz:actions>
+                    </hz:semaphore-permission>
+                    <hz:executor-service-permission name="*">
+                        <hz:actions>
+                            <hz:action>all</hz:action>
+                        </hz:actions>
+                    </hz:executor-service-permission>
+                    <hz:durable-executor-service-permission name="*">
+                        <hz:actions>
+                            <hz:action>all</hz:action>
+                        </hz:actions>
+                    </hz:durable-executor-service-permission>
+                    <hz:cardinality-estimator-permission name="*">
+                        <hz:actions>
+                            <hz:action>all</hz:action>
+                        </hz:actions>
+                    </hz:cardinality-estimator-permission>
+                    <hz:scheduled-executor-permission name="*">
+                        <hz:actions>
+                            <hz:action>all</hz:action>
+                        </hz:actions>
+                    </hz:scheduled-executor-permission>
+                    <hz:cache-permission name="*">
+                        <hz:actions>
+                            <hz:action>all</hz:action>
+                        </hz:actions>
+                    </hz:cache-permission>
+                    <hz:user-code-deployment-permission name="*">
+                        <hz:actions>
+                            <hz:action>all</hz:action>
+                        </hz:actions>
+                    </hz:user-code-deployment-permission>
                 </hz:client-permissions>
                 <hz:client-block-unmapped-actions>false</hz:client-block-unmapped-actions>
             </hz:security>

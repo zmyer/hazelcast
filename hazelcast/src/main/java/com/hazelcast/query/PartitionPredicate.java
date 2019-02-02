@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2008-2018, Hazelcast, Inc. All Rights Reserved.
+ * Copyright (c) 2008-2019, Hazelcast, Inc. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -39,6 +39,8 @@ import static com.hazelcast.util.Preconditions.checkNotNull;
  */
 @BinaryInterface
 public class PartitionPredicate<K, V> implements Predicate<K, V>, IdentifiedDataSerializable {
+
+    private static final long serialVersionUID = 1L;
 
     private Object partitionKey;
     private Predicate<K, V> target;
@@ -111,5 +113,29 @@ public class PartitionPredicate<K, V> implements Predicate<K, V>, IdentifiedData
                 + "partitionKey=" + partitionKey
                 + ", target=" + target
                 + '}';
+    }
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) {
+            return true;
+        }
+        if (o == null || getClass() != o.getClass()) {
+            return false;
+        }
+
+        PartitionPredicate<?, ?> that = (PartitionPredicate<?, ?>) o;
+
+        if (partitionKey != null ? !partitionKey.equals(that.partitionKey) : that.partitionKey != null) {
+            return false;
+        }
+        return target != null ? target.equals(that.target) : that.target == null;
+    }
+
+    @Override
+    public int hashCode() {
+        int result = partitionKey != null ? partitionKey.hashCode() : 0;
+        result = 31 * result + (target != null ? target.hashCode() : 0);
+        return result;
     }
 }

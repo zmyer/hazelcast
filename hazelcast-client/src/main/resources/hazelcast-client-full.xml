@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!--
-  ~ Copyright (c) 2008-2018, Hazelcast, Inc. All Rights Reserved.
+  ~ Copyright (c) 2008-2019, Hazelcast, Inc. All Rights Reserved.
   ~
   ~ Licensed under the Apache License, Version 2.0 (the "License");
   ~ you may not use this file except in compliance with the License.
@@ -31,7 +31,7 @@
 <hazelcast-client xmlns="http://www.hazelcast.com/schema/client-config"
                   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
                   xsi:schemaLocation="http://www.hazelcast.com/schema/client-config
-                  http://www.hazelcast.com/schema/config/hazelcast-client-config-3.11.xsd">
+                  http://www.hazelcast.com/schema/client-config/hazelcast-client-config-3.12.xsd">
 
     <config-replacers fail-if-value-missing="false">
         <replacer class-name="com.hazelcast.config.replacer.EncryptionReplacer">
@@ -50,6 +50,7 @@
         <name>dev</name>
         <password>dev-pass</password>
     </group>
+    <instance-name>CLIENT_NAME</instance-name>
     <license-key>HAZELCAST_ENTERPRISE_LICENSE_KEY</license-key>
     <properties>
         <property name="hazelcast.client.shuffle.member.list">true</property>
@@ -59,6 +60,10 @@
         <property name="hazelcast.client.event.queue.capacity">1000000</property>
         <property name="hazelcast.client.invocation.timeout.seconds">120</property>
     </properties>
+    <client-attributes>
+        <attribute name="role">admin</attribute>
+        <attribute name="foo">bar</attribute>
+    </client-attributes>
 
     <network>
         <cluster-members>
@@ -79,7 +84,6 @@
             <keep-alive>true</keep-alive>
             <reuse-address>true</reuse-address>
             <linger-seconds>3</linger-seconds>
-            <timeout>-1</timeout>
             <buffer-size>128</buffer-size>
         </socket-options>
         <socket-interceptor enabled="true">
@@ -90,9 +94,18 @@
         </socket-interceptor>
 
         <ssl enabled="false">
-            <factory-class-name>com.hazelcast.examples.MySslFactory</factory-class-name>
+            <factory-class-name>com.hazelcast.nio.ssl.BasicSSLContextFactory</factory-class-name>
             <properties>
                 <property name="protocol">TLS</property>
+
+                <property name="trustStore">/opt/hazelcast-client.truststore</property>
+                <property name="trustStorePassword">secret.123456</property>
+                <property name="trustStoreType">JKS</property>
+
+                <!-- Following properties are only needed when the mutual authentication is used. -->
+                <property name="keyStore">/opt/hazelcast-client.keystore</property>
+                <property name="keyStorePassword">keystorePassword123</property>
+                <property name="keyStoreType">JKS</property>
             </properties>
         </ssl>
         <aws enabled="true" connection-timeout-seconds="11">
@@ -105,6 +118,27 @@
             <tag-key>type</tag-key>
             <tag-value>hz-nodes</tag-value>
         </aws>
+        <gcp enabled="false">
+            <zones>us-east1-b,us-east1-c</zones>
+        </gcp>
+        <azure enabled="false">
+            <client-id>CLIENT_ID</client-id>
+            <client-secret>CLIENT_SECRET</client-secret>
+            <tenant-id>TENANT_ID</tenant-id>
+            <subscription-id>SUB_ID</subscription-id>
+            <cluster-id>HZLCAST001</cluster-id>
+            <group-name>GROUP-NAME</group-name>
+        </azure>
+        <kubernetes enabled="false">
+            <namespace>MY-KUBERNETES-NAMESPACE</namespace>
+            <service-name>MY-SERVICE-NAME</service-name>
+            <service-label-name>MY-SERVICE-LABEL-NAME</service-label-name>
+            <service-label-value>MY-SERVICE-LABEL-VALUE</service-label-value>
+        </kubernetes>
+        <eureka enabled="false">
+            <self-registration>true</self-registration>
+            <namespace>hazelcast</namespace>
+        </eureka>
         <icmp-ping enabled="false">
             <timeout-milliseconds>2000</timeout-milliseconds>
             <interval-milliseconds>3000</interval-milliseconds>
@@ -112,6 +146,19 @@
             <max-attempts>5</max-attempts>
             <echo-fail-fast-on-startup>false</echo-fail-fast-on-startup>
         </icmp-ping>
+        <hazelcast-cloud enabled="false">
+            <discovery-token>EXAMPLE_TOKEN</discovery-token>
+        </hazelcast-cloud>
+        <discovery-strategies>
+            <node-filter class="DummyFilterClass" />
+            <discovery-strategy class="DummyDiscoveryStrategy1" enabled="true">
+                <properties>
+                    <property name="key-string">foo</property>
+                    <property name="key-int">123</property>
+                    <property name="key-boolean">true</property>
+                </properties>
+            </discovery-strategy>
+        </discovery-strategies>
     </network>
 
     <executor-pool-size>40</executor-pool-size>
@@ -119,6 +166,11 @@
 
     <security>
         <credentials>com.hazelcast.security.UsernamePasswordCredentials</credentials>
+        <credentials-factory class-name="com.hazelcast.examples.MyCredentialsFactory">
+            <properties>
+                <property name="property">value</property>
+            </properties>
+        </credentials-factory>
     </security>
 
     <listeners>
@@ -217,7 +269,20 @@
         </query-cache>
     </query-caches>
 
-    <connection-strategy async-start="true" reconnect-mode="ASYNC"/>
+    <connection-strategy async-start="true" reconnect-mode="ASYNC">
+        <connection-retry enabled="true">
+            <initial-backoff-millis>2000</initial-backoff-millis>
+            <max-backoff-millis>60000</max-backoff-millis>
+            <multiplier>3</multiplier>
+            <fail-on-max-backoff>true</fail-on-max-backoff>
+            <jitter>0.5</jitter>
+        </connection-retry>
+    </connection-strategy>
+
+    <reliable-topic name="rel-topic">
+        <read-batch-size>100</read-batch-size>
+        <topic-overload-policy>DISCARD_NEWEST</topic-overload-policy>
+    </reliable-topic>
 
     <user-code-deployment enabled="true">
         <jarPaths>

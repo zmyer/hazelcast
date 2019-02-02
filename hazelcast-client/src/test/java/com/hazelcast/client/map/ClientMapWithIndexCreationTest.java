@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2008-2018, Hazelcast, Inc. All Rights Reserved.
+ * Copyright (c) 2008-2019, Hazelcast, Inc. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -73,9 +73,8 @@ public class ClientMapWithIndexCreationTest extends HazelcastTestSupport {
         clientConfig.setLoadBalancer(new StaticLB((Member) hz1.getLocalEndpoint()));
         clientConfig.getNetworkConfig().setSmartRouting(false);
         // the client only connects to member hz2.
-        clientConfig.getNetworkConfig().addAddress(
-                hz2.getCluster().getLocalMember().getAddress().getHost() + ":" +
-                        hz2.getCluster().getLocalMember().getAddress().getPort());
+        clientConfig.getNetworkConfig().addAddress(hz2.getCluster().getLocalMember().getAddress().getHost() + ":"
+                + hz2.getCluster().getLocalMember().getAddress().getPort());
 
         HazelcastInstance client = factory.newHazelcastClient(clientConfig);
 

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2008-2018, Hazelcast, Inc. All Rights Reserved.
+ * Copyright (c) 2008-2019, Hazelcast, Inc. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -34,28 +34,31 @@ import static com.hazelcast.util.ThreadUtil.assertRunningOnPartitionThread;
  * Evictor helper methods.
  */
 public class EvictorImpl implements Evictor {
-
     protected final EvictionChecker evictionChecker;
     protected final IPartitionService partitionService;
     protected final MapEvictionPolicy mapEvictionPolicy;
 
+    private final int batchSize;
+
     public EvictorImpl(MapEvictionPolicy mapEvictionPolicy,
-                       EvictionChecker evictionChecker, IPartitionService partitionService) {
+                       EvictionChecker evictionChecker, IPartitionService partitionService, int batchSize) {
         this.evictionChecker = checkNotNull(evictionChecker);
         this.partitionService = checkNotNull(partitionService);
         this.mapEvictionPolicy = checkNotNull(mapEvictionPolicy);
+        this.batchSize = batchSize;
     }
 
     @Override
     public void evict(RecordStore recordStore, Data excludedKey) {
         assertRunningOnPartitionThread();
 
-        EntryView evictableEntry = selectEvictableEntry(recordStore, excludedKey);
-        if (evictableEntry == null) {
-            return;
+        for (int i = 0; i < batchSize; i++) {
+            EntryView evictableEntry = selectEvictableEntry(recordStore, excludedKey);
+            if (evictableEntry == null) {
+                return;
+            }
+            evictEntry(recordStore, evictableEntry);
         }
-
-        evictEntry(recordStore, evictableEntry);
     }
 
     private EntryView selectEvictableEntry(RecordStore recordStore, Data excludedKey) {
@@ -95,7 +98,7 @@ public class EvictorImpl implements Evictor {
         recordStore.evict(key, backup);
 
         if (!backup) {
-            recordStore.doPostEvictionOperations(record, backup);
+            recordStore.doPostEvictionOperations(record);
         }
     }
 
@@ -126,4 +129,11 @@ public class EvictorImpl implements Evictor {
         return Clock.currentTimeMillis();
     }
 
+    @Override
+    public String toString() {
+        return "EvictorImpl{"
+                + ", mapEvictionPolicy=" + mapEvictionPolicy
+                + ", batchSize=" + batchSize
+                + '}';
+    }
 }

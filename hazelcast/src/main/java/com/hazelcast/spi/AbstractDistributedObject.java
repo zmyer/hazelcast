@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2008-2018, Hazelcast, Inc. All Rights Reserved.
+ * Copyright (c) 2008-2019, Hazelcast, Inc. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -173,53 +173,53 @@ public abstract class AbstractDistributedObject<S extends RemoteService> impleme
         return getClass().getName() + '{' + "service=" + getServiceName() + ", name=" + getName() + '}';
     }
 
-    boolean isClusterVersionLessThan(Version version) {
-        Version clusterVersion = nodeEngine.getClusterService().getClusterVersion();
+    protected boolean isClusterVersionLessThan(Version version) {
+        Version clusterVersion = getNodeEngine().getClusterService().getClusterVersion();
         return clusterVersion.isLessThan(version);
     }
 
-    boolean isClusterVersionUnknownOrLessThan(Version version) {
-        Version clusterVersion = nodeEngine.getClusterService().getClusterVersion();
+    protected boolean isClusterVersionUnknownOrLessThan(Version version) {
+        Version clusterVersion = getNodeEngine().getClusterService().getClusterVersion();
         return clusterVersion.isUnknownOrLessThan(version);
     }
 
-    boolean isClusterVersionLessOrEqual(Version version) {
-        Version clusterVersion = nodeEngine.getClusterService().getClusterVersion();
+    protected boolean isClusterVersionLessOrEqual(Version version) {
+        Version clusterVersion = getNodeEngine().getClusterService().getClusterVersion();
         return clusterVersion.isLessOrEqual(version);
     }
 
-    boolean isClusterVersionUnknownOrLessOrEqual(Version version) {
-        Version clusterVersion = nodeEngine.getClusterService().getClusterVersion();
+    protected boolean isClusterVersionUnknownOrLessOrEqual(Version version) {
+        Version clusterVersion = getNodeEngine().getClusterService().getClusterVersion();
         return clusterVersion.isUnknownOrLessOrEqual(version);
     }
 
-    boolean isClusterVersionGreaterThan(Version version) {
-        Version clusterVersion = nodeEngine.getClusterService().getClusterVersion();
+    protected boolean isClusterVersionGreaterThan(Version version) {
+        Version clusterVersion = getNodeEngine().getClusterService().getClusterVersion();
         return clusterVersion.isGreaterThan(version);
     }
 
-    boolean isClusterVersionUnknownOrGreaterThan(Version version) {
-        Version clusterVersion = nodeEngine.getClusterService().getClusterVersion();
+    protected boolean isClusterVersionUnknownOrGreaterThan(Version version) {
+        Version clusterVersion = getNodeEngine().getClusterService().getClusterVersion();
         return clusterVersion.isUnknownOrGreaterThan(version);
     }
 
-    boolean isClusterVersionGreaterOrEqual(Version version) {
-        Version clusterVersion = nodeEngine.getClusterService().getClusterVersion();
+    protected boolean isClusterVersionGreaterOrEqual(Version version) {
+        Version clusterVersion = getNodeEngine().getClusterService().getClusterVersion();
         return clusterVersion.isGreaterOrEqual(version);
     }
 
-    boolean isClusterVersionUnknownOrGreaterOrEqual(Version version) {
-        Version clusterVersion = nodeEngine.getClusterService().getClusterVersion();
+    protected boolean isClusterVersionUnknownOrGreaterOrEqual(Version version) {
+        Version clusterVersion = getNodeEngine().getClusterService().getClusterVersion();
         return clusterVersion.isUnknownOrGreaterOrEqual(version);
     }
 
-    boolean isClusterVersionEqualTo(Version version) {
-        Version clusterVersion = nodeEngine.getClusterService().getClusterVersion();
+    protected boolean isClusterVersionEqualTo(Version version) {
+        Version clusterVersion = getNodeEngine().getClusterService().getClusterVersion();
         return clusterVersion.isEqualTo(version);
     }
 
-    boolean isClusterVersionUnknown() {
-        Version clusterVersion = nodeEngine.getClusterService().getClusterVersion();
+    protected boolean isClusterVersionUnknown() {
+        Version clusterVersion = getNodeEngine().getClusterService().getClusterVersion();
         return clusterVersion.isUnknown();
     }
 }
