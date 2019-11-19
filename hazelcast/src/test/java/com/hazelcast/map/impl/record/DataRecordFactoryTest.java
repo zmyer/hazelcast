@@ -20,13 +20,13 @@ import com.hazelcast.config.CacheDeserializedValues;
 import com.hazelcast.config.MapConfig;
 import com.hazelcast.nio.serialization.Data;
 import com.hazelcast.test.HazelcastParallelClassRunner;
-import com.hazelcast.test.annotation.ParallelTest;
+import com.hazelcast.test.annotation.ParallelJVMTest;
 import com.hazelcast.test.annotation.QuickTest;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
 
 @RunWith(HazelcastParallelClassRunner.class)
-@Category({QuickTest.class, ParallelTest.class})
+@Category({QuickTest.class, ParallelJVMTest.class})
 public class DataRecordFactoryTest extends AbstractRecordFactoryTest<Data> {
 
     @Override
@@ -56,10 +56,5 @@ public class DataRecordFactoryTest extends AbstractRecordFactoryTest<Data> {
     @Override
     Class<?> getCachedRecordWithStatsClass() {
         return CachedDataRecordWithStats.class;
-    }
-
-    @Override
-    Object getValue(Data dataValue, Object objectValue) {
-        return dataValue;
     }
 }

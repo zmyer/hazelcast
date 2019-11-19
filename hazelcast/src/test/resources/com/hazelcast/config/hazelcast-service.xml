@@ -22,12 +22,9 @@
            http://www.hazelcast.com/schema/sample
            hazelcast-sample-service.xsd
            http://www.hazelcast.com/schema/config
-           http://www.hazelcast.com/schema/config/hazelcast-config-3.11.xsd">
+           http://www.hazelcast.com/schema/config/hazelcast-config-4.0.xsd">
 
-    <group>
-        <name>dev</name>
-        <password>dev-pass</password>
-    </group>
+    <cluster-name>dev</cluster-name>
     <network>
         <port auto-increment="true">5701</port>
         <join>
@@ -51,6 +48,9 @@
                     <s:string-prop>prop1</s:string-prop>
                     <s:int-prop>123</s:int-prop>
                     <s:bool-prop>true</s:bool-prop>
+                    <s:complex-prop an-attribute="attr-value">
+                        <s:nested-prop>nested-prop-value</s:nested-prop>
+                    </s:complex-prop>
                 </s:my-service>
             </configuration>
         </service>

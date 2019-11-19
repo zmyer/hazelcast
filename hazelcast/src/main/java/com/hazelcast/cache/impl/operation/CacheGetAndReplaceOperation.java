@@ -20,7 +20,7 @@ import com.hazelcast.cache.impl.CacheDataSerializerHook;
 import com.hazelcast.nio.ObjectDataInput;
 import com.hazelcast.nio.ObjectDataOutput;
 import com.hazelcast.nio.serialization.Data;
-import com.hazelcast.spi.Operation;
+import com.hazelcast.spi.impl.operationservice.Operation;
 
 import javax.cache.expiry.ExpiryPolicy;
 import java.io.IOException;
@@ -29,7 +29,8 @@ import java.io.IOException;
  * Cache GetAndReplace Operation.
  * <p>Operation to call the cache record store method.</p>
  *
- * @see com.hazelcast.cache.impl.ICacheRecordStore#getAndReplace(Data, Object, javax.cache.expiry.ExpiryPolicy, String, int)
+ * @see com.hazelcast.cache.impl.ICacheRecordStore#getAndReplace(Data, Object, javax.cache.expiry.ExpiryPolicy,
+ * java.util.UUID, int)
  */
 public class CacheGetAndReplaceOperation extends MutatingCacheOperation {
 
@@ -90,7 +91,7 @@ public class CacheGetAndReplaceOperation extends MutatingCacheOperation {
     }
 
     @Override
-    public int getId() {
+    public int getClassId() {
         return CacheDataSerializerHook.GET_AND_REPLACE;
     }
 

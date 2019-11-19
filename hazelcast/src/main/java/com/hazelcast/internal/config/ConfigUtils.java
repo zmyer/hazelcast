@@ -18,18 +18,19 @@ package com.hazelcast.internal.config;
 
 import com.hazelcast.config.Config;
 import com.hazelcast.config.ConfigPatternMatcher;
-import com.hazelcast.config.ConfigurationException;
+import com.hazelcast.config.InvalidConfigurationException;
 import com.hazelcast.config.NamedConfig;
 import com.hazelcast.logging.ILogger;
 import com.hazelcast.logging.Logger;
 import com.hazelcast.partition.strategy.StringPartitioningStrategy;
-import com.hazelcast.util.function.BiConsumer;
 
 import java.lang.reflect.Constructor;
 import java.lang.reflect.InvocationTargetException;
 import java.util.Map;
+import java.util.function.BiConsumer;
 
 import static com.hazelcast.partition.strategy.StringPartitioningStrategy.getBaseName;
+import static java.lang.String.format;
 
 /**
  * Utility class to access configuration.
@@ -85,10 +86,10 @@ public final class ConfigUtils {
      *
      * @param name name of the config
      * @return the configuration
-     * @throws ConfigurationException if ambiguous configurations are found
+     * @throws com.hazelcast.config.InvalidConfigurationException if ambiguous configurations are found
      * @see StringPartitioningStrategy#getBaseName(java.lang.String)
      * @see Config#setConfigPatternMatcher(ConfigPatternMatcher)
-     * @see Config##getConfigPatternMatcher()
+     * @see Config#getConfigPatternMatcher()
      */
     public static <T extends NamedConfig> T getConfig(ConfigPatternMatcher configPatternMatcher,
                                                       Map<String, T> configs, String name,
@@ -142,6 +143,12 @@ public final class ConfigUtils {
             assert false;
             return null;
         }
+    }
+
+    public static InvalidConfigurationException createAmbigiousConfigrationException(String itemName, String candidate,
+                                                                                     String duplicate) {
+        return new InvalidConfigurationException(format("Found ambiguous configurations for item\"%s\": \"%s\" vs. \"%s\"%n"
+                + "Please specify your configuration.", itemName, candidate, duplicate));
     }
 
 }

@@ -23,7 +23,7 @@ import com.hazelcast.multimap.impl.MultiMapValue;
 import com.hazelcast.nio.ObjectDataInput;
 import com.hazelcast.nio.ObjectDataOutput;
 import com.hazelcast.nio.serialization.Data;
-import com.hazelcast.spi.BackupOperation;
+import com.hazelcast.spi.impl.operationservice.BackupOperation;
 import com.hazelcast.spi.merge.SplitBrainMergePolicy;
 
 import java.io.IOException;
@@ -31,7 +31,7 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Map;
 
-import static com.hazelcast.util.MapUtil.createHashMap;
+import static com.hazelcast.internal.util.MapUtil.createHashMap;
 
 /**
  * Creates backups for merged {@link MultiMapRecord} after split-brain healing with a {@link SplitBrainMergePolicy}.
@@ -102,7 +102,7 @@ public class MergeBackupOperation extends AbstractMultiMapOperation implements B
     }
 
     @Override
-    public int getId() {
+    public int getClassId() {
         return MultiMapDataSerializerHook.MERGE_BACKUP_OPERATION;
     }
 }

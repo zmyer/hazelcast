@@ -52,11 +52,11 @@ public class MapEntriesWithCursor extends AbstractCursor<Map.Entry<Data, Data>> 
     Entry<Data, Data> readElement(ObjectDataInput in) throws IOException {
         final Data key = in.readData();
         final Data value = in.readData();
-        return new AbstractMap.SimpleEntry<Data, Data>(key, value);
+        return new AbstractMap.SimpleEntry<>(key, value);
     }
 
     @Override
-    public int getId() {
+    public int getClassId() {
         return MapDataSerializerHook.ENTRIES_WITH_CURSOR;
     }
 }

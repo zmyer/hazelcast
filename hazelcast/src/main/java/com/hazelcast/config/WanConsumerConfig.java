@@ -16,11 +16,10 @@
 
 package com.hazelcast.config;
 
-import com.hazelcast.internal.cluster.Versions;
+import com.hazelcast.internal.config.ConfigDataSerializerHook;
 import com.hazelcast.nio.ObjectDataInput;
 import com.hazelcast.nio.ObjectDataOutput;
 import com.hazelcast.nio.serialization.IdentifiedDataSerializable;
-import com.hazelcast.nio.serialization.impl.Versioned;
 
 import java.io.IOException;
 import java.util.HashMap;
@@ -38,9 +37,9 @@ import java.util.Map;
  * NOTE: EE only
  *
  * @see WanReplicationConfig#setWanConsumerConfig(WanConsumerConfig)
- * @see WanPublisherConfig#setClassName(String)
+ * @see CustomWanPublisherConfig#setClassName(String)
  */
-public class WanConsumerConfig implements IdentifiedDataSerializable, Versioned {
+public class WanConsumerConfig implements IdentifiedDataSerializable {
 
     /**
      * @see #isPersistWanReplicatedData
@@ -73,7 +72,7 @@ public class WanConsumerConfig implements IdentifiedDataSerializable, Versioned 
 
     /**
      * Returns the fully qualified class name of the class implementing
-     * WanReplicationConsumer.
+     * {@link com.hazelcast.wan.WanReplicationConsumer}.
      *
      * @return fully qualified class name
      */
@@ -83,7 +82,7 @@ public class WanConsumerConfig implements IdentifiedDataSerializable, Versioned 
 
     /**
      * Sets the fully qualified class name of the class implementing
-     * WanReplicationConsumer.
+     * {@link com.hazelcast.wan.WanReplicationConsumer}.
      * The class name may be {@code null} in which case the implementation or
      * the default processing logic for incoming WAN events will be used.
      *
@@ -97,7 +96,8 @@ public class WanConsumerConfig implements IdentifiedDataSerializable, Versioned 
     }
 
     /**
-     * Returns the implementation implementing WanReplicationConsumer.
+     * Returns the implementation implementing
+     * {@link com.hazelcast.wan.WanReplicationConsumer}.
      *
      * @return the implementation for this WAN consumer
      */
@@ -107,11 +107,11 @@ public class WanConsumerConfig implements IdentifiedDataSerializable, Versioned 
 
     /**
      * Sets the implementation for this WAN consumer. The object must implement
-     * WanReplicationConsumer.
+     * {@link com.hazelcast.wan.WanReplicationConsumer}.
      * The implementation may be {@code null} in which case the class name or
      * the default processing logic for incoming WAN events will be used.
      *
-     * @param implementation the object implementing WanReplicationConsumer
+     * @param implementation the object implementing {@link com.hazelcast.wan.WanReplicationConsumer}
      * @return this config
      * @see #setClassName(String)
      */
@@ -157,7 +157,7 @@ public class WanConsumerConfig implements IdentifiedDataSerializable, Versioned 
     }
 
     @Override
-    public int getId() {
+    public int getClassId() {
         return ConfigDataSerializerHook.WAN_CONSUMER_CONFIG;
     }
 
@@ -171,26 +171,18 @@ public class WanConsumerConfig implements IdentifiedDataSerializable, Versioned 
         }
         out.writeUTF(className);
         out.writeObject(implementation);
-
-        // RU_COMPAT_3_10
-        if (out.getVersion().isGreaterOrEqual(Versions.V3_11)) {
-            out.writeBoolean(persistWanReplicatedData);
-        }
+        out.writeBoolean(persistWanReplicatedData);
     }
 
     @Override
     public void readData(ObjectDataInput in) throws IOException {
         int size = in.readInt();
         for (int i = 0; i < size; i++) {
-            properties.put(in.readUTF(), (Comparable) in.readObject());
+            properties.put(in.readUTF(), in.readObject());
         }
         className = in.readUTF();
         implementation = in.readObject();
-
-        // RU_COMPAT_3_10
-        if (in.getVersion().isGreaterOrEqual(Versions.V3_11)) {
-            persistWanReplicatedData = in.readBoolean();
-        }
+        persistWanReplicatedData = in.readBoolean();
     }
 
     @Override

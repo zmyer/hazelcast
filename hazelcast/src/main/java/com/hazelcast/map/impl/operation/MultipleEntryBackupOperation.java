@@ -16,18 +16,18 @@
 
 package com.hazelcast.map.impl.operation;
 
-import com.hazelcast.map.EntryBackupProcessor;
+import com.hazelcast.map.EntryProcessor;
 import com.hazelcast.map.impl.MapDataSerializerHook;
 import com.hazelcast.nio.ObjectDataInput;
 import com.hazelcast.nio.ObjectDataOutput;
 import com.hazelcast.nio.serialization.Data;
-import com.hazelcast.spi.BackupOperation;
+import com.hazelcast.spi.impl.operationservice.BackupOperation;
 
 import java.io.IOException;
 import java.util.Set;
 
 import static com.hazelcast.map.impl.operation.EntryOperator.operator;
-import static com.hazelcast.util.SetUtil.createLinkedHashSet;
+import static com.hazelcast.internal.util.SetUtil.createLinkedHashSet;
 
 public class MultipleEntryBackupOperation extends AbstractMultipleEntryBackupOperation implements BackupOperation {
 
@@ -36,13 +36,13 @@ public class MultipleEntryBackupOperation extends AbstractMultipleEntryBackupOpe
     public MultipleEntryBackupOperation() {
     }
 
-    public MultipleEntryBackupOperation(String name, Set<Data> keys, EntryBackupProcessor backupProcessor) {
+    public MultipleEntryBackupOperation(String name, Set<Data> keys, EntryProcessor backupProcessor) {
         super(name, backupProcessor);
         this.keys = keys;
     }
 
     @Override
-    public void run() throws Exception {
+    protected void runInternal() {
         EntryOperator operator = operator(this, backupProcessor, getPredicate());
         for (Data key : keys) {
             operator.operateOnKey(key).doPostOperateOps();
@@ -77,7 +77,7 @@ public class MultipleEntryBackupOperation extends AbstractMultipleEntryBackupOpe
     }
 
     @Override
-    public int getId() {
+    public int getClassId() {
         return MapDataSerializerHook.MULTIPLE_ENTRY_BACKUP;
     }
 }

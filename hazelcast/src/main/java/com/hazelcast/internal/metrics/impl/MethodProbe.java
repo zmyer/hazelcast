@@ -18,6 +18,7 @@ package com.hazelcast.internal.metrics.impl;
 
 import com.hazelcast.internal.metrics.DoubleProbeFunction;
 import com.hazelcast.internal.metrics.LongProbeFunction;
+import com.hazelcast.internal.metrics.MetricDescriptor;
 import com.hazelcast.internal.metrics.Probe;
 import com.hazelcast.internal.metrics.ProbeFunction;
 import com.hazelcast.internal.util.counters.Counter;
@@ -37,42 +38,51 @@ import static com.hazelcast.internal.metrics.impl.ProbeUtils.TYPE_PRIMITIVE_LONG
 import static com.hazelcast.internal.metrics.impl.ProbeUtils.TYPE_SEMAPHORE;
 import static com.hazelcast.internal.metrics.impl.ProbeUtils.getType;
 import static com.hazelcast.internal.metrics.impl.ProbeUtils.isDouble;
-import static com.hazelcast.util.StringUtil.getterIntoProperty;
+import static com.hazelcast.internal.util.StringUtil.getterIntoProperty;
 import static java.lang.String.format;
 
 /**
  * A MethodProbe is a {@link ProbeFunction} that invokes a method that is annotated with {@link Probe}.
  */
-abstract class MethodProbe implements ProbeFunction {
+abstract class MethodProbe implements ProbeFunction, ProbeAware {
 
     private static final Object[] EMPTY_ARGS = new Object[0];
 
     final Method method;
-    final Probe probe;
+    final CachedProbe probe;
     final int type;
+    final String methodOrProbeName;
 
     MethodProbe(Method method, Probe probe, int type) {
         this.method = method;
-        this.probe = probe;
+        this.probe = new CachedProbe(probe);
         this.type = type;
+        this.methodOrProbeName = probe.name().length() != 0
+                ? probe.name()
+                : getterIntoProperty(method.getName());
         method.setAccessible(true);
+
+    }
+
+    @Override
+    public CachedProbe getProbe() {
+        return probe;
     }
 
     void register(MetricsRegistryImpl metricsRegistry, Object source, String namePrefix) {
-        String name = namePrefix + '.' + getProbeOrMethodName();
-        metricsRegistry.registerInternal(source, name, probe.level(), this);
+        MetricDescriptor descriptor = metricsRegistry
+                .newMetricDescriptor()
+                .withPrefix(namePrefix)
+                .withMetric(getProbeOrMethodName());
+        metricsRegistry.registerInternal(source, descriptor, probe.level(), this);
     }
 
-    void register(ProbeBuilderImpl builder, Object source) {
-        builder
-                .withTag("unit", probe.unit().name().toLowerCase())
-                .register(source, getProbeOrMethodName(), probe.level(), this);
+    void register(MetricsRegistryImpl metricsRegistry, MetricDescriptor descriptor, Object source) {
+        metricsRegistry.registerStaticProbe(source, descriptor, getProbeOrMethodName(), probe.level(), probe.unit(), this);
     }
 
-    private String getProbeOrMethodName() {
-        return probe.name().length() != 0
-                ? probe.name()
-                : getterIntoProperty(method.getName());
+    String getProbeOrMethodName() {
+        return methodOrProbeName;
     }
 
     static <S> MethodProbe createMethodProbe(Method method, Probe probe) {
@@ -96,7 +106,7 @@ abstract class MethodProbe implements ProbeFunction {
 
     static class LongMethodProbe<S> extends MethodProbe implements LongProbeFunction<S> {
 
-        public LongMethodProbe(Method method, Probe probe, int type) {
+        LongMethodProbe(Method method, Probe probe, int type) {
             super(method, probe, type);
         }
 
@@ -128,7 +138,7 @@ abstract class MethodProbe implements ProbeFunction {
 
     static class DoubleMethodProbe<S> extends MethodProbe implements DoubleProbeFunction<S> {
 
-        public DoubleMethodProbe(Method method, Probe probe, int type) {
+        DoubleMethodProbe(Method method, Probe probe, int type) {
             super(method, probe, type);
         }
 

@@ -16,14 +16,14 @@
 
 package com.hazelcast.internal.diagnostics;
 
-import com.hazelcast.instance.Node;
-import com.hazelcast.instance.NodeState;
-import com.hazelcast.instance.OutOfMemoryErrorDispatcher;
+import com.hazelcast.instance.impl.Node;
+import com.hazelcast.instance.impl.NodeState;
+import com.hazelcast.instance.impl.OutOfMemoryErrorDispatcher;
 import com.hazelcast.internal.metrics.DoubleGauge;
 import com.hazelcast.internal.metrics.LongGauge;
 import com.hazelcast.internal.metrics.MetricsRegistry;
 import com.hazelcast.logging.ILogger;
-import com.hazelcast.memory.MemoryStats;
+import com.hazelcast.internal.memory.MemoryStats;
 import com.hazelcast.spi.properties.GroupProperty;
 
 import static com.hazelcast.internal.diagnostics.HealthMonitorLevel.OFF;
@@ -31,7 +31,7 @@ import static com.hazelcast.internal.diagnostics.HealthMonitorLevel.valueOf;
 import static com.hazelcast.spi.properties.GroupProperty.HEALTH_MONITORING_DELAY_SECONDS;
 import static com.hazelcast.spi.properties.GroupProperty.HEALTH_MONITORING_THRESHOLD_CPU_PERCENTAGE;
 import static com.hazelcast.spi.properties.GroupProperty.HEALTH_MONITORING_THRESHOLD_MEMORY_PERCENTAGE;
-import static com.hazelcast.util.ThreadUtil.createThreadName;
+import static com.hazelcast.internal.util.ThreadUtil.createThreadName;
 import static java.lang.String.format;
 import static java.lang.Thread.currentThread;
 import static java.util.concurrent.TimeUnit.SECONDS;
@@ -44,9 +44,9 @@ import static java.util.concurrent.TimeUnit.SECONDS;
  * <ul>
  * <li>{@link GroupProperty#HEALTH_MONITORING_LEVEL} This property can be one of the following:
  * <ul>
- * <li>{@link HealthMonitorLevel#NOISY}  => does not check threshold, always prints</li>
- * <li>{@link HealthMonitorLevel#SILENT} => prints only if metrics are above threshold (default)</li>
- * <li>{@link HealthMonitorLevel#OFF}    => does not print anything</li>
+ * <li>{@link HealthMonitorLevel#NOISY}  =&gt; does not check threshold, always prints</li>
+ * <li>{@link HealthMonitorLevel#SILENT} =&gt; prints only if metrics are above threshold (default)</li>
+ * <li>{@link HealthMonitorLevel#OFF}    =&gt; does not print anything</li>
  * </ul>
  * </li>
  * <li>{@link GroupProperty#HEALTH_MONITORING_DELAY_SECONDS}

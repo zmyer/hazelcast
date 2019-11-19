@@ -17,36 +17,42 @@
 package com.hazelcast.internal.ascii.rest;
 
 import com.hazelcast.cluster.ClusterState;
-import com.hazelcast.config.GroupConfig;
 import com.hazelcast.config.WanReplicationConfig;
-import com.hazelcast.instance.Node;
+import com.hazelcast.cp.CPSubsystem;
+import com.hazelcast.cp.CPSubsystemManagementService;
+import com.hazelcast.instance.impl.Node;
 import com.hazelcast.internal.ascii.TextCommandService;
 import com.hazelcast.internal.cluster.ClusterService;
 import com.hazelcast.internal.json.Json;
 import com.hazelcast.internal.management.ManagementCenterService;
 import com.hazelcast.internal.management.dto.WanReplicationConfigDTO;
+import com.hazelcast.internal.management.operation.SetLicenseOperation;
+import com.hazelcast.internal.util.JsonUtil;
+import com.hazelcast.internal.util.StringUtil;
 import com.hazelcast.logging.ILogger;
 import com.hazelcast.security.SecurityContext;
 import com.hazelcast.security.UsernamePasswordCredentials;
-import com.hazelcast.spi.properties.GroupProperty;
-import com.hazelcast.spi.properties.HazelcastProperties;
-import com.hazelcast.util.JsonUtil;
-import com.hazelcast.util.StringUtil;
 import com.hazelcast.version.Version;
-import com.hazelcast.wan.AddWanConfigResult;
-import com.hazelcast.wan.WanReplicationService;
-
-import java.io.UnsupportedEncodingException;
-import java.net.URLDecoder;
+import com.hazelcast.wan.WanPublisherState;
+import com.hazelcast.wan.impl.AddWanConfigResult;
+import com.hazelcast.wan.impl.WanReplicationService;
 
 import javax.security.auth.login.LoginContext;
 import javax.security.auth.login.LoginException;
+import java.io.UnsupportedEncodingException;
+import java.net.URLDecoder;
+import java.util.UUID;
+import java.util.concurrent.ExecutionException;
 
-import static com.hazelcast.util.StringUtil.bytesToString;
-import static com.hazelcast.util.StringUtil.lowerCaseInternal;
-import static com.hazelcast.util.StringUtil.stringToBytes;
-import static com.hazelcast.util.StringUtil.upperCaseInternal;
+import static com.hazelcast.cp.CPGroup.METADATA_CP_GROUP_NAME;
+import static com.hazelcast.internal.util.ExceptionUtil.peel;
+import static com.hazelcast.internal.util.InvocationUtil.invokeOnStableClusterSerial;
+import static com.hazelcast.internal.util.StringUtil.bytesToString;
+import static com.hazelcast.internal.util.StringUtil.lowerCaseInternal;
+import static com.hazelcast.internal.util.StringUtil.stringToBytes;
+import static com.hazelcast.internal.util.StringUtil.upperCaseInternal;
 
+@SuppressWarnings({"checkstyle:cyclomaticcomplexity", "checkstyle:methodcount", "checkstyle:methodlength"})
 public class HttpPostCommandProcessor extends HttpCommandProcessor<HttpPostCommand> {
     private static final byte[] QUEUE_SIMPLE_VALUE_CONTENT_TYPE = stringToBytes("text/plain");
     private final ILogger logger;
@@ -58,8 +64,9 @@ public class HttpPostCommandProcessor extends HttpCommandProcessor<HttpPostComma
     }
 
     @Override
-    @SuppressWarnings({"checkstyle:cyclomaticcomplexity"})
+    @SuppressWarnings("checkstyle:npathcomplexity")
     public void handle(HttpPostCommand command) {
+        boolean sendResponse = true;
         try {
             String uri = command.getURI();
             if (uri.startsWith(URI_MAPS)) {
@@ -107,6 +114,17 @@ public class HttpPostCommandProcessor extends HttpCommandProcessor<HttpPostComma
                 handleWanConsistencyCheck(command);
             } else if (uri.startsWith(URI_UPDATE_PERMISSIONS)) {
                 handleUpdatePermissions(command);
+            } else if (uri.startsWith(URI_CP_MEMBERS_URL)) {
+                handleCPMember(command);
+                sendResponse = false;
+            } else if (uri.startsWith(URI_CP_GROUPS_URL)) {
+                handleCPGroup(command);
+                sendResponse = false;
+            } else if (uri.startsWith(URI_RESET_CP_SUBSYSTEM_URL)) {
+                handleResetCPSubsystem(command);
+                sendResponse = false;
+            } else if (uri.startsWith(URI_LICENSE_INFO)) {
+                handleSetLicense(command);
             } else {
                 command.send404();
             }
@@ -115,10 +133,12 @@ public class HttpPostCommandProcessor extends HttpCommandProcessor<HttpPostComma
         } catch (Exception e) {
             command.send500();
         }
-        textCommandService.sendResponse(command);
+        if (sendResponse) {
+            textCommandService.sendResponse(command);
+        }
     }
 
-    private void handleChangeClusterState(HttpPostCommand command) throws UnsupportedEncodingException {
+    private void handleChangeClusterState(HttpPostCommand command) {
         byte[] data = command.getData();
         String[] strList = bytesToString(data).split("&");
         String res;
@@ -144,7 +164,7 @@ public class HttpPostCommandProcessor extends HttpCommandProcessor<HttpPostComma
         command.setResponse(HttpCommand.CONTENT_TYPE_JSON, stringToBytes(res));
     }
 
-    private void handleGetClusterState(HttpPostCommand command) throws UnsupportedEncodingException {
+    private void handleGetClusterState(HttpPostCommand command) {
         String res;
         try {
             Node node = textCommandService.getNode();
@@ -184,7 +204,7 @@ public class HttpPostCommandProcessor extends HttpCommandProcessor<HttpPostComma
         command.setResponse(HttpCommand.CONTENT_TYPE_JSON, stringToBytes(res));
     }
 
-    private void handleForceStart(HttpPostCommand command) throws UnsupportedEncodingException {
+    private void handleForceStart(HttpPostCommand command) {
         String res;
         try {
             Node node = textCommandService.getNode();
@@ -201,7 +221,7 @@ public class HttpPostCommandProcessor extends HttpCommandProcessor<HttpPostComma
         sendResponse(command, res);
     }
 
-    private void handlePartialStart(HttpPostCommand command) throws UnsupportedEncodingException {
+    private void handlePartialStart(HttpPostCommand command) {
         String res;
         try {
             Node node = textCommandService.getNode();
@@ -218,7 +238,7 @@ public class HttpPostCommandProcessor extends HttpCommandProcessor<HttpPostComma
         sendResponse(command, res);
     }
 
-    private void handleHotRestartBackup(HttpPostCommand command) throws UnsupportedEncodingException {
+    private void handleHotRestartBackup(HttpPostCommand command) {
         String res;
         try {
             if (checkCredentials(command)) {
@@ -234,7 +254,7 @@ public class HttpPostCommandProcessor extends HttpCommandProcessor<HttpPostComma
         sendResponse(command, res);
     }
 
-    private void handleHotRestartBackupInterrupt(HttpPostCommand command) throws UnsupportedEncodingException {
+    private void handleHotRestartBackupInterrupt(HttpPostCommand command) {
         String res;
         try {
             if (checkCredentials(command)) {
@@ -250,7 +270,7 @@ public class HttpPostCommandProcessor extends HttpCommandProcessor<HttpPostComma
         sendResponse(command, res);
     }
 
-    private void handleClusterShutdown(HttpPostCommand command) throws UnsupportedEncodingException {
+    private void handleClusterShutdown(HttpPostCommand command) {
         String res;
         try {
             Node node = textCommandService.getNode();
@@ -270,7 +290,7 @@ public class HttpPostCommandProcessor extends HttpCommandProcessor<HttpPostComma
         sendResponse(command, res);
     }
 
-    private void handleListNodes(HttpPostCommand command) throws UnsupportedEncodingException {
+    private void handleListNodes(HttpPostCommand command) {
         String res;
         try {
             Node node = textCommandService.getNode();
@@ -292,7 +312,7 @@ public class HttpPostCommandProcessor extends HttpCommandProcessor<HttpPostComma
         sendResponse(command, res);
     }
 
-    private void handleShutdownNode(HttpPostCommand command) throws UnsupportedEncodingException {
+    private void handleShutdownNode(HttpPostCommand command) {
         String res;
         try {
             Node node = textCommandService.getNode();
@@ -317,7 +337,7 @@ public class HttpPostCommandProcessor extends HttpCommandProcessor<HttpPostComma
         if (uri.endsWith("/")) {
             suffix = uri.substring(URI_QUEUES.length(), uri.length() - 1);
         } else {
-            suffix = uri.substring(URI_QUEUES.length(), uri.length());
+            suffix = uri.substring(URI_QUEUES.length());
         }
         int indexSlash = suffix.lastIndexOf('/');
 
@@ -326,7 +346,7 @@ public class HttpPostCommandProcessor extends HttpCommandProcessor<HttpPostComma
             queueName = suffix;
         } else {
             queueName = suffix.substring(0, indexSlash);
-            simpleValue = suffix.substring(indexSlash + 1, suffix.length());
+            simpleValue = suffix.substring(indexSlash + 1);
         }
         byte[] data;
         byte[] contentType;
@@ -346,12 +366,6 @@ public class HttpPostCommandProcessor extends HttpCommandProcessor<HttpPostComma
     }
 
     private void handleManagementCenterUrlChange(HttpPostCommand command) throws UnsupportedEncodingException {
-        HazelcastProperties properties = textCommandService.getNode().getProperties();
-        if (! properties.getBoolean(GroupProperty.MC_URL_CHANGE_ENABLED)) {
-            logger.warning("Hazelcast property " + GroupProperty.MC_URL_CHANGE_ENABLED.getName() + " is deprecated.");
-            command.setResponse(HttpCommand.RES_503);
-            return;
-        }
         byte[] res;
         String[] strList = bytesToString(command.getData()).split("&");
         if (authenticate(command, strList[0], strList.length > 1 ? strList[1] : null)) {
@@ -395,8 +409,9 @@ public class HttpPostCommandProcessor extends HttpCommandProcessor<HttpPostComma
         final String publisherId = params[1];
         final String mapName = params[2];
         try {
-            textCommandService.getNode().getNodeEngine().getWanReplicationService().syncMap(wanRepName, publisherId, mapName);
-            res = response(ResponseType.SUCCESS, "message", "Sync initiated");
+            UUID uuid = textCommandService.getNode().getNodeEngine().getWanReplicationService()
+                                          .syncMap(wanRepName, publisherId, mapName);
+            res = response(ResponseType.SUCCESS, "message", "Sync initiated", "uuid", uuid.toString());
         } catch (Exception ex) {
             logger.warning("Error occurred while syncing map", ex);
             res = exceptionResponse(ex);
@@ -419,8 +434,9 @@ public class HttpPostCommandProcessor extends HttpCommandProcessor<HttpPostComma
         final String wanRepName = params[0];
         final String publisherId = params[1];
         try {
-            textCommandService.getNode().getNodeEngine().getWanReplicationService().syncAllMaps(wanRepName, publisherId);
-            res = response(ResponseType.SUCCESS, "message", "Sync initiated");
+            UUID uuid = textCommandService.getNode().getNodeEngine().getWanReplicationService()
+                                          .syncAllMaps(wanRepName, publisherId);
+            res = response(ResponseType.SUCCESS, "message", "Sync initiated", "uuid", uuid.toString());
         } catch (Exception ex) {
             logger.warning("Error occurred while syncing maps", ex);
             res = exceptionResponse(ex);
@@ -445,8 +461,8 @@ public class HttpPostCommandProcessor extends HttpCommandProcessor<HttpPostComma
         WanReplicationService service = textCommandService.getNode().getNodeEngine().getWanReplicationService();
 
         try {
-            service.consistencyCheck(wanReplicationName, publisherId, mapName);
-            res = response(ResponseType.SUCCESS, "message", "Consistency check initiated");
+            UUID uuid = service.consistencyCheck(wanReplicationName, publisherId, mapName);
+            res = response(ResponseType.SUCCESS, "message", "Consistency check initiated", "uuid", uuid.toString());
         } catch (Exception ex) {
             logger.warning("Error occurred while initiating consistency check", ex);
             res = exceptionResponse(ex);
@@ -468,7 +484,7 @@ public class HttpPostCommandProcessor extends HttpCommandProcessor<HttpPostComma
         final String wanRepName = params[0];
         final String publisherId = params[1];
         try {
-            textCommandService.getNode().getNodeEngine().getWanReplicationService().clearQueues(wanRepName, publisherId);
+            textCommandService.getNode().getNodeEngine().getWanReplicationService().removeWanEvents(wanRepName, publisherId);
             res = response(ResponseType.SUCCESS, "message", "WAN replication queues are cleared.");
         } catch (Exception ex) {
             logger.warning("Error occurred while clearing queues", ex);
@@ -515,7 +531,7 @@ public class HttpPostCommandProcessor extends HttpCommandProcessor<HttpPostComma
      * @param command the HTTP command
      * @throws UnsupportedEncodingException If character encoding needs to be consulted, but
      *                                      named character encoding is not supported
-     * @see com.hazelcast.config.WanPublisherState#PAUSED
+     * @see WanPublisherState#PAUSED
      */
     private void handleWanPausePublisher(HttpPostCommand command) throws UnsupportedEncodingException {
         String res;
@@ -542,7 +558,7 @@ public class HttpPostCommandProcessor extends HttpCommandProcessor<HttpPostComma
      * @param command the HTTP command
      * @throws UnsupportedEncodingException If character encoding needs to be consulted, but
      *                                      named character encoding is not supported
-     * @see com.hazelcast.config.WanPublisherState#STOPPED
+     * @see WanPublisherState#STOPPED
      */
     private void handleWanStopPublisher(HttpPostCommand command) throws UnsupportedEncodingException {
         String res;
@@ -569,7 +585,7 @@ public class HttpPostCommandProcessor extends HttpCommandProcessor<HttpPostComma
      * @param command the HTTP command
      * @throws UnsupportedEncodingException If character encoding needs to be consulted, but
      *                                      named character encoding is not supported
-     * @see com.hazelcast.config.WanPublisherState#REPLICATING
+     * @see WanPublisherState#REPLICATING
      */
     private void handleWanResumePublisher(HttpPostCommand command) throws UnsupportedEncodingException {
         String res;
@@ -591,14 +607,174 @@ public class HttpPostCommandProcessor extends HttpCommandProcessor<HttpPostComma
     private void handleUpdatePermissions(HttpPostCommand command) {
         String res = response(ResponseType.FORBIDDEN);
         command.setResponse(HttpCommand.CONTENT_TYPE_JSON, stringToBytes(res));
-        return;
     }
 
-    private static String exceptionResponse(Throwable throwable) {
+    private void handleCPMember(final HttpPostCommand command) throws UnsupportedEncodingException {
+        if (!checkCredentials(command)) {
+            command.send403();
+            textCommandService.sendResponse(command);
+            return;
+        }
+
+        String uri = command.getURI();
+        if (uri.endsWith(URI_REMOVE_SUFFIX) || uri.endsWith(URI_REMOVE_SUFFIX + "/")) {
+            handleRemoveCPMember(command);
+        } else {
+            handlePromoteToCPMember(command);
+        }
+    }
+
+    private void handlePromoteToCPMember(final HttpPostCommand command) {
+        if (getCpSubsystem().getLocalCPMember() != null) {
+            command.send200();
+            textCommandService.sendResponse(command);
+            return;
+        }
+
+        getCpSubsystemManagementService().promoteToCPMember()
+                                         .whenCompleteAsync((response, t) -> {
+                                             if (t == null) {
+                                                 command.send200();
+                                                 textCommandService.sendResponse(command);
+                                             } else {
+                                                 logger.warning("Error while promoting CP member.", t);
+                                                 command.send500();
+                                                 textCommandService.sendResponse(command);
+                                             }
+                                         });
+    }
+
+    private void handleRemoveCPMember(final HttpPostCommand command) {
+        String uri = command.getURI();
+        String prefix = URI_CP_MEMBERS_URL + "/";
+        final UUID cpMemberUid = UUID.fromString(uri.substring(prefix.length(), uri.indexOf('/', prefix.length())).trim());
+        getCpSubsystem().getCPSubsystemManagementService()
+                        .removeCPMember(cpMemberUid)
+                        .whenCompleteAsync((respone, t) -> {
+                            if (t == null) {
+                                command.send200();
+                                textCommandService.sendResponse(command);
+                            } else {
+                                logger.warning("Error while removing CP member " + cpMemberUid, t);
+                                if (peel(t) instanceof IllegalArgumentException) {
+                                    command.send400();
+                                } else {
+                                    command.send500();
+                                }
+
+                                textCommandService.sendResponse(command);
+                            }
+                        });
+    }
+
+    private void handleCPGroup(HttpPostCommand command) throws UnsupportedEncodingException {
+        if (!checkCredentials(command)) {
+            command.send403();
+            textCommandService.sendResponse(command);
+            return;
+        }
+
+        String uri = command.getURI();
+        if (!uri.endsWith(URI_REMOVE_SUFFIX) && !uri.endsWith(URI_REMOVE_SUFFIX + "/")) {
+            command.send404();
+            textCommandService.sendResponse(command);
+            return;
+        }
+
+        if (uri.contains(URI_CP_SESSIONS_SUFFIX)) {
+            handleForceCloseCPSession(command);
+        } else {
+            handleForceDestroyCPGroup(command);
+        }
+    }
+
+    private void handleForceCloseCPSession(final HttpPostCommand command) {
+        String uri = command.getURI();
+        String prefix = URI_CP_GROUPS_URL + "/";
+        String suffix = URI_CP_SESSIONS_SUFFIX + "/";
+        int i = uri.indexOf(suffix);
+        String groupName = uri.substring(prefix.length(), i).trim();
+        final long sessionId = Long.parseLong(uri.substring(i + suffix.length(), uri.indexOf('/', i + suffix.length())));
+
+        getCpSubsystem().getCPSessionManagementService()
+                        .forceCloseSession(groupName, sessionId)
+                        .whenCompleteAsync((response, t) -> {
+                            if (t == null) {
+                                if (response) {
+                                    command.send200();
+                                } else {
+                                    command.send400();
+                                }
+                                textCommandService.sendResponse(command);
+                            } else {
+                                logger.warning("Error while closing CP session", t);
+                                command.send500();
+                                textCommandService.sendResponse(command);
+                            }
+                        });
+    }
+
+    private void handleForceDestroyCPGroup(final HttpPostCommand command) {
+        String uri = command.getURI();
+        String prefix = URI_CP_GROUPS_URL + "/";
+        final String groupName = uri.substring(prefix.length(), uri.indexOf('/', prefix.length())).trim();
+        if (METADATA_CP_GROUP_NAME.equals(groupName)) {
+            command.send400();
+            textCommandService.sendResponse(command);
+            return;
+        }
+
+        getCpSubsystem().getCPSubsystemManagementService()
+                        .forceDestroyCPGroup(groupName)
+                        .whenCompleteAsync((response, t) -> {
+                            if (t == null) {
+                                command.send200();
+                                textCommandService.sendResponse(command);
+                            } else {
+                                logger.warning("Error while destroying CP group " + groupName, t);
+                                if (peel(t) instanceof IllegalArgumentException) {
+                                    command.send400();
+                                } else {
+                                    command.send500();
+                                }
+                                textCommandService.sendResponse(command);
+                            }
+                        });
+    }
+
+    private void handleResetCPSubsystem(final HttpPostCommand command) throws UnsupportedEncodingException {
+        if (checkCredentials(command)) {
+            getCpSubsystem().getCPSubsystemManagementService()
+                            .reset()
+                            .whenCompleteAsync((response, t) -> {
+                                if (t == null) {
+                                    command.send200();
+                                    textCommandService.sendResponse(command);
+                                } else {
+                                    logger.warning("Error while resetting CP subsystem", t);
+                                    command.send500();
+                                    textCommandService.sendResponse(command);
+                                }
+                            });
+        } else {
+            command.send403();
+            textCommandService.sendResponse(command);
+        }
+    }
+
+    private CPSubsystemManagementService getCpSubsystemManagementService() {
+        return getCpSubsystem().getCPSubsystemManagementService();
+    }
+
+    private CPSubsystem getCpSubsystem() {
+        return textCommandService.getNode().getNodeEngine().getHazelcastInstance().getCPSubsystem();
+    }
+
+    protected static String exceptionResponse(Throwable throwable) {
         return response(ResponseType.FAIL, "message", throwable.getMessage());
     }
 
-    private static String response(ResponseType type, Object... attributes) {
+    protected static String response(ResponseType type, Object... attributes) {
         final StringBuilder builder = new StringBuilder("{");
         builder.append("\"status\":\"").append(type).append("\"");
         if (attributes.length > 0) {
@@ -613,7 +789,7 @@ public class HttpPostCommandProcessor extends HttpCommandProcessor<HttpPostComma
         return builder.append("}").toString();
     }
 
-    private enum ResponseType {
+    protected enum ResponseType {
         SUCCESS, FAIL, FORBIDDEN;
 
         @Override
@@ -647,33 +823,32 @@ public class HttpPostCommandProcessor extends HttpCommandProcessor<HttpPostComma
         if (data == null) {
             return false;
         }
-        final String[] strList = bytesToString(data).split("&");
+        final String[] strList = bytesToString(data).split("&", -1);
         return authenticate(command, strList[0], strList.length > 1 ? strList[1] : null);
     }
 
     /**
-     * Checks if the request is valid. If Hazelcast Security is not enabled, then only the given group name is compared to
-     * configuration. Otherwise member JAAS authentication (member login module stack) is used to authenticate the command.
+     * Checks if the request is valid. If Hazelcast Security is not enabled, then only the given user name is compared to
+     * cluster name in node configuration. Otherwise member JAAS authentication (member login module stack) is used to
+     * authenticate the command.
      */
-    private boolean authenticate(HttpPostCommand command, final String groupName, final String pass)
+    protected boolean authenticate(HttpPostCommand command, String userName, String pass)
             throws UnsupportedEncodingException {
-        String decodedName = URLDecoder.decode(groupName, "UTF-8");
-        SecurityContext securityContext = textCommandService.getNode().getNodeExtension().getSecurityContext();
+        String decodedName = userName != null ? URLDecoder.decode(userName, "UTF-8") : null;
+        Node node = textCommandService.getNode();
+        SecurityContext securityContext = node.getNodeExtension().getSecurityContext();
+        String clusterName = node.getConfig().getClusterName();
         if (securityContext == null) {
-            final GroupConfig groupConfig = textCommandService.getNode().getConfig().getGroupConfig();
             if (pass != null && !pass.isEmpty()) {
                 logger.fine("Password was provided but the Hazelcast Security is disabled.");
             }
-            return groupConfig.getName().equals(decodedName);
+            return clusterName.equals(decodedName);
         }
-        if (pass == null) {
-            logger.fine("Empty password is not allowed when the Hazelcast Security is enabled.");
-            return false;
-        }
-        String decodedPass = URLDecoder.decode(pass, "UTF-8");
-        UsernamePasswordCredentials credentials = new UsernamePasswordCredentials(groupName, decodedPass);
+        String decodedPass = pass != null ? URLDecoder.decode(pass, "UTF-8") : null;
+        UsernamePasswordCredentials credentials = new UsernamePasswordCredentials(decodedName, decodedPass);
         try {
-            LoginContext lc = securityContext.createMemberLoginContext(credentials);
+            // we don't have an argument for clusterName in HTTP request, so let's reuse the "username" here
+            LoginContext lc = securityContext.createMemberLoginContext(decodedName, credentials, command.getConnection());
             lc.login();
         } catch (LoginException e) {
             return false;
@@ -681,7 +856,7 @@ public class HttpPostCommandProcessor extends HttpCommandProcessor<HttpPostComma
         return true;
     }
 
-    private void sendResponse(HttpPostCommand command, String value) {
+    protected void sendResponse(HttpPostCommand command, String value) {
         command.setResponse(HttpCommand.CONTENT_TYPE_JSON, stringToBytes(value));
         textCommandService.sendResponse(command);
     }
@@ -690,4 +865,34 @@ public class HttpPostCommandProcessor extends HttpCommandProcessor<HttpPostComma
     public void handleRejection(HttpPostCommand command) {
         handle(command);
     }
+
+    private void handleSetLicense(HttpPostCommand command) {
+        final int retryCount = 100;
+        String res;
+        byte[] data = command.getData();
+        try {
+            String[] strList = bytesToString(data).split("&");
+            if (authenticate(command, strList[0], strList.length > 1 ? strList[1] : null)) {
+                // assumes that both groupName and password are present
+                String licenseKey = strList.length > 2 ? URLDecoder.decode(strList[2], "UTF-8") : null;
+                invokeOnStableClusterSerial(textCommandService.getNode().nodeEngine, () -> new SetLicenseOperation(licenseKey),
+                        retryCount).get();
+                res = responseOnSetLicenseSuccess();
+            } else {
+                res = response(ResponseType.FORBIDDEN);
+            }
+        } catch (ExecutionException executionException) {
+            logger.warning("Error occurred while updating the license", executionException.getCause());
+            res = exceptionResponse(executionException.getCause());
+        } catch (Throwable throwable) {
+            logger.warning("Error occurred while updating the license", throwable);
+            res = exceptionResponse(throwable);
+        }
+        command.setResponse(HttpCommand.CONTENT_TYPE_JSON, stringToBytes(res));
+    }
+
+    protected String responseOnSetLicenseSuccess() {
+        return response(ResponseType.SUCCESS);
+    }
+
 }

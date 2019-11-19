@@ -20,14 +20,14 @@ import com.hazelcast.config.Config;
 import com.hazelcast.config.MapConfig;
 import com.hazelcast.config.MapStoreConfig;
 import com.hazelcast.core.HazelcastInstance;
-import com.hazelcast.core.IMap;
-import com.hazelcast.core.MapStore;
+import com.hazelcast.map.IMap;
+import com.hazelcast.map.MapStore;
 import com.hazelcast.spi.properties.GroupProperty;
 import com.hazelcast.test.AssertTask;
 import com.hazelcast.test.HazelcastParallelClassRunner;
 import com.hazelcast.test.HazelcastTestSupport;
 import com.hazelcast.test.TestHazelcastInstanceFactory;
-import com.hazelcast.test.annotation.ParallelTest;
+import com.hazelcast.test.annotation.ParallelJVMTest;
 import com.hazelcast.test.annotation.QuickTest;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
@@ -40,7 +40,7 @@ import static java.util.Arrays.asList;
 import static org.junit.Assert.assertEquals;
 
 @RunWith(HazelcastParallelClassRunner.class)
-@Category({QuickTest.class, ParallelTest.class})
+@Category({QuickTest.class, ParallelJVMTest.class})
 public class WriteBehindFlushTest extends HazelcastTestSupport {
 
     @Test
@@ -177,12 +177,9 @@ public class WriteBehindFlushTest extends HazelcastTestSupport {
     }
 
     public static void assertWriteBehindQueuesEmpty(final String mapName, final List<HazelcastInstance> nodes) {
-        assertTrueEventually(new AssertTask() {
-            @Override
-            public void run() throws Exception {
-                for (HazelcastInstance instance : nodes) {
-                    assertEquals(0, writeBehindQueueSize(instance, mapName));
-                }
+        assertTrueEventually(() -> {
+            for (HazelcastInstance instance : nodes) {
+                assertEquals(0, writeBehindQueueSize(instance, mapName));
             }
         }, 240);
     }

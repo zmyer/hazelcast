@@ -17,13 +17,13 @@
 package com.hazelcast.map.impl.recordstore;
 
 import com.hazelcast.config.InMemoryFormat;
+import com.hazelcast.core.EntryView;
+import com.hazelcast.internal.serialization.SerializationService;
 import com.hazelcast.map.impl.EntryCostEstimator;
 import com.hazelcast.map.impl.iterator.MapEntriesWithCursor;
 import com.hazelcast.map.impl.iterator.MapKeysWithCursor;
 import com.hazelcast.map.impl.record.Record;
-import com.hazelcast.map.impl.record.RecordFactory;
 import com.hazelcast.nio.serialization.Data;
-import com.hazelcast.spi.serialization.SerializationService;
 
 import java.util.AbstractMap;
 import java.util.ArrayList;
@@ -32,6 +32,7 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 
+import static com.hazelcast.config.InMemoryFormat.BINARY;
 import static com.hazelcast.map.impl.OwnedEntryCostEstimatorFactory.createMapSizeEstimator;
 
 /**
@@ -41,16 +42,19 @@ import static com.hazelcast.map.impl.OwnedEntryCostEstimatorFactory.createMapSiz
  */
 public class StorageImpl<R extends Record> implements Storage<Data, R> {
 
-    private final RecordFactory<R> recordFactory;
+    private final InMemoryFormat inMemoryFormat;
     private final StorageSCHM<R> records;
+    private final SerializationService ss;
 
     // not final for testing purposes.
     private EntryCostEstimator<Data, Record> entryCostEstimator;
 
-    StorageImpl(RecordFactory<R> recordFactory, InMemoryFormat inMemoryFormat, SerializationService serializationService) {
-        this.recordFactory = recordFactory;
+    StorageImpl(InMemoryFormat inMemoryFormat,
+                SerializationService ss) {
         this.entryCostEstimator = createMapSizeEstimator(inMemoryFormat);
-        this.records = new StorageSCHM<R>(serializationService);
+        this.inMemoryFormat = inMemoryFormat;
+        this.records = new StorageSCHM<>(ss);
+        this.ss = ss;
     }
 
     @Override
@@ -89,7 +93,8 @@ public class StorageImpl<R extends Record> implements Storage<Data, R> {
     public void updateRecordValue(Data key, R record, Object value) {
         updateCostEstimate(-entryCostEstimator.calculateValueCost(record));
 
-        recordFactory.setValue(record, value);
+        record.setValue(inMemoryFormat == BINARY
+                ? ss.toData(value) : ss.toObject(value));
 
         updateCostEstimate(entryCostEstimator.calculateValueCost(record));
     }
@@ -149,33 +154,32 @@ public class StorageImpl<R extends Record> implements Storage<Data, R> {
     }
 
     @Override
-    public void disposeDeferredBlocks() {
-        // NOP intentionally.
-    }
-
-    @Override
-    public Iterable<LazyEntryViewFromRecord> getRandomSamples(int sampleCount) {
+    public Iterable getRandomSamples(int sampleCount) {
         return records.getRandomSamples(sampleCount);
     }
 
     @Override
     public MapKeysWithCursor fetchKeys(int tableIndex, int size) {
-        List<Data> keys = new ArrayList<Data>(size);
+        List<Data> keys = new ArrayList<>(size);
         int newTableIndex = records.fetchKeys(tableIndex, size, keys);
         return new MapKeysWithCursor(keys, newTableIndex);
     }
 
     @Override
     public MapEntriesWithCursor fetchEntries(int tableIndex, int size, SerializationService serializationService) {
-        List<Map.Entry<Data, R>> entries = new ArrayList<Map.Entry<Data, R>>(size);
+        List<Map.Entry<Data, R>> entries = new ArrayList<>(size);
         int newTableIndex = records.fetchEntries(tableIndex, size, entries);
-        List<Map.Entry<Data, Data>> entriesData = new ArrayList<Map.Entry<Data, Data>>(entries.size());
+        List<Map.Entry<Data, Data>> entriesData = new ArrayList<>(entries.size());
         for (Map.Entry<Data, R> entry : entries) {
             R record = entry.getValue();
             Data dataValue = serializationService.toData(record.getValue());
-            entriesData.add(new AbstractMap.SimpleEntry<Data, Data>(entry.getKey(), dataValue));
+            entriesData.add(new AbstractMap.SimpleEntry<>(entry.getKey(), dataValue));
         }
         return new MapEntriesWithCursor(entriesData, newTableIndex);
     }
 
+    @Override
+    public Record extractRecordFrom(EntryView entryView) {
+        return ((LazyEvictableEntryView) entryView).getRecord();
+    }
 }

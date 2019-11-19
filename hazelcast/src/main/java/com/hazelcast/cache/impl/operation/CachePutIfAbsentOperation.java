@@ -20,16 +20,16 @@ import com.hazelcast.cache.impl.CacheDataSerializerHook;
 import com.hazelcast.nio.ObjectDataInput;
 import com.hazelcast.nio.ObjectDataOutput;
 import com.hazelcast.nio.serialization.Data;
-import com.hazelcast.spi.Operation;
+import com.hazelcast.spi.impl.operationservice.Operation;
 
 import javax.cache.expiry.ExpiryPolicy;
 import java.io.IOException;
 
 /**
  * Operation implementation for calling
- * {@link com.hazelcast.cache.impl.ICacheRecordStore#putIfAbsent(Data, Object, ExpiryPolicy, String, int)}.
+ * {@link com.hazelcast.cache.impl.ICacheRecordStore#putIfAbsent(Data, Object, ExpiryPolicy, java.util.UUID, int)}.
  *
- * @see com.hazelcast.cache.impl.ICacheRecordStore#putIfAbsent(Data, Object, ExpiryPolicy, String, int)
+ * @see com.hazelcast.cache.impl.ICacheRecordStore#putIfAbsent(Data, Object, ExpiryPolicy, java.util.UUID, int)
  */
 public class CachePutIfAbsentOperation extends MutatingCacheOperation {
 
@@ -94,7 +94,7 @@ public class CachePutIfAbsentOperation extends MutatingCacheOperation {
     }
 
     @Override
-    public int getId() {
+    public int getClassId() {
         return CacheDataSerializerHook.PUT_IF_ABSENT;
     }
 

@@ -22,18 +22,19 @@ import com.hazelcast.cache.impl.HazelcastServerCachingProvider;
 import com.hazelcast.cache.impl.event.CachePartitionLostEvent;
 import com.hazelcast.cache.impl.event.CachePartitionLostEventFilter;
 import com.hazelcast.cache.impl.event.CachePartitionLostListener;
+import com.hazelcast.cluster.Address;
 import com.hazelcast.config.CacheConfig;
 import com.hazelcast.core.HazelcastInstance;
-import com.hazelcast.instance.Node;
-import com.hazelcast.nio.Address;
+import com.hazelcast.instance.impl.Node;
+import com.hazelcast.internal.partition.PartitionLostEventImpl;
 import com.hazelcast.nio.ObjectDataInput;
 import com.hazelcast.nio.ObjectDataOutput;
 import com.hazelcast.partition.AbstractPartitionLostListenerTest;
-import com.hazelcast.spi.partition.IPartition;
-import com.hazelcast.spi.partition.IPartitionLostEvent;
+import com.hazelcast.internal.partition.IPartition;
+import com.hazelcast.internal.partition.IPartitionLostEvent;
 import com.hazelcast.test.AssertTask;
 import com.hazelcast.test.HazelcastParallelClassRunner;
-import com.hazelcast.test.annotation.ParallelTest;
+import com.hazelcast.test.annotation.ParallelJVMTest;
 import com.hazelcast.test.annotation.QuickTest;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
@@ -49,7 +50,7 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Set;
 
-import static com.hazelcast.cache.impl.HazelcastServerCachingProvider.createCachingProvider;
+import static com.hazelcast.cache.CacheTestSupport.createServerCachingProvider;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.mockito.Mockito.mock;
@@ -57,7 +58,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 @RunWith(HazelcastParallelClassRunner.class)
-@Category({QuickTest.class, ParallelTest.class})
+@Category({QuickTest.class, ParallelJVMTest.class})
 public class CachePartitionLostListenerTest extends AbstractPartitionLostListenerTest {
 
     @Override
@@ -97,7 +98,7 @@ public class CachePartitionLostListenerTest extends AbstractPartitionLostListene
         List<HazelcastInstance> instances = getCreatedInstancesShuffledAfterWarmedUp(1);
         final HazelcastInstance instance = instances.get(0);
 
-        HazelcastServerCachingProvider cachingProvider = createCachingProvider(instance);
+        HazelcastServerCachingProvider cachingProvider = createServerCachingProvider(instance);
         CacheManager cacheManager = cachingProvider.getCacheManager();
         CacheConfig<Integer, String> config = new CacheConfig<Integer, String>();
         Cache<Integer, String> cache = cacheManager.createCache(getIthCacheName(0), config);
@@ -106,7 +107,7 @@ public class CachePartitionLostListenerTest extends AbstractPartitionLostListene
         final EventCollectingCachePartitionLostListener listener = new EventCollectingCachePartitionLostListener(0);
         iCache.addPartitionLostListener(listener);
 
-        final IPartitionLostEvent internalEvent = new IPartitionLostEvent(1, 1, null);
+        final IPartitionLostEvent internalEvent = new PartitionLostEventImpl(1, 1, null);
         CacheService cacheService = getNode(instance).getNodeEngine().getService(CacheService.SERVICE_NAME);
         cacheService.onPartitionLost(internalEvent);
 
@@ -137,7 +138,7 @@ public class CachePartitionLostListenerTest extends AbstractPartitionLostListene
         HazelcastInstance survivingInstance = instances.get(0);
         HazelcastInstance terminatingInstance = instances.get(1);
 
-        HazelcastServerCachingProvider cachingProvider = createCachingProvider(survivingInstance);
+        HazelcastServerCachingProvider cachingProvider = createServerCachingProvider(survivingInstance);
         CacheManager cacheManager = cachingProvider.getCacheManager();
         CacheConfig<Integer, String> config = new CacheConfig<Integer, String>();
         config.setBackupCount(0);

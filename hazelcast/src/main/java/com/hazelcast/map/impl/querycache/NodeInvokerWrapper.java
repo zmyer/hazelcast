@@ -17,17 +17,17 @@
 package com.hazelcast.map.impl.querycache;
 
 import com.hazelcast.map.impl.MapService;
-import com.hazelcast.nio.Address;
-import com.hazelcast.spi.Operation;
-import com.hazelcast.spi.OperationFactory;
-import com.hazelcast.spi.OperationService;
+import com.hazelcast.cluster.Address;
+import com.hazelcast.spi.impl.operationservice.Operation;
+import com.hazelcast.spi.impl.operationservice.OperationFactory;
+import com.hazelcast.spi.impl.operationservice.OperationService;
 
 import java.util.Map;
 import java.util.concurrent.Future;
 
-import static com.hazelcast.util.Preconditions.checkInstanceOf;
-import static com.hazelcast.util.Preconditions.checkNotNegative;
-import static com.hazelcast.util.Preconditions.checkNotNull;
+import static com.hazelcast.internal.util.Preconditions.checkInstanceOf;
+import static com.hazelcast.internal.util.Preconditions.checkNotNegative;
+import static com.hazelcast.internal.util.Preconditions.checkNotNull;
 
 /**
  * Invocation functionality for node-side {@link QueryCacheContext}.

@@ -73,7 +73,7 @@ public class InternalEventJournalMapEvent implements IdentifiedDataSerializable 
     }
 
     @Override
-    public int getId() {
+    public int getClassId() {
         return MapDataSerializerHook.EVENT_JOURNAL_INTERNAL_MAP_EVENT;
     }
 
@@ -128,6 +128,6 @@ public class InternalEventJournalMapEvent implements IdentifiedDataSerializable 
 
     @Override
     public String toString() {
-        return "InternalEventJournalMapEvent{eventType=" + eventType + '}';
+        return getClass().getSimpleName() + "{eventType=" + eventType + '}';
     }
 }

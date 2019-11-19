@@ -16,14 +16,14 @@
 
 package com.hazelcast.internal.partition.impl;
 
-import com.hazelcast.instance.OutOfMemoryErrorDispatcher;
+import com.hazelcast.instance.impl.OutOfMemoryErrorDispatcher;
 import com.hazelcast.internal.partition.impl.MigrationManager.MigrateTask;
 import com.hazelcast.logging.ILogger;
 import com.hazelcast.spi.properties.GroupProperty;
 
 import java.util.concurrent.TimeUnit;
 
-import static com.hazelcast.util.ThreadUtil.createThreadName;
+import static com.hazelcast.internal.util.ThreadUtil.createThreadName;
 import static java.lang.Math.max;
 
 /**
@@ -103,7 +103,8 @@ class MigrationThread extends Thread implements Runnable {
         boolean hasNoTasks = !queue.hasMigrationTasks();
         if (hasNoTasks) {
             if (migrating) {
-                logger.info("All migration tasks have been completed, queues are empty.");
+                logger.info("All migration tasks have been completed. ("
+                        + migrationManager.getStats().formatToString(logger.isFineEnabled()) + ")");
             }
             Thread.sleep(sleepTime);
         } else if (!migrationManager.areMigrationTasksAllowed()) {

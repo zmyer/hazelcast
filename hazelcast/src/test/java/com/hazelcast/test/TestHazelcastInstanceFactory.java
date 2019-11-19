@@ -21,10 +21,10 @@ import com.hazelcast.config.NetworkConfig;
 import com.hazelcast.config.XmlConfigBuilder;
 import com.hazelcast.core.Hazelcast;
 import com.hazelcast.core.HazelcastInstance;
-import com.hazelcast.instance.DefaultNodeContext;
-import com.hazelcast.instance.HazelcastInstanceFactory;
-import com.hazelcast.instance.NodeContext;
-import com.hazelcast.nio.Address;
+import com.hazelcast.instance.impl.DefaultNodeContext;
+import com.hazelcast.instance.impl.HazelcastInstanceFactory;
+import com.hazelcast.instance.impl.NodeContext;
+import com.hazelcast.cluster.Address;
 import com.hazelcast.spi.properties.GroupProperty;
 import com.hazelcast.test.mocknetwork.TestNodeRegistry;
 
@@ -40,10 +40,10 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.atomic.AtomicInteger;
 
-import static com.hazelcast.instance.TestUtil.terminateInstance;
+import static com.hazelcast.instance.impl.TestUtil.terminateInstance;
 import static com.hazelcast.test.HazelcastTestSupport.getAddress;
 import static com.hazelcast.test.HazelcastTestSupport.getNode;
-import static com.hazelcast.util.Preconditions.checkNotNull;
+import static com.hazelcast.internal.util.Preconditions.checkNotNull;
 import static java.util.Arrays.asList;
 import static java.util.Collections.unmodifiableCollection;
 
@@ -273,7 +273,9 @@ public class TestHazelcastInstanceFactory {
     public void terminate(HazelcastInstance instance) {
         Address address = getNode(instance).address;
         terminateInstance(instance);
-        registry.removeInstance(address);
+        if (isMockNetwork) {
+            registry.removeInstance(address);
+        }
     }
 
     /**
@@ -374,6 +376,9 @@ public class TestHazelcastInstanceFactory {
      * instances. This allows an address to be reused.
      */
     public void cleanup() {
+        if (!isMockNetwork) {
+            return;
+        }
         final TestNodeRegistry registry = getRegistry();
         synchronized (addressMap) {
             final Iterator<Entry<Integer, Address>> addressIterator = addressMap.entrySet().iterator();

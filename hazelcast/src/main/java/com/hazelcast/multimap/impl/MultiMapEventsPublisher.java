@@ -19,11 +19,11 @@ package com.hazelcast.multimap.impl;
 import com.hazelcast.core.EntryEventType;
 import com.hazelcast.map.impl.event.EntryEventData;
 import com.hazelcast.map.impl.event.MapEventData;
-import com.hazelcast.nio.Address;
+import com.hazelcast.cluster.Address;
 import com.hazelcast.nio.serialization.Data;
-import com.hazelcast.spi.EventRegistration;
-import com.hazelcast.spi.EventService;
-import com.hazelcast.spi.NodeEngine;
+import com.hazelcast.spi.impl.eventservice.EventRegistration;
+import com.hazelcast.spi.impl.eventservice.EventService;
+import com.hazelcast.spi.impl.NodeEngine;
 
 import java.util.Collection;
 

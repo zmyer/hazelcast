@@ -20,15 +20,16 @@ import com.hazelcast.cache.impl.CacheService;
 import com.hazelcast.client.impl.protocol.ClientMessage;
 import com.hazelcast.client.impl.protocol.codec.CacheRemoveInvalidationListenerCodec;
 import com.hazelcast.client.impl.protocol.task.AbstractRemoveListenerMessageTask;
-import com.hazelcast.instance.Node;
-import com.hazelcast.nio.Connection;
+import com.hazelcast.instance.impl.Node;
+import com.hazelcast.internal.nio.Connection;
 
 import java.security.Permission;
+import java.util.UUID;
 
 /**
  * Client request which unregisters the invalidation listener on behalf of the client.
  *
- * @see com.hazelcast.cache.impl.CacheService#deregisterListener(String, String)
+ * @see com.hazelcast.cache.impl.CacheService#deregisterListener(String, UUID)
  */
 public class CacheRemoveInvalidationListenerMessageTask
         extends AbstractRemoveListenerMessageTask<CacheRemoveInvalidationListenerCodec.RequestParameters> {
@@ -44,7 +45,7 @@ public class CacheRemoveInvalidationListenerMessageTask
     }
 
     @Override
-    protected String getRegistrationId() {
+    protected UUID getRegistrationId() {
         return parameters.registrationId;
     }
 

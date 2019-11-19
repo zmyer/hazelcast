@@ -18,9 +18,9 @@ package com.hazelcast.map.impl.record;
 
 import com.hazelcast.config.CacheDeserializedValues;
 import com.hazelcast.config.MapConfig;
-import com.hazelcast.core.PartitioningStrategy;
+import com.hazelcast.partition.PartitioningStrategy;
 import com.hazelcast.nio.serialization.Data;
-import com.hazelcast.spi.serialization.SerializationService;
+import com.hazelcast.internal.serialization.SerializationService;
 
 public class DataRecordFactory implements RecordFactory<Data> {
 
@@ -38,32 +38,19 @@ public class DataRecordFactory implements RecordFactory<Data> {
     }
 
     @Override
-    public Record<Data> newRecord(Object value) {
+    public Record<Data> newRecord(Data key, Object value) {
         assert value != null : "value can not be null";
 
-        final Data data = serializationService.toData(value, partitionStrategy);
+        final Data valueData = serializationService.toData(value, partitionStrategy);
         Record<Data> record;
         switch (cacheDeserializedValues) {
             case NEVER:
-                record = statisticsEnabled ? new DataRecordWithStats(data) : new DataRecord(data);
+                record = statisticsEnabled ? new DataRecordWithStats(valueData) : new DataRecord(valueData);
                 break;
             default:
-                record = statisticsEnabled ? new CachedDataRecordWithStats(data) : new CachedDataRecord(data);
+                record = statisticsEnabled ? new CachedDataRecordWithStats(valueData) : new CachedDataRecord(valueData);
         }
-
+        record.setKey(key);
         return record;
-    }
-
-    @Override
-    public void setValue(Record<Data> record, Object value) {
-        assert value != null : "value can not be null";
-
-        final Data v;
-        if (value instanceof Data) {
-            v = (Data) value;
-        } else {
-            v = serializationService.toData(value, partitionStrategy);
-        }
-        record.setValue(v);
     }
 }

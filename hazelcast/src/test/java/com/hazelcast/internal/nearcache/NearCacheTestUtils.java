@@ -18,7 +18,7 @@ package com.hazelcast.internal.nearcache;
 
 import com.hazelcast.config.Config;
 import com.hazelcast.config.EvictionConfig;
-import com.hazelcast.config.EvictionConfig.MaxSizePolicy;
+import com.hazelcast.config.MaxSizePolicy;
 import com.hazelcast.config.EvictionPolicy;
 import com.hazelcast.config.InMemoryFormat;
 import com.hazelcast.config.NearCacheConfig;
@@ -36,17 +36,18 @@ import com.hazelcast.logging.ILogger;
 import com.hazelcast.logging.Logger;
 import com.hazelcast.map.impl.MapService;
 import com.hazelcast.map.impl.nearcache.MapNearCacheManager;
-import com.hazelcast.monitor.NearCacheStats;
-import com.hazelcast.monitor.impl.NearCacheStatsImpl;
+import com.hazelcast.nearcache.NearCacheStats;
+import com.hazelcast.internal.monitor.impl.NearCacheStatsImpl;
 import com.hazelcast.nio.serialization.Data;
 import com.hazelcast.spi.impl.NodeEngineImpl;
 import com.hazelcast.test.AssertTask;
 import com.hazelcast.test.HazelcastTestSupport;
 
+import java.util.concurrent.CompletionStage;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
 
-import static com.hazelcast.config.EvictionConfig.MaxSizePolicy.USED_NATIVE_MEMORY_PERCENTAGE;
+import static com.hazelcast.config.MaxSizePolicy.USED_NATIVE_MEMORY_PERCENTAGE;
 import static com.hazelcast.config.EvictionPolicy.LRU;
 import static com.hazelcast.config.InMemoryFormat.BINARY;
 import static com.hazelcast.config.InMemoryFormat.OBJECT;
@@ -90,9 +91,9 @@ public final class NearCacheTestUtils extends HazelcastTestSupport {
      * @param <T>     the return type of the {@link Future}
      * @return the value of the {@link Future}
      */
-    public static <T> T getFuture(Future<T> future, String message) {
+    public static <T> T getFuture(CompletionStage<T> future, String message) {
         try {
-            return future.get();
+            return future.toCompletableFuture().get();
         } catch (InterruptedException e) {
             throw new AssertionError(message + " " + e.getMessage());
         } catch (ExecutionException e) {
@@ -132,7 +133,7 @@ public final class NearCacheTestUtils extends HazelcastTestSupport {
                                          MaxSizePolicy maxSizePolicy, int maxSize) {
         nearCacheConfig.getEvictionConfig()
                 .setEvictionPolicy(evictionPolicy)
-                .setMaximumSizePolicy(maxSizePolicy)
+                .setMaxSizePolicy(maxSizePolicy)
                 .setSize(maxSize);
     }
 

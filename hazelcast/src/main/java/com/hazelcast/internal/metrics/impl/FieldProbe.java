@@ -18,6 +18,7 @@ package com.hazelcast.internal.metrics.impl;
 
 import com.hazelcast.internal.metrics.DoubleProbeFunction;
 import com.hazelcast.internal.metrics.LongProbeFunction;
+import com.hazelcast.internal.metrics.MetricDescriptor;
 import com.hazelcast.internal.metrics.Probe;
 import com.hazelcast.internal.metrics.ProbeFunction;
 import com.hazelcast.internal.util.counters.Counter;
@@ -42,32 +43,40 @@ import static java.lang.String.format;
 /**
  * A FieldProbe is a {@link ProbeFunction} that reads out a field that is annotated with {@link Probe}.
  */
-abstract class FieldProbe implements ProbeFunction {
+abstract class FieldProbe implements ProbeFunction, ProbeAware {
 
-    final Probe probe;
+    final CachedProbe probe;
     final Field field;
     final int type;
+    final String probeOrFieldName;
 
     FieldProbe(Field field, Probe probe, int type) {
         this.field = field;
-        this.probe = probe;
+        this.probe = new CachedProbe(probe);
         this.type = type;
+        this.probeOrFieldName = probe.name().length() != 0 ? probe.name() : field.getName();
         field.setAccessible(true);
     }
 
+    @Override
+    public CachedProbe getProbe() {
+        return probe;
+    }
+
     void register(MetricsRegistryImpl metricsRegistry, Object source, String namePrefix) {
-        String name = namePrefix + '.' + getProbeOrFieldName();
-        metricsRegistry.registerInternal(source, name, probe.level(), this);
+        MetricDescriptor descriptor = metricsRegistry
+                .newMetricDescriptor()
+                .withPrefix(namePrefix)
+                .withMetric(getProbeOrFieldName());
+        metricsRegistry.registerInternal(source, descriptor, probe.level(), this);
     }
 
-    void register(ProbeBuilderImpl builder, Object source) {
-        builder
-                .withTag("unit", probe.unit().name().toLowerCase())
-                .register(source, getProbeOrFieldName(), probe.level(), this);
+    void register(MetricsRegistryImpl metricsRegistry, MetricDescriptor descriptor, Object source) {
+        metricsRegistry.registerStaticProbe(source, descriptor, getProbeOrFieldName(), probe.level(), probe.unit(), this);
     }
 
-    private String getProbeOrFieldName() {
-        return probe.name().length() != 0 ? probe.name() : field.getName();
+    String getProbeOrFieldName() {
+        return probeOrFieldName;
     }
 
     static <S> FieldProbe createFieldProbe(Field field, Probe probe) {
@@ -85,7 +94,7 @@ abstract class FieldProbe implements ProbeFunction {
 
     static class LongFieldProbe<S> extends FieldProbe implements LongProbeFunction<S> {
 
-        public LongFieldProbe(Field field, Probe probe, int type) {
+        LongFieldProbe(Field field, Probe probe, int type) {
             super(field, probe, type);
         }
 
@@ -117,7 +126,7 @@ abstract class FieldProbe implements ProbeFunction {
 
     static class DoubleFieldProbe<S> extends FieldProbe implements DoubleProbeFunction<S> {
 
-        public DoubleFieldProbe(Field field, Probe probe, int type) {
+        DoubleFieldProbe(Field field, Probe probe, int type) {
             super(field, probe, type);
         }
 

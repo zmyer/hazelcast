@@ -18,17 +18,17 @@ package com.hazelcast.client.impl.protocol.task;
 
 import com.hazelcast.client.impl.operations.OperationFactoryWrapper;
 import com.hazelcast.client.impl.protocol.ClientMessage;
-import com.hazelcast.core.ExecutionCallback;
-import com.hazelcast.instance.Node;
-import com.hazelcast.nio.Connection;
-import com.hazelcast.spi.OperationFactory;
-import com.hazelcast.spi.impl.operationservice.InternalOperationService;
+import com.hazelcast.instance.impl.Node;
+import com.hazelcast.internal.nio.Connection;
+import com.hazelcast.spi.impl.operationservice.OperationFactory;
+import com.hazelcast.spi.impl.operationservice.impl.OperationServiceImpl;
+import com.hazelcast.internal.util.collection.PartitionIdSet;
 
-import java.util.Collection;
 import java.util.Map;
+import java.util.function.BiConsumer;
 
 public abstract class AbstractMultiPartitionMessageTask<P> extends AbstractMessageTask<P>
-        implements ExecutionCallback<Map<Integer, Object>> {
+        implements BiConsumer<Map<Integer, Object>, Throwable> {
 
     protected AbstractMultiPartitionMessageTask(ClientMessage clientMessage, Node node, Connection connection) {
         super(clientMessage, node, connection);
@@ -37,24 +37,23 @@ public abstract class AbstractMultiPartitionMessageTask<P> extends AbstractMessa
     @Override
     protected void processMessage() {
         OperationFactory operationFactory = new OperationFactoryWrapper(createOperationFactory(), endpoint.getUuid());
-        InternalOperationService operationService = nodeEngine.getOperationService();
-        operationService.invokeOnPartitionsAsync(getServiceName(), operationFactory, getPartitions()).andThen(this);
+        OperationServiceImpl operationService = nodeEngine.getOperationService();
+        operationService.invokeOnPartitionsAsync(getServiceName(), operationFactory, getPartitions())
+                        .whenCompleteAsync(this);
     }
 
-    public abstract Collection<Integer> getPartitions();
+    public abstract PartitionIdSet getPartitions();
 
     protected abstract OperationFactory createOperationFactory();
 
     protected abstract Object reduce(Map<Integer, Object> map);
 
     @Override
-    public final void onFailure(Throwable throwable) {
-        handleProcessingFailure(throwable);
+    public void accept(Map<Integer, Object> map, Throwable throwable) {
+        if (throwable == null) {
+            sendResponse(reduce(map));
+        } else {
+            handleProcessingFailure(throwable);
+        }
     }
-
-    @Override
-    public final void onResponse(Map<Integer, Object> map) {
-        sendResponse(reduce(map));
-    }
-
 }

@@ -44,7 +44,7 @@ import com.hazelcast.spi.merge.SplitBrainMergeTypes.QueueMergeTypes;
 import com.hazelcast.spi.merge.SplitBrainMergeTypes.ReplicatedMapMergeTypes;
 import com.hazelcast.spi.merge.SplitBrainMergeTypes.RingbufferMergeTypes;
 import com.hazelcast.spi.merge.SplitBrainMergeTypes.ScheduledExecutorMergeTypes;
-import com.hazelcast.spi.serialization.SerializationService;
+import com.hazelcast.internal.serialization.SerializationService;
 
 import java.util.ArrayList;
 import java.util.Collection;
@@ -147,7 +147,7 @@ public final class MergingValueFactory {
                 .setCreationTime(entryView.getCreationTime())
                 .setExpirationTime(entryView.getExpirationTime())
                 .setLastAccessTime(entryView.getLastAccessTime())
-                .setHits(entryView.getAccessHit());
+                .setHits(entryView.getHits());
     }
 
     public static <R extends CacheRecord> CacheMergeTypes createMergingEntry(SerializationService serializationService,
@@ -158,7 +158,7 @@ public final class MergingValueFactory {
                 .setCreationTime(record.getCreationTime())
                 .setExpirationTime(record.getExpirationTime())
                 .setLastAccessTime(record.getLastAccessTime())
-                .setHits(record.getAccessHit());
+                .setHits(record.getHits());
     }
 
     public static ReplicatedMapMergeTypes createMergingEntry(SerializationService serializationService, ReplicatedRecord record) {

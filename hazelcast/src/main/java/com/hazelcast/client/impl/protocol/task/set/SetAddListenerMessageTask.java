@@ -24,17 +24,18 @@ import com.hazelcast.client.impl.protocol.task.ListenerMessageTask;
 import com.hazelcast.collection.impl.collection.CollectionEventFilter;
 import com.hazelcast.collection.impl.common.DataAwareItemEvent;
 import com.hazelcast.collection.impl.set.SetService;
-import com.hazelcast.core.ItemEvent;
-import com.hazelcast.core.ItemListener;
-import com.hazelcast.instance.Node;
-import com.hazelcast.nio.Connection;
+import com.hazelcast.collection.ItemEvent;
+import com.hazelcast.collection.ItemListener;
+import com.hazelcast.instance.impl.Node;
+import com.hazelcast.internal.nio.Connection;
 import com.hazelcast.nio.serialization.Data;
 import com.hazelcast.security.permission.ActionConstants;
 import com.hazelcast.security.permission.SetPermission;
-import com.hazelcast.spi.EventRegistration;
-import com.hazelcast.spi.EventService;
+import com.hazelcast.spi.impl.eventservice.EventRegistration;
+import com.hazelcast.spi.impl.eventservice.EventService;
 
 import java.security.Permission;
+import java.util.UUID;
 
 /**
  * SetAddListenerMessageTask
@@ -59,7 +60,7 @@ public class SetAddListenerMessageTask
         } else {
             registration = eventService.registerListener(getServiceName(), parameters.name, filter, listener);
         }
-        String registrationId = registration.getId();
+        UUID registrationId = registration.getId();
         endpoint.addListenerDestroyAction(getServiceName(), parameters.name, registrationId);
         return registrationId;
     }
@@ -103,7 +104,7 @@ public class SetAddListenerMessageTask
 
     @Override
     protected ClientMessage encodeResponse(Object response) {
-        return SetAddListenerCodec.encodeResponse((String) response);
+        return SetAddListenerCodec.encodeResponse((UUID) response);
     }
 
     @Override

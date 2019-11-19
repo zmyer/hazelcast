@@ -19,14 +19,14 @@ package com.hazelcast.client.impl.protocol.task.replicatedmap;
 import com.hazelcast.client.impl.protocol.ClientMessage;
 import com.hazelcast.client.impl.protocol.task.AbstractCallableMessageTask;
 import com.hazelcast.client.impl.protocol.task.ListenerMessageTask;
+import com.hazelcast.cluster.Member;
 import com.hazelcast.core.EntryEvent;
 import com.hazelcast.core.EntryListener;
-import com.hazelcast.core.IMapEvent;
-import com.hazelcast.core.MapEvent;
-import com.hazelcast.core.Member;
-import com.hazelcast.instance.Node;
+import com.hazelcast.map.IMapEvent;
+import com.hazelcast.map.MapEvent;
+import com.hazelcast.instance.impl.Node;
 import com.hazelcast.map.impl.DataAwareEntryEvent;
-import com.hazelcast.nio.Connection;
+import com.hazelcast.internal.nio.Connection;
 import com.hazelcast.nio.serialization.Data;
 import com.hazelcast.query.Predicate;
 import com.hazelcast.replicatedmap.impl.ReplicatedMapEventPublishingService;
@@ -37,6 +37,7 @@ import com.hazelcast.security.permission.ActionConstants;
 import com.hazelcast.security.permission.MapPermission;
 
 import java.security.Permission;
+import java.util.UUID;
 
 public abstract class AbstractReplicatedMapAddEntryListenerMessageTask<Parameter>
         extends AbstractCallableMessageTask<Parameter>
@@ -51,7 +52,7 @@ public abstract class AbstractReplicatedMapAddEntryListenerMessageTask<Parameter
     protected Object call() {
         ReplicatedMapService service = getService(ReplicatedMapService.SERVICE_NAME);
         ReplicatedMapEventPublishingService eventPublishingService = service.getEventPublishingService();
-        String registrationId;
+        UUID registrationId;
         Predicate predicate = getPredicate();
         if (predicate == null) {
             registrationId = eventPublishingService.addEventListener(this,
@@ -130,7 +131,7 @@ public abstract class AbstractReplicatedMapAddEntryListenerMessageTask<Parameter
 
 
     protected abstract ClientMessage encodeEvent(Data key, Data newValue, Data oldValue,
-                                                 Data mergingValue, int type, String uuid, int numberOfAffectedEntries);
+                                                 Data mergingValue, int type, UUID uuid, int numberOfAffectedEntries);
 
     @Override
     public void entryAdded(EntryEvent<Object, Object> event) {
@@ -153,8 +154,13 @@ public abstract class AbstractReplicatedMapAddEntryListenerMessageTask<Parameter
     }
 
     @Override
+    public void entryExpired(EntryEvent<Object, Object> event) {
+        handleEvent(event);
+    }
+
+    @Override
     public void mapEvicted(MapEvent event) {
-        // TODO handle this event
+        handleMapEvent(event);
     }
 
     @Override

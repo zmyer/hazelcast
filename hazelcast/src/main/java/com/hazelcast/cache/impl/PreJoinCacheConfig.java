@@ -18,11 +18,11 @@ package com.hazelcast.cache.impl;
 
 import com.hazelcast.config.AbstractCacheConfig;
 import com.hazelcast.config.CacheConfig;
+import com.hazelcast.config.CacheConfigAccessor;
+import com.hazelcast.internal.serialization.SerializationService;
 import com.hazelcast.nio.ObjectDataInput;
 import com.hazelcast.nio.ObjectDataOutput;
-import com.hazelcast.nio.serialization.IdentifiedDataSerializable;
-import com.hazelcast.nio.serialization.impl.Versioned;
-import com.hazelcast.spi.serialization.SerializationService;
+import com.hazelcast.spi.tenantcontrol.TenantControl;
 
 import javax.cache.configuration.CacheEntryListenerConfiguration;
 import java.io.IOException;
@@ -39,7 +39,7 @@ import java.io.IOException;
  * @param <V> the value type
  * @since 3.9
  */
-public class PreJoinCacheConfig<K, V> extends CacheConfig<K, V> implements Versioned, IdentifiedDataSerializable {
+public class PreJoinCacheConfig<K, V> extends CacheConfig<K, V> {
     public PreJoinCacheConfig() {
         super();
     }
@@ -69,6 +69,17 @@ public class PreJoinCacheConfig<K, V> extends CacheConfig<K, V> implements Versi
             throws IOException {
         setKeyClassName(in.readUTF());
         setValueClassName(in.readUTF());
+    }
+
+    @Override
+    protected void writeTenant(ObjectDataOutput out) throws IOException {
+        out.writeObject(CacheConfigAccessor.getTenantControl(this));
+    }
+
+    @Override
+    protected void readTenant(ObjectDataInput in) throws IOException {
+        TenantControl tc = in.readObject();
+        CacheConfigAccessor.setTenantControl(this, tc);
     }
 
     @Override
@@ -106,12 +117,7 @@ public class PreJoinCacheConfig<K, V> extends CacheConfig<K, V> implements Versi
     }
 
     @Override
-    public int getFactoryId() {
-        return CacheDataSerializerHook.F_ID;
-    }
-
-    @Override
-    public int getId() {
+    public int getClassId() {
         return CacheDataSerializerHook.PRE_JOIN_CACHE_CONFIG;
     }
 
@@ -129,11 +135,7 @@ public class PreJoinCacheConfig<K, V> extends CacheConfig<K, V> implements Versi
             return false;
         }
 
-        if (!this.getValueClassName().equals(that.getValueClassName())) {
-            return false;
-        }
-
-        return true;
+        return this.getValueClassName().equals(that.getValueClassName());
     }
 
     /**

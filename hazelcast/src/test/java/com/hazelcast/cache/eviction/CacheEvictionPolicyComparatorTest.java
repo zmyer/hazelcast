@@ -16,14 +16,13 @@
 
 package com.hazelcast.cache.eviction;
 
-import com.hazelcast.cache.impl.HazelcastServerCachingProvider;
 import com.hazelcast.config.Config;
 import com.hazelcast.config.EvictionConfig;
 import com.hazelcast.core.HazelcastInstance;
 import com.hazelcast.spi.properties.GroupProperty;
 import com.hazelcast.test.HazelcastParallelClassRunner;
 import com.hazelcast.test.TestHazelcastInstanceFactory;
-import com.hazelcast.test.annotation.ParallelTest;
+import com.hazelcast.test.annotation.ParallelJVMTest;
 import com.hazelcast.test.annotation.QuickTest;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
@@ -32,16 +31,17 @@ import org.junit.runner.RunWith;
 import javax.cache.spi.CachingProvider;
 import java.util.concurrent.ConcurrentMap;
 
+import static com.hazelcast.cache.CacheTestSupport.createServerCachingProvider;
 import static com.hazelcast.cache.impl.maxsize.impl.EntryCountCacheEvictionChecker.calculateMaxPartitionSize;
 import static com.hazelcast.config.EvictionConfig.DEFAULT_MAX_ENTRY_COUNT;
 
 @RunWith(HazelcastParallelClassRunner.class)
-@Category({QuickTest.class, ParallelTest.class})
+@Category({QuickTest.class, ParallelJVMTest.class})
 public class CacheEvictionPolicyComparatorTest extends AbstractCacheEvictionPolicyComparatorTest {
 
     @Override
     protected CachingProvider createCachingProvider(HazelcastInstance instance) {
-        return HazelcastServerCachingProvider.createCachingProvider(instance);
+        return createServerCachingProvider(instance);
     }
 
     @Override

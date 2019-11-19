@@ -63,12 +63,23 @@ public abstract class HazelcastMBean<T> implements DynamicMBean, MBeanRegistrati
         this.updateIntervalSec = service.instance.node.getProperties().getLong(GroupProperty.JMX_UPDATE_INTERVAL_SECONDS);
     }
 
-    public void register(HazelcastMBean mbean) {
+    public static void register(HazelcastMBean mbean) {
         MBeanServer mbs = ManagementFactory.getPlatformMBeanServer();
         try {
             mbs.registerMBean(mbean, mbean.objectName);
         } catch (Exception e) {
             throw new RuntimeException(e);
+        }
+    }
+
+    public static void unregister(HazelcastMBean mbean) {
+        MBeanServer mbs = ManagementFactory.getPlatformMBeanServer();
+        if (mbs.isRegistered(mbean.objectName)) {
+            try {
+                mbs.unregisterMBean(mbean.objectName);
+            } catch (Exception e) {
+                throw new RuntimeException(e);
+            }
         }
     }
 
@@ -194,7 +205,7 @@ public abstract class HazelcastMBean<T> implements DynamicMBean, MBeanRegistrati
         final String description;
         transient Method method;
 
-        public BeanInfo(String name, String description, Method method) {
+        BeanInfo(String name, String description, Method method) {
             this.name = name;
             this.description = description;
             this.method = method;

@@ -19,23 +19,24 @@ package com.hazelcast.internal.partition;
 import com.hazelcast.config.Config;
 import com.hazelcast.config.ServicesConfig;
 import com.hazelcast.core.HazelcastInstance;
-import com.hazelcast.instance.Node;
-import com.hazelcast.instance.TestUtil;
+import com.hazelcast.cluster.Member;
+import com.hazelcast.instance.impl.Node;
+import com.hazelcast.instance.impl.TestUtil;
+import com.hazelcast.internal.cluster.ClusterService;
 import com.hazelcast.internal.partition.service.TestAbstractMigrationAwareService;
 import com.hazelcast.internal.partition.service.TestIncrementOperation;
 import com.hazelcast.internal.partition.service.TestMigrationAwareService;
 import com.hazelcast.internal.partition.service.fragment.TestFragmentIncrementOperation;
 import com.hazelcast.internal.partition.service.fragment.TestFragmentedMigrationAwareService;
-import com.hazelcast.nio.Address;
-import com.hazelcast.spi.NodeEngine;
-import com.hazelcast.spi.OperationService;
-import com.hazelcast.spi.PartitionMigrationEvent;
-import com.hazelcast.spi.ServiceNamespace;
+import com.hazelcast.cluster.Address;
+import com.hazelcast.spi.impl.NodeEngine;
+import com.hazelcast.spi.impl.operationservice.OperationService;
+import com.hazelcast.internal.services.ServiceNamespace;
 import com.hazelcast.spi.properties.GroupProperty;
 import com.hazelcast.test.AssertTask;
 import com.hazelcast.test.HazelcastTestSupport;
 import com.hazelcast.test.TestHazelcastInstanceFactory;
-import com.hazelcast.util.ExceptionUtil;
+import com.hazelcast.internal.util.ExceptionUtil;
 import org.junit.Before;
 import org.junit.runners.Parameterized;
 
@@ -170,6 +171,32 @@ public abstract class PartitionCorrectnessTestSupport extends HazelcastTestSuppo
         }
     }
 
+    void assertPartitionAssignments() {
+        assertPartitionAssignments(factory);
+    }
+
+    static void assertPartitionAssignments(TestHazelcastInstanceFactory factory) {
+        Collection<HazelcastInstance> instances = factory.getAllHazelcastInstances();
+        final int replicaCount = Math.min(instances.size(), InternalPartition.MAX_REPLICA_COUNT);
+
+        for (HazelcastInstance hz : instances) {
+            Node node = getNode(hz);
+            InternalPartitionService partitionService = node.getPartitionService();
+            InternalPartition[] partitions = partitionService.getInternalPartitions();
+            ClusterService clusterService = node.getClusterService();
+            Member localMember = node.getLocalMember();
+
+            for (InternalPartition partition : partitions) {
+                for (int i = 0; i < replicaCount; i++) {
+                    PartitionReplica replica = partition.getReplica(i);
+                    assertNotNull("On " + localMember + ", Replica " + i + " is not found in " + partition, replica);
+                    assertNotNull("On " + localMember + ", Not member: " + replica,
+                            clusterService.getMember(replica.address(), replica.uuid()));
+                }
+            }
+        }
+    }
+
     void assertSizeAndDataEventually() {
         assertSizeAndDataEventually(false);
     }
@@ -178,14 +205,16 @@ public abstract class PartitionCorrectnessTestSupport extends HazelcastTestSuppo
         assertTrueEventually(new AssertSizeAndDataTask(allowDirty));
     }
 
-    void assertSizeAndData() throws InterruptedException {
+    void assertSizeAndData() {
         assertSizeAndData(false);
     }
 
-    private void assertSizeAndData(boolean allowDirty) throws InterruptedException {
+    private void assertSizeAndData(boolean allowDirty) {
         Collection<HazelcastInstance> instances = factory.getAllHazelcastInstances();
         final int actualBackupCount = Math.min(backupCount, instances.size() - 1);
         final int expectedSize = partitionCount * (actualBackupCount + 1);
+
+        assertPartitionAssignments();
 
         int total = 0;
         int[] fragmentTotals = new int[NAMESPACES.length];
@@ -255,8 +284,7 @@ public abstract class PartitionCorrectnessTestSupport extends HazelcastTestSuppo
     }
 
     private <N> void assertPartitionVersionsAndBackupValues(int actualBackupCount, TestAbstractMigrationAwareService<N> service,
-                                                            Node node, InternalPartition[] partitions, N name,
-                                                            boolean allowDirty) throws InterruptedException {
+                                                            Node node, InternalPartition[] partitions, N name, boolean allowDirty) {
         Address thisAddress = node.getThisAddress();
         ServiceNamespace namespace = service.getNamespace(name);
 
@@ -267,7 +295,7 @@ public abstract class PartitionCorrectnessTestSupport extends HazelcastTestSuppo
 
                 for (int replica = 1; replica <= actualBackupCount; replica++) {
                     Address address = partition.getReplicaAddress(replica);
-                    assertNotNull("Replica: " + replica + " is not found in " + partition, address);
+                    assertNotNull("On " + thisAddress + ", Replica: " + replica + " is not found in " + partition, address);
 
                     HazelcastInstance backupInstance = factory.getInstance(address);
                     assertNotNull("Instance for " + address + " is not found! -> " + partition, backupInstance);
@@ -348,7 +376,7 @@ public abstract class PartitionCorrectnessTestSupport extends HazelcastTestSuppo
         return config;
     }
 
-    private class AssertSizeAndDataTask extends AssertTask {
+    private class AssertSizeAndDataTask implements AssertTask {
         private final boolean allowDirty;
 
         AssertSizeAndDataTask(boolean allowDirty) {

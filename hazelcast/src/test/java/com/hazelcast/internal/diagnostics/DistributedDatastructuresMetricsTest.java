@@ -16,24 +16,26 @@
 
 package com.hazelcast.internal.diagnostics;
 
+import com.hazelcast.cache.ICache;
+import com.hazelcast.collection.IQueue;
+import com.hazelcast.config.CacheSimpleConfig;
 import com.hazelcast.config.Config;
 import com.hazelcast.config.MapConfig;
 import com.hazelcast.config.NearCacheConfig;
 import com.hazelcast.core.ExecutionCallback;
 import com.hazelcast.core.HazelcastInstance;
 import com.hazelcast.core.IExecutorService;
-import com.hazelcast.core.IMap;
-import com.hazelcast.core.IQueue;
-import com.hazelcast.core.ITopic;
-import com.hazelcast.core.ReplicatedMap;
 import com.hazelcast.internal.metrics.MetricsRegistry;
+import com.hazelcast.internal.metrics.MetricDescriptor;
 import com.hazelcast.internal.metrics.ProbeLevel;
-import com.hazelcast.internal.metrics.renderers.ProbeRenderer;
-import com.hazelcast.test.AssertTask;
+import com.hazelcast.internal.metrics.collectors.MetricsCollector;
+import com.hazelcast.map.IMap;
+import com.hazelcast.replicatedmap.ReplicatedMap;
 import com.hazelcast.test.HazelcastParallelClassRunner;
 import com.hazelcast.test.HazelcastTestSupport;
-import com.hazelcast.test.annotation.ParallelTest;
+import com.hazelcast.test.annotation.ParallelJVMTest;
 import com.hazelcast.test.annotation.QuickTest;
+import com.hazelcast.topic.ITopic;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
@@ -44,16 +46,19 @@ import java.util.HashMap;
 import java.util.Map.Entry;
 import java.util.Random;
 import java.util.concurrent.CountDownLatch;
+import java.util.regex.Pattern;
 
-import static org.junit.Assert.assertTrue;
+import static com.hazelcast.cache.CacheUtil.getDistributedObjectName;
+import static org.junit.Assert.assertFalse;
 
 @RunWith(HazelcastParallelClassRunner.class)
-@Category({QuickTest.class, ParallelTest.class})
+@Category({QuickTest.class, ParallelJVMTest.class})
 public class DistributedDatastructuresMetricsTest extends HazelcastTestSupport {
 
     private static final int EVENT_COUNTER = 1000;
 
     private static final String MAP_NAME = "myMap";
+    private static final String CACHE_NAME = "myCache";
     private static final String EXECUTOR_NAME = "myExecutor";
     private static final String QUEUE_NAME = "myQueue";
     private static final String REPLICATED_MAP_NAME = "myReplicatedMap";
@@ -63,10 +68,14 @@ public class DistributedDatastructuresMetricsTest extends HazelcastTestSupport {
 
     @Before
     public void setup() {
-        Config config = new Config()
-                .setProperty(Diagnostics.METRICS_LEVEL.getName(), ProbeLevel.INFO.name())
-                .setProperty(Diagnostics.METRICS_DISTRIBUTED_DATASTRUCTURES.getName(), "true");
+        Config config = new Config();
         config.addMapConfig(new MapConfig(NEAR_CACHE_MAP_NAME).setNearCacheConfig(new NearCacheConfig("nearCache")));
+        config.getMetricsConfig()
+              .setMetricsForDataStructuresEnabled(true)
+              .setMinimumLevel(ProbeLevel.INFO);
+        config.addCacheConfig(new CacheSimpleConfig()
+                .setName(CACHE_NAME)
+                .setStatisticsEnabled(true));
 
         hz = createHazelcastInstance(config);
 
@@ -84,7 +93,21 @@ public class DistributedDatastructuresMetricsTest extends HazelcastTestSupport {
             map.removeAsync(key);
         }
 
-        assertHasStatsEventually("map[" + MAP_NAME + "]");
+        assertHasStatsEventually(MAP_NAME, "map.");
+    }
+
+    @Test
+    public void testCache() {
+        final ICache<Object, Object> cache = hz.getCacheManager().getCache(CACHE_NAME);
+
+        Random random = new Random();
+        for (int i = 0; i < EVENT_COUNTER; i++) {
+            int key = random.nextInt(Integer.MAX_VALUE);
+            cache.putAsync(key, 23);
+            cache.removeAsync(key);
+        }
+
+        assertHasStatsEventually(getDistributedObjectName(CACHE_NAME), "cache.");
     }
 
     @Test
@@ -107,7 +130,7 @@ public class DistributedDatastructuresMetricsTest extends HazelcastTestSupport {
         }
         latch.await();
 
-        assertHasStatsEventually("executor[" + EXECUTOR_NAME + "]");
+        assertHasStatsEventually(EXECUTOR_NAME, "executor.");
     }
 
     @Test
@@ -119,7 +142,7 @@ public class DistributedDatastructuresMetricsTest extends HazelcastTestSupport {
         }
         q.poll();
 
-        assertHasStatsEventually("queue[" + QUEUE_NAME + "]");
+        assertHasStatsEventually(QUEUE_NAME, "queue.");
     }
 
     @Test
@@ -131,7 +154,7 @@ public class DistributedDatastructuresMetricsTest extends HazelcastTestSupport {
         }
         replicatedMap.remove(0);
 
-        assertHasStatsEventually("replicatedMap[" + REPLICATED_MAP_NAME + "]");
+        assertHasStatsEventually(REPLICATED_MAP_NAME, "replicatedMap.");
     }
 
     @Test
@@ -142,7 +165,7 @@ public class DistributedDatastructuresMetricsTest extends HazelcastTestSupport {
             topic.publish(i);
         }
 
-        assertHasStatsEventually("topic[" + TOPIC_NAME + "]");
+        assertHasStatsEventually(TOPIC_NAME, "topic.");
     }
 
     @Test
@@ -154,18 +177,15 @@ public class DistributedDatastructuresMetricsTest extends HazelcastTestSupport {
             map.get(i);
         }
 
-        assertHasStatsEventually("map[" + NEAR_CACHE_MAP_NAME + "].nearcache");
+        assertHasStatsEventually(NEAR_CACHE_MAP_NAME, "map.nearcache");
     }
 
-    private void assertHasStatsEventually(final String prefix) {
+    private void assertHasStatsEventually(final String dsName, final String metricPrefix) {
         final MetricsRegistry registry = getNode(hz).nodeEngine.getMetricsRegistry();
-        assertTrueEventually(new AssertTask() {
-            @Override
-            public void run() throws Exception {
-                final StringProbeRenderer renderer = new StringProbeRenderer(prefix);
-                registry.render(renderer);
-                assertTrue(!renderer.probes.isEmpty());
-            }
+        assertTrueEventually(() -> {
+            final StringMetricsCollector collector = new StringMetricsCollector(dsName, metricPrefix);
+            registry.collect(collector);
+            assertFalse(collector.probes.isEmpty());
         });
     }
 
@@ -176,38 +196,48 @@ public class DistributedDatastructuresMetricsTest extends HazelcastTestSupport {
         }
     }
 
-    static class StringProbeRenderer implements ProbeRenderer {
-        final HashMap<String, Object> probes = new HashMap<String, Object>();
-        private final String prefix;
+    static class StringMetricsCollector implements MetricsCollector {
+        final HashMap<String, Object> probes = new HashMap<>();
+        private final Pattern pattern;
 
-        StringProbeRenderer(String prefix) {
-            this.prefix = prefix;
+        StringMetricsCollector(String dsName, String metricPrefix) {
+            this.pattern = Pattern.compile(
+                    String.format(
+                            "^\\[name=%s,(.+,)?metric=%s.+\\]$",
+                            dsName.replace(".", "\\."),
+                            metricPrefix.replace(".", "\\.")
+                    )
+            );
         }
 
         @Override
-        public void renderLong(String name, long value) {
-            if (name.startsWith(prefix)) {
+        public void collectLong(MetricDescriptor descriptor, long value) {
+            String name = descriptor.toString();
+            if (pattern.matcher(name).matches()) {
                 probes.put(name, value);
             }
         }
 
         @Override
-        public void renderDouble(String name, double value) {
-            if (name.startsWith(prefix)) {
+        public void collectDouble(MetricDescriptor descriptor, double value) {
+            String name = descriptor.toString();
+            if (pattern.matcher(name).matches()) {
                 probes.put(name, value);
             }
         }
 
         @Override
-        public void renderException(String name, Exception e) {
-            if (name.startsWith(prefix)) {
+        public void collectException(MetricDescriptor descriptor, Exception e) {
+            String name = descriptor.toString();
+            if (pattern.matcher(name).matches()) {
                 probes.put(name, e);
             }
         }
 
         @Override
-        public void renderNoValue(String name) {
-            if (name.startsWith(prefix)) {
+        public void collectNoValue(MetricDescriptor descriptor) {
+            String name = descriptor.toString();
+            if (pattern.matcher(name).matches()) {
                 probes.put(name, null);
             }
         }

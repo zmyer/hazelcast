@@ -17,7 +17,7 @@
 package com.hazelcast.nio;
 
 import com.hazelcast.nio.serialization.Data;
-import com.hazelcast.spi.serialization.SerializationService;
+import com.hazelcast.internal.serialization.SerializationService;
 
 import java.io.DataOutput;
 import java.io.IOException;
@@ -26,7 +26,7 @@ import java.nio.ByteOrder;
 /**
  * Provides serialization methods for arrays by extending DataOutput
  */
-public interface ObjectDataOutput extends DataOutput, VersionAware {
+public interface ObjectDataOutput extends DataOutput, VersionAware, WanProtocolVersionAware {
 
     /**
      * @param bytes byte array to be written

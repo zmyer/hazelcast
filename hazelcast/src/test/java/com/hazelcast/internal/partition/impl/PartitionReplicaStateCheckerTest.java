@@ -23,14 +23,14 @@ import com.hazelcast.core.HazelcastInstance;
 import com.hazelcast.internal.partition.PartitionReplica;
 import com.hazelcast.internal.partition.service.TestMigrationAwareService;
 import com.hazelcast.internal.partition.service.TestPutOperation;
-import com.hazelcast.nio.Address;
-import com.hazelcast.spi.NodeEngine;
-import com.hazelcast.spi.Operation;
+import com.hazelcast.cluster.Address;
+import com.hazelcast.spi.impl.NodeEngine;
+import com.hazelcast.spi.impl.operationservice.Operation;
 import com.hazelcast.test.AssertTask;
 import com.hazelcast.test.HazelcastParallelClassRunner;
 import com.hazelcast.test.HazelcastTestSupport;
 import com.hazelcast.test.TestHazelcastInstanceFactory;
-import com.hazelcast.test.annotation.ParallelTest;
+import com.hazelcast.test.annotation.ParallelJVMTest;
 import com.hazelcast.test.annotation.QuickTest;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
@@ -46,7 +46,7 @@ import static com.hazelcast.internal.partition.AntiEntropyCorrectnessTest.setBac
 import static org.junit.Assert.assertEquals;
 
 @RunWith(HazelcastParallelClassRunner.class)
-@Category({QuickTest.class, ParallelTest.class})
+@Category({QuickTest.class, ParallelJVMTest.class})
 public class PartitionReplicaStateCheckerTest extends HazelcastTestSupport {
 
     @Test
@@ -256,7 +256,7 @@ public class PartitionReplicaStateCheckerTest extends HazelcastTestSupport {
 
     private static class TestPutOperationWithAsyncBackup extends TestPutOperation {
 
-        public TestPutOperationWithAsyncBackup() {
+        TestPutOperationWithAsyncBackup() {
         }
 
         TestPutOperationWithAsyncBackup(int i) {

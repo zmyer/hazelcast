@@ -16,35 +16,32 @@
 
 package com.hazelcast.map.impl.operation;
 
-import com.hazelcast.internal.cluster.Versions;
 import com.hazelcast.map.impl.MapDataSerializerHook;
-import com.hazelcast.map.impl.MapEntries;
 import com.hazelcast.map.impl.record.Record;
-import com.hazelcast.map.impl.record.RecordInfo;
+import com.hazelcast.map.impl.record.Records;
 import com.hazelcast.nio.ObjectDataInput;
 import com.hazelcast.nio.ObjectDataOutput;
 import com.hazelcast.nio.serialization.Data;
-import com.hazelcast.nio.serialization.impl.Versioned;
-import com.hazelcast.spi.BackupOperation;
-import com.hazelcast.spi.PartitionAwareOperation;
+import com.hazelcast.spi.impl.operationservice.BackupOperation;
+import com.hazelcast.spi.impl.operationservice.PartitionAwareOperation;
 
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 
-import static com.hazelcast.map.impl.record.Records.applyRecordInfo;
-
 public class PutAllBackupOperation extends MapOperation
-        implements PartitionAwareOperation, BackupOperation, Versioned {
+        implements PartitionAwareOperation, BackupOperation {
 
-    private MapEntries entries;
-    private List<RecordInfo> recordInfos;
+    private boolean disableWanReplicationEvent;
+    private List recordAndDataValuePairs;
 
-    public PutAllBackupOperation(String name, MapEntries entries,
-                                 List<RecordInfo> recordInfos, boolean disableWanReplicationEvent) {
+    private transient List<Record> dataRecords;
+
+    public PutAllBackupOperation(String name,
+                                 List recordAndDataValuePairs,
+                                 boolean disableWanReplicationEvent) {
         super(name);
-        this.entries = entries;
-        this.recordInfos = recordInfos;
+        this.recordAndDataValuePairs = recordAndDataValuePairs;
         this.disableWanReplicationEvent = disableWanReplicationEvent;
     }
 
@@ -52,60 +49,62 @@ public class PutAllBackupOperation extends MapOperation
     }
 
     @Override
-    public void run() {
-        for (int i = 0; i < entries.size(); i++) {
-            Data dataKey = entries.getKey(i);
-            Data dataValue = entries.getValue(i);
-            Record record = recordStore.putBackup(dataKey, dataValue, getCallerProvenance());
-            applyRecordInfo(record, recordInfos.get(i));
-
-            publishWanUpdate(dataKey, dataValue);
-            evict(dataKey);
+    protected void runInternal() {
+        if (dataRecords != null) {
+            for (Record<Data> record : dataRecords) {
+                putBackup(record);
+            }
+        } else {
+            // If dataRecords is null and we are in
+            // `runInternal` method, means this operation
+            // has not been serialized/deserialized
+            // and is running directly on caller node.
+            for (int i = 0; i < recordAndDataValuePairs.size(); i += 2) {
+                putBackup((Record) recordAndDataValuePairs.get(i));
+            }
         }
     }
 
+    private void putBackup(Record record) {
+        Record currentRecord = recordStore.putBackup(record, false, getCallerProvenance());
+        Records.copyMetadataFrom(record, currentRecord);
+        publishWanUpdate(record.getKey(), record.getValue());
+        evict(record.getKey());
+    }
+
     @Override
-    public Object getResponse() {
-        return entries;
+    protected boolean disableWanReplicationEvent() {
+        return disableWanReplicationEvent;
     }
 
     @Override
     protected void writeInternal(ObjectDataOutput out) throws IOException {
         super.writeInternal(out);
 
-        entries.writeData(out);
-        for (RecordInfo recordInfo : recordInfos) {
-            recordInfo.writeData(out);
+        out.writeInt(recordAndDataValuePairs.size() / 2);
+        for (int i = 0; i < recordAndDataValuePairs.size(); i += 2) {
+            Record record = (Record) recordAndDataValuePairs.get(i);
+            Data dataValue = (Data) recordAndDataValuePairs.get(i + 1);
+            Records.writeRecord(out, record, dataValue);
         }
-
-        // RU_COMPAT_3_10
-        if (out.getVersion().isGreaterOrEqual(Versions.V3_11)) {
-            out.writeBoolean(disableWanReplicationEvent);
-        }
+        out.writeBoolean(disableWanReplicationEvent);
     }
 
     @Override
     protected void readInternal(ObjectDataInput in) throws IOException {
         super.readInternal(in);
 
-        entries = new MapEntries();
-        entries.readData(in);
-        int size = entries.size();
-        recordInfos = new ArrayList<RecordInfo>(size);
+        int size = in.readInt();
+        List<Record> dataRecords = new ArrayList<>(size);
         for (int i = 0; i < size; i++) {
-            RecordInfo recordInfo = new RecordInfo();
-            recordInfo.readData(in);
-            recordInfos.add(recordInfo);
+            dataRecords.add(Records.readRecord(in));
         }
-
-        // RU_COMPAT_3_10
-        if (in.getVersion().isGreaterOrEqual(Versions.V3_11)) {
-            disableWanReplicationEvent = in.readBoolean();
-        }
+        this.dataRecords = dataRecords;
+        this.disableWanReplicationEvent = in.readBoolean();
     }
 
     @Override
-    public int getId() {
+    public int getClassId() {
         return MapDataSerializerHook.PUT_ALL_BACKUP;
     }
 }

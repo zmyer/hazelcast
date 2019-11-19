@@ -16,34 +16,43 @@
 
 package com.hazelcast.client.impl.protocol.task;
 
+import com.hazelcast.client.impl.ClientPartitionListenerService;
 import com.hazelcast.client.impl.protocol.ClientMessage;
 import com.hazelcast.client.impl.protocol.codec.ClientGetPartitionsCodec;
-import com.hazelcast.instance.Node;
+import com.hazelcast.instance.impl.Node;
 import com.hazelcast.internal.partition.InternalPartitionService;
 import com.hazelcast.internal.partition.PartitionTableView;
-import com.hazelcast.nio.Address;
-import com.hazelcast.nio.Connection;
+import com.hazelcast.cluster.Address;
+import com.hazelcast.internal.nio.Connection;
 
 import java.security.Permission;
-import java.util.Collection;
 import java.util.List;
 import java.util.Map;
 
 public class GetPartitionsMessageTask
-        extends AbstractCallableMessageTask<ClientGetPartitionsCodec.RequestParameters> {
+        extends AbstractCallableMessageTask<ClientGetPartitionsCodec.RequestParameters> implements UrgentMessageTask {
 
     public GetPartitionsMessageTask(ClientMessage clientMessage, Node node, Connection connection) {
         super(clientMessage, node, connection);
     }
 
+    @Override
+    public int getPartitionId() {
+        return -1;
+    }
+
+    /**
+     * The partitions can be empty on the response
+     * see {@link ClientPartitionListenerService#getPartitions(PartitionTableView)}
+     */
     protected Object call() {
         InternalPartitionService service = getService(InternalPartitionService.SERVICE_NAME);
         service.firstArrangement();
         PartitionTableView partitionTableView = service.createPartitionTableView();
         int partitionStateVersion = partitionTableView.getVersion();
-        Collection<Map.Entry<Address, List<Integer>>> partitions =
-                clientEngine.getPartitionListenerService().getPartitions(partitionTableView);
-        return ClientGetPartitionsCodec.encodeResponse(partitions, partitionStateVersion);
+
+        Map<Address, List<Integer>> partitions = clientEngine.getPartitionListenerService().getPartitions(partitionTableView);
+        return ClientGetPartitionsCodec.encodeResponse(partitions.entrySet(), partitionStateVersion);
     }
 
     @Override
@@ -80,5 +89,4 @@ public class GetPartitionsMessageTask
     public Permission getRequiredPermission() {
         return null;
     }
-
 }
