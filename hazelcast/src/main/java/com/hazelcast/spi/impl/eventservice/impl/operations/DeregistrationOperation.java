@@ -26,6 +26,7 @@ import com.hazelcast.spi.impl.eventservice.impl.EventServiceSegment;
 import java.io.IOException;
 import java.util.UUID;
 
+//FGTODO: 2019/11/26 下午3:10 zmyer
 public class DeregistrationOperation extends AbstractRegistrationOperation {
 
     private String topic;

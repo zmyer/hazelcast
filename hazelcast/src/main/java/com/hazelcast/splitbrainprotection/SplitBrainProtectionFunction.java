@@ -25,16 +25,17 @@ import java.util.Collection;
  * A function that can be used to conclude whether the minimum cluster size property is satisfied?
  * The split brain protection function is consulted:<br>
  * <ul>
- *     <li>When a cluster membership change occurs (member added or removed)</li>
- *     <li>Whenever a hearbeat is received from a member, in case the {@code SplitBrainProtectionFunction} also
- *     implements {@link HeartbeatAware}</li>
+ * <li>When a cluster membership change occurs (member added or removed)</li>
+ * <li>Whenever a hearbeat is received from a member, in case the {@code SplitBrainProtectionFunction} also
+ * implements {@link HeartbeatAware}</li>
  * </ul>
- *
+ * <p>
  * A {@code SplitBrainProtectionFunction} that implements {@link HeartbeatAware} will be also notified of heartbeats.
  * Additionally, a {@code SplitBrainProtectionFunction} that implements {@link MembershipListener}
  * will be notified of membership events. All listener invocations are executed before the
  * {@code SplitBrainProtectionFunction}'s {@link #apply(Collection)} method is invoked.
  */
+//FGTODO: 2019/11/25 下午4:56 zmyer
 public interface SplitBrainProtectionFunction {
 
     /**

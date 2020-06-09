@@ -34,6 +34,7 @@ import static com.hazelcast.spi.impl.operationservice.Operation.GENERIC_PARTITIO
  * The original design exposed the actual Invocation class, but this will limit flexibility since
  * the whole invocation can't be changed or fully removed easily.
  */
+//FGTODO: 2019/12/2 下午7:33 zmyer
 public abstract class InvocationBuilder {
 
     /**
@@ -155,9 +156,9 @@ public abstract class InvocationBuilder {
     /**
      * Enables / disables throwing {@link IndeterminateOperationStateException} for this invocation.
      * Can be used only for partition invocations
-     * @see IndeterminateOperationStateException
      *
      * @return the InvocationBuilder
+     * @see IndeterminateOperationStateException
      */
     public InvocationBuilder setFailOnIndeterminateOperationState(boolean failOnIndeterminateOperationState) {
         checkFalse((failOnIndeterminateOperationState && partitionId == GENERIC_PARTITION_ID),

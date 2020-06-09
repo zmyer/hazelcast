@@ -30,6 +30,7 @@ import java.util.UUID;
 import static com.hazelcast.spi.impl.operationservice.ExceptionAction.THROW_EXCEPTION;
 import static com.hazelcast.transaction.impl.TransactionDataSerializerHook.PURGE_TX_BACKUP_LOG;
 
+//FGTODO: 2019/12/3 上午10:03 zmyer
 public class PurgeTxBackupLogOperation extends AbstractTxOperation {
 
     private UUID txnId;

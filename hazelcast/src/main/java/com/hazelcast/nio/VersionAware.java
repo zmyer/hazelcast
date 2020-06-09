@@ -26,6 +26,7 @@ import com.hazelcast.version.Version;
  *
  * @since 3.8
  */
+//FGTODO: 2019/12/5 上午10:28 zmyer
 public interface VersionAware {
 
     /**

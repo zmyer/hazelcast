@@ -22,6 +22,7 @@ import com.hazelcast.internal.util.ConstructorFunction;
 import com.hazelcast.internal.util.VersionAwareConstructorFunction;
 import com.hazelcast.version.Version;
 
+//FGTODO: 2019/11/25 下午12:38 zmyer
 public final class ArrayDataSerializableFactory implements VersionedDataSerializableFactory {
 
     private final ConstructorFunction<Integer, IdentifiedDataSerializable>[] constructors;

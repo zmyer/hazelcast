@@ -75,6 +75,7 @@ import static java.lang.System.getProperty;
  * Map container for a map with a specific name. Contains config and
  * supporting structures for all of the maps' functionalities.
  */
+//FGTODO: 2019/12/4 下午8:23 zmyer
 @SuppressWarnings({"WeakerAccess", "checkstyle:classfanoutcomplexity"})
 public class MapContainer {
 

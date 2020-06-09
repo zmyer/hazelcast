@@ -28,6 +28,7 @@ import static java.util.concurrent.TimeUnit.MILLISECONDS;
  * - number of concurrent invocations
  * - contention on the io system.
  */
+//FGTODO: 2019/12/5 上午10:29 zmyer
 public abstract class ConcurrencyDetection {
 
     private final boolean enabled;

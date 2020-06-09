@@ -18,6 +18,7 @@ package com.hazelcast.internal.cluster;
 
 import com.hazelcast.cluster.Address;
 
+//FGTODO: 2019/11/22 下午4:06 zmyer
 public interface Joiner {
 
     void join();
@@ -66,7 +67,7 @@ public interface Joiner {
 
     /**
      * Checks if an address is blacklisted.
-     *
+     * <p>
      * Method is thread-safe.
      *
      * @param address the address to check.

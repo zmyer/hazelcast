@@ -30,8 +30,8 @@ import static com.hazelcast.internal.nio.IOUtil.compactOrClear;
 import static com.hazelcast.internal.nio.Protocols.PROTOCOL_LENGTH;
 import static com.hazelcast.internal.util.StringUtil.bytesToString;
 
-public class SingleProtocolDecoder
-        extends InboundHandler<ByteBuffer, Void> {
+//FGTODO: 2019/11/22 下午5:28 zmyer
+public class SingleProtocolDecoder extends InboundHandler<ByteBuffer, Void> {
 
     protected final InboundHandler[] inboundHandlers;
     protected final ProtocolType supportedProtocol;
@@ -39,7 +39,7 @@ public class SingleProtocolDecoder
     private final MemberProtocolEncoder encoder;
 
     public SingleProtocolDecoder(ProtocolType supportedProtocol, InboundHandler next) {
-        this(supportedProtocol, new InboundHandler[] {next}, null);
+        this(supportedProtocol, new InboundHandler[]{next}, null);
     }
 
     /**

@@ -24,8 +24,8 @@ import com.hazelcast.internal.nio.IOService;
 
 import static com.hazelcast.instance.ProtocolType.CLIENT;
 
-public class ClientChannelInitializer
-        extends AbstractChannelInitializer {
+//FGTODO: 2019/11/22 下午5:27 zmyer
+public class ClientChannelInitializer extends AbstractChannelInitializer {
 
     ClientChannelInitializer(IOService ioService, EndpointConfig config) {
         super(ioService, config);

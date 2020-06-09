@@ -38,10 +38,10 @@ import java.util.logging.LogRecord;
 import static com.hazelcast.internal.util.ConcurrencyUtil.getOrPutIfAbsent;
 import static com.hazelcast.internal.util.Preconditions.checkNotNull;
 
+//FGTODO: 2019/12/5 上午9:48 zmyer
 public class LoggingServiceImpl implements LoggingService {
 
-    private final CopyOnWriteArrayList<LogListenerRegistration> listeners
-            = new CopyOnWriteArrayList<LogListenerRegistration>();
+    private final CopyOnWriteArrayList<LogListenerRegistration> listeners = new CopyOnWriteArrayList<LogListenerRegistration>();
 
     private final ConcurrentMap<String, ILogger> mapLoggers = new ConcurrentHashMap<>(100);
 
@@ -58,7 +58,7 @@ public class LoggingServiceImpl implements LoggingService {
         this.loggerFactory = Logger.newLoggerFactory(loggingType);
         JetBuildInfo jetBuildInfo = buildInfo.getJetBuildInfo();
         versionMessage = "[" + clusterName + "] ["
-                + (jetBuildInfo != null ?  jetBuildInfo.getVersion() : buildInfo.getVersion()) + "] ";
+                + (jetBuildInfo != null ? jetBuildInfo.getVersion() : buildInfo.getVersion()) + "] ";
     }
 
     public void setThisMember(MemberImpl thisMember) {

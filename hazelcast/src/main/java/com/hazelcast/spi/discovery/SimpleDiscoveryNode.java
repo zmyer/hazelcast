@@ -30,8 +30,8 @@ import static java.util.Collections.unmodifiableMap;
  *
  * @since 3.6
  */
-public final class SimpleDiscoveryNode
-        extends DiscoveryNode {
+//FGTODO: 2019/12/2 下午2:08 zmyer
+public final class SimpleDiscoveryNode extends DiscoveryNode {
 
     private final Address privateAddress;
     private final Address publicAddress;

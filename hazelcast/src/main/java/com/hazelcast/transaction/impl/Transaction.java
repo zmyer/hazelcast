@@ -21,6 +21,7 @@ import com.hazelcast.transaction.TransactionOptions.TransactionType;
 
 import java.util.UUID;
 
+//FGTODO: 2019/11/25 下午2:33 zmyer
 public interface Transaction {
 
     void begin() throws IllegalStateException;

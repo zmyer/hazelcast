@@ -28,5 +28,6 @@ import com.hazelcast.instance.impl.NodeState;
  * @see NodeState
  * @since 3.6
  */
+//FGTODO: 2019/12/3 上午9:40 zmyer
 public interface AllowedDuringPassiveState {
 }

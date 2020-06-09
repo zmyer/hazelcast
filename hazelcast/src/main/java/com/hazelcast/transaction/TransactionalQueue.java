@@ -29,6 +29,7 @@ import java.util.concurrent.TimeUnit;
  * @see BaseQueue
  * @see IQueue
  */
+//FGTODO: 2019/11/25 下午2:32 zmyer
 public interface TransactionalQueue<E> extends TransactionalObject, BaseQueue<E> {
 
     /**

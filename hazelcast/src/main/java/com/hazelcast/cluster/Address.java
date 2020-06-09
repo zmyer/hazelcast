@@ -33,6 +33,7 @@ import static com.hazelcast.internal.util.Preconditions.checkNotNull;
 /**
  * Represents an address of a member in the cluster.
  */
+//FGTODO: 2019/11/22 下午5:23 zmyer
 public final class Address implements IdentifiedDataSerializable {
 
     private static final byte IPV4 = 4;

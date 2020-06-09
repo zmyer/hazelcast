@@ -19,6 +19,7 @@ package com.hazelcast.spi.impl;
 /**
  * A {@link java.lang.Runnable} for a specific partition.
  */
+//FGTODO: 2019/11/26 下午5:58 zmyer
 public interface PartitionSpecificRunnable extends Runnable {
 
     /**

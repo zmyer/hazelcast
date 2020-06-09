@@ -40,13 +40,13 @@ import static com.hazelcast.internal.util.ExceptionUtil.rethrow;
 /**
  * A ProxyRegistry contains all proxies for a given service. For example, it contains all proxies for the IMap.
  */
+//FGTODO: 2019/11/25 下午2:17 zmyer
 public final class ProxyRegistry {
 
     private final ProxyServiceImpl proxyService;
     private final String serviceName;
     private final RemoteService service;
-    private final ConcurrentMap<String, DistributedObjectFuture> proxies
-            = new ConcurrentHashMap<String, DistributedObjectFuture>();
+    private final ConcurrentMap<String, DistributedObjectFuture> proxies = new ConcurrentHashMap<>();
 
     ProxyRegistry(ProxyServiceImpl proxyService, String serviceName) {
         this.proxyService = proxyService;
@@ -186,11 +186,11 @@ public final class ProxyRegistry {
     /**
      * Creates a DistributedObject proxy if it is not created yet
      *
-     * @param name         The name of the distributedObject proxy object.
-     * @param initialize   true if he DistributedObject proxy object should be initialized.
-     * @param local        {@code true} if the proxy should be only created on the local member,
-     *                     otherwise fires {@code DistributedObjectEvent} to trigger cluster-wide
-     *                     proxy creation.
+     * @param name       The name of the distributedObject proxy object.
+     * @param initialize true if he DistributedObject proxy object should be initialized.
+     * @param local      {@code true} if the proxy should be only created on the local member,
+     *                   otherwise fires {@code DistributedObjectEvent} to trigger cluster-wide
+     *                   proxy creation.
      * @return The DistributedObject instance if it is created by this method, null otherwise.
      */
     public DistributedObjectFuture createProxy(String name, boolean initialize,
@@ -236,8 +236,7 @@ public final class ProxyRegistry {
         }
 
         EventService eventService = proxyService.nodeEngine.getEventService();
-        ProxyEventProcessor callback = new ProxyEventProcessor(proxyService.listeners.values(), CREATED, serviceName,
-                name, proxy);
+        ProxyEventProcessor callback = new ProxyEventProcessor(proxyService.listeners.values(), CREATED, serviceName, name, proxy);
         eventService.executeEventCallback(callback);
         if (publishEvent) {
             publish(new DistributedObjectEventPacket(CREATED, serviceName, name));
@@ -277,8 +276,8 @@ public final class ProxyRegistry {
 
     private void publish(DistributedObjectEventPacket event) {
         EventService eventService = proxyService.nodeEngine.getEventService();
-        Collection<EventRegistration> registrations = eventService.getRegistrations(
-                ProxyServiceImpl.SERVICE_NAME, ProxyServiceImpl.SERVICE_NAME);
+        Collection<EventRegistration> registrations =
+                eventService.getRegistrations(ProxyServiceImpl.SERVICE_NAME, ProxyServiceImpl.SERVICE_NAME);
         eventService.publishRemoteEvent(ProxyServiceImpl.SERVICE_NAME, registrations, event, event.getName().hashCode());
     }
 
@@ -307,8 +306,7 @@ public final class ProxyRegistry {
     }
 
     private void invalidate(DistributedObject distributedObject) {
-        if (distributedObject != null
-                && distributedObject instanceof AbstractDistributedObject) {
+        if (distributedObject instanceof AbstractDistributedObject) {
             ((AbstractDistributedObject) distributedObject).invalidate();
         }
     }

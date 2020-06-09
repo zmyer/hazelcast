@@ -25,6 +25,7 @@ import java.util.concurrent.ConcurrentMap;
  * Deadline based failure detector. This failure detector uses an absolute timeout
  * for missing/lost heartbeats. After timeout member is considered as dead/unavailable.
  */
+//FGTODO: 2019/11/22 下午5:42 zmyer
 public class DeadlineClusterFailureDetector implements ClusterFailureDetector {
 
     private final long maxNoHeartbeatMillis;

@@ -30,6 +30,7 @@ import java.util.UUID;
  * @see Cluster
  * @see MembershipListener
  */
+//FGTODO: 2019/11/22 下午5:20 zmyer
 public interface Member extends DataSerializable, Endpoint {
 
     /**
@@ -56,7 +57,7 @@ public interface Member extends DataSerializable, Endpoint {
     Address getAddress();
 
     /**
-     * @return      a map of server socket {@link Address}es per {@link EndpointQualifier} of this member
+     * @return a map of server socket {@link Address}es per {@link EndpointQualifier} of this member
      * @since 3.12
      */
     Map<EndpointQualifier, Address> getAddressMap();
@@ -105,7 +106,7 @@ public interface Member extends DataSerializable, Endpoint {
      * Defines a key-value pair string attribute for this member available
      * to other cluster members.
      *
-     * @param key The key for this property.
+     * @param key   The key for this property.
      * @param value The value that corresponds to this attribute and this member.
      */
     void setAttribute(String key, String value);

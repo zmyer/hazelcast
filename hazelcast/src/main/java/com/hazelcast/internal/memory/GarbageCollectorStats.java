@@ -24,6 +24,7 @@ package com.hazelcast.internal.memory;
  *
  * @see com.hazelcast.internal.memory.MemoryStats
  */
+//FGTODO: 2019/12/4 下午8:19 zmyer 
 public interface GarbageCollectorStats {
 
     /**

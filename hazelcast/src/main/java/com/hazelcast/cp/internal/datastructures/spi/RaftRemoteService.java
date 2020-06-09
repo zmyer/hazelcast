@@ -22,6 +22,7 @@ import com.hazelcast.cp.CPGroupId;
 /**
  * Creates and destroys CP data structure instances and their proxies
  */
+//FGTODO: 2019/11/29 下午7:48 zmyer
 public interface RaftRemoteService {
 
     /**

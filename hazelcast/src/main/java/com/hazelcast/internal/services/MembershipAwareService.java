@@ -22,6 +22,7 @@ package com.hazelcast.internal.services;
  *
  * @author mdogan 9/5/12
  */
+//FGTODO: 2019/11/22 下午4:04 zmyer
 public interface MembershipAwareService {
 
     /**

@@ -51,6 +51,7 @@ import static com.hazelcast.internal.util.StringUtil.timeToString;
  * is going to be executed; this logic will be placed in the
  * {@link Operation#run()} method.
  */
+//FGTODO: 2019/11/22 下午4:18 zmyer
 @SuppressWarnings({"checkstyle:methodcount", "checkstyle:magicnumber"})
 public abstract class Operation implements DataSerializable {
 
@@ -68,8 +69,7 @@ public abstract class Operation implements DataSerializable {
     static final int BITMASK_SERVICE_NAME_SET = 1 << 6;
     static final int BITMASK_CLIENT_CALL_ID_SET = 1 << 7;
 
-    private static final AtomicLongFieldUpdater<Operation> CALL_ID =
-            AtomicLongFieldUpdater.newUpdater(Operation.class, "callId");
+    private static final AtomicLongFieldUpdater<Operation> CALL_ID = AtomicLongFieldUpdater.newUpdater(Operation.class, "callId");
 
     // serialized
     private volatile long callId;
@@ -121,7 +121,7 @@ public abstract class Operation implements DataSerializable {
 
     /**
      * The beforeRun is called before either the {@link #run()} or the {@link #call()} method is called.
-     *
+     * <p>
      * runs before wait-support
      */
     public void beforeRun() throws Exception {
@@ -129,9 +129,9 @@ public abstract class Operation implements DataSerializable {
 
     /**
      * Runs the operation.
-     *
+     * <p>
      * Either the {@link #run()} or {@link #call()} method should be implemented; not both.
-     *
+     * <p>
      * Runs after wait-support, supposed to do actual operation
      *
      * @see #call()
@@ -141,17 +141,17 @@ public abstract class Operation implements DataSerializable {
 
     /**
      * Call the operation and returns the CallStatus.
-     *
+     * <p>
      * An Operation should either implement call or run; not both. If run is
      * implemented, then the system remains backwards compatible to prevent
      * making massive code changes while adding this feature.
-     *
+     * <p>
      * In the future all {@link #run()} methods will be replaced by call
      * methods.
-     *
+     * <p>
      * The call method looks very much like the {@link #run()} method and it is
      * very close to {@link Runnable#run()} and {@link Callable#call()}.
-     *
+     * <p>
      * The main difference between a run and call, is that the returned
      * CallStatus from the call can tell something about the actual execution.
      * For example it could tell that some waiting is required in case of a
@@ -159,10 +159,10 @@ public abstract class Operation implements DataSerializable {
      * offloaded to some executor in case of an
      * {@link com.hazelcast.core.Offloadable}
      * {@link com.hazelcast.map.impl.operation.EntryOperation}.
-     *
+     * <p>
      * In the future new types of CallStatus are expected to be added, e.g. for
      * interleaving.
-     *
+     * <p>
      * In the future it is very likely that for regular Operation that want to
      * return a concrete response, the actual response can be returned directly.
      * In this case we'll change the return type to {@link Object} to prevent
@@ -188,7 +188,7 @@ public abstract class Operation implements DataSerializable {
     /**
      * Is executed called after {@link #run()} or {@link #call()} method completes normally and the operation is not
      * blocked, see {@link CallStatus#WAIT}.
-     *
+     * <p>
      * Runs after backups, before wait-notify.
      */
     public void afterRun() throws Exception {
@@ -242,15 +242,15 @@ public abstract class Operation implements DataSerializable {
 
     /**
      * Returns the ID of the partition that this Operation will be executed on.
-     *
+     * <p>
      * If the partitionId is equal or larger than 0, it means that it is tied to
      * a specific partition: for example, a map.get('foo'). If it is smaller than
      * 0, than it means that it isn't bound to a particular partition.
-     *
+     * <p>
      * The partitionId should never be equal or larger than the total number of
      * partitions. For example, if there are 271 partitions, the maximum partition
      * ID is 270.
-     *
+     * <p>
      * The partitionId is used by the OperationService to figure out which member
      * owns a specific partition, and to send the operation to that member.
      *
@@ -473,7 +473,7 @@ public abstract class Operation implements DataSerializable {
 
     /**
      * Gets the time in milliseconds when this invocation started.
-     *
+     * <p>
      * For more information, see {@link ClusterClock#getClusterTime()}.
      *
      * @return the time of the invocation start.
@@ -494,7 +494,7 @@ public abstract class Operation implements DataSerializable {
      * call timeout is 60000 milliseconds. Once the operation execution starts,
      * the call timeout is no longer relevant, even if the execution takes a long
      * time.
-     *
+     * <p>
      * For more information about the default value, see
      * {@link GroupProperty#OPERATION_CALL_TIMEOUT_MILLIS}
      *
@@ -523,18 +523,18 @@ public abstract class Operation implements DataSerializable {
     /**
      * Returns the wait timeout in millis. -1 means infinite wait, and 0 means
      * no waiting at all.
-     *
+     * <p>
      * The wait timeout is the amount of time a {@link BlockingOperation} is
      * allowed to be parked in the
      * {@link com.hazelcast.spi.impl.operationparker.OperationParker}.
-     *
+     * <p>
      * Examples:
      * <ol>
      * <li>in case of IMap.tryLock(10, ms), the wait timeout is 10 ms</li>
      * <li>in case of IMap.lock(), the wait timeout is -1</li>
      * <li>in case of IMap.tryLock(), the wait timeout is 0.</li>
      * </ol>
-     *
+     * <p>
      * The waitTimeout is only relevant for blocking operations. For non
      * blocking operations the value is ignored.
      *
@@ -778,7 +778,7 @@ public abstract class Operation implements DataSerializable {
      * this method and add additional debugging content. The default
      * implementation does nothing so one is not forced to provide an empty
      * implementation.
-     *
+     * <p>
      * It is a good practice to always call the super.toString(stringBuffer)
      * when implementing this method to make sure that the super class can
      * inject content if needed.

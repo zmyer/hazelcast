@@ -34,6 +34,7 @@ import static com.hazelcast.internal.serialization.impl.SerializationUtil.readNu
 import static com.hazelcast.internal.serialization.impl.SerializationUtil.writeNullableCollection;
 import static com.hazelcast.internal.util.StringUtil.LINE_SEPARATOR;
 
+//FGTODO: 2019/11/29 下午7:20 zmyer
 public final class PartitionRuntimeState implements IdentifiedDataSerializable {
 
     private PartitionReplica[] replicas;
@@ -43,7 +44,9 @@ public final class PartitionRuntimeState implements IdentifiedDataSerializable {
     // used to know ongoing migrations when master changed
     private MigrationInfo activeMigration;
 
-    /** The sender of the operation which changes the partition table, should be the master node */
+    /**
+     * The sender of the operation which changes the partition table, should be the master node
+     */
     private Address master;
 
     public PartitionRuntimeState() {
@@ -66,7 +69,7 @@ public final class PartitionRuntimeState implements IdentifiedDataSerializable {
     }
 
     private int[][] createMinimizedPartitionTable(InternalPartition[] partitions,
-            Map<PartitionReplica, Integer> replicaToIndexes) {
+                                                  Map<PartitionReplica, Integer> replicaToIndexes) {
         int[][] partitionTable = new int[partitions.length][MAX_REPLICA_COUNT];
         for (InternalPartition partition : partitions) {
             int[] indexes = partitionTable[partition.getPartitionId()];

@@ -41,6 +41,7 @@ import static java.util.concurrent.TimeUnit.MILLISECONDS;
  * @see DiscoveryConfig
  * @see AwsConfig
  */
+//FGTODO: 2019/11/26 上午10:09 zmyer
 @SuppressWarnings({"checkstyle:methodcount", "checkstyle:javadocvariable"})
 public class WanBatchReplicationPublisherConfig extends AbstractWanPublisherConfig {
     public static final String DEFAULT_CLUSTER_NAME = "dev";

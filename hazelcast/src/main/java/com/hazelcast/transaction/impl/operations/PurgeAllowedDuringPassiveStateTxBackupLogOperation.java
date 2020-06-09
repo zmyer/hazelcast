@@ -22,8 +22,8 @@ import java.util.UUID;
 
 import static com.hazelcast.transaction.impl.TransactionDataSerializerHook.PURGE_ALLOWED_DURING_PASSIVE_STATE_TX_BACKUP_LOG;
 
-public final class PurgeAllowedDuringPassiveStateTxBackupLogOperation
-        extends PurgeTxBackupLogOperation
+//FGTODO: 2019/12/3 上午10:03 zmyer
+public final class PurgeAllowedDuringPassiveStateTxBackupLogOperation extends PurgeTxBackupLogOperation
         implements AllowedDuringPassiveState {
 
     public PurgeAllowedDuringPassiveStateTxBackupLogOperation() {

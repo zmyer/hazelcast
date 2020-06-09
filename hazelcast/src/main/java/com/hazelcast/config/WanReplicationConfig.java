@@ -56,6 +56,7 @@ import static com.hazelcast.internal.util.Preconditions.checkNotNull;
  * @see MapConfig#setWanReplicationRef
  * @see CacheConfig#setWanReplicationRef
  */
+//FGTODO: 2019/11/26 上午10:08 zmyer
 public class WanReplicationConfig implements IdentifiedDataSerializable {
 
     private String name;

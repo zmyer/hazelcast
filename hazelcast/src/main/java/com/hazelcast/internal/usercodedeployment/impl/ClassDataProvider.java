@@ -31,9 +31,10 @@ import static com.hazelcast.internal.util.EmptyStatement.ignore;
 
 /**
  * Provides {@link ClassData} to remote members.
- *
+ * <p>
  * It may consult a local class cache when enabled and then it delegates to a local classloader.
  */
+//FGTODO: 2019/12/5 上午8:56 zmyer
 public final class ClassDataProvider {
     private final UserCodeDeploymentConfig.ProviderMode providerMode;
     private final ClassLoader parent;

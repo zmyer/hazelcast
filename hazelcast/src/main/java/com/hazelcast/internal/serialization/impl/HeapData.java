@@ -28,6 +28,7 @@ import static com.hazelcast.internal.util.JVMUtil.REFERENCE_COST_IN_BYTES;
 /**
  * A {@link Data} implementation where the content lives on the heap.
  */
+//FGTODO: 2019/12/4 下午8:15 zmyer
 @SuppressFBWarnings("EI_EXPOSE_REP")
 public class HeapData implements Data {
     // type and partition_hash are always written with BIG_ENDIAN byte-order

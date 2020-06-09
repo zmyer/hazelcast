@@ -39,12 +39,19 @@ import static com.hazelcast.internal.serialization.impl.SerializationUtil.writeL
 import static java.util.Collections.emptyList;
 import static java.util.Collections.unmodifiableList;
 
+//FGTODO: 2019/11/22 下午4:08 zmyer
 public class MembersUpdateOp extends AbstractClusterOperation {
-    /** The master cluster clock time. */
+    /**
+     * The master cluster clock time.
+     */
     long masterTime = Clock.currentTimeMillis();
-    /** The updated member info collection. */
+    /**
+     * The updated member info collection.
+     */
     private List<MemberInfo> memberInfos;
-    /** The UUID of the receiving member. */
+    /**
+     * The UUID of the receiving member.
+     */
     private UUID targetUuid;
     private boolean returnResponse;
     private PartitionRuntimeState partitionRuntimeState;

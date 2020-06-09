@@ -27,8 +27,8 @@ import java.util.Collection;
  *
  * @since 3.12
  */
-public class ServerSocketEndpointConfig
-        extends EndpointConfig {
+//FGTODO: 2019/12/5 下午12:45 zmyer
+public class ServerSocketEndpointConfig extends EndpointConfig {
 
     /**
      * Default value of port number.
@@ -86,7 +86,7 @@ public class ServerSocketEndpointConfig
 
     /**
      * Sets the port the Hazelcast member will try to bind on.
-     *
+     * <p>
      * A valid port value is between 0 and 65535.
      * A port number of 0 will let the system pick up an ephemeral port.
      *
@@ -118,8 +118,8 @@ public class ServerSocketEndpointConfig
      * The maximum number of ports allowed to use.
      *
      * @param portCount the maximum number of ports allowed to use
-     * @see #setPortAutoIncrement(boolean) for more information
      * @return this configuration
+     * @see #setPortAutoIncrement(boolean) for more information
      */
     public ServerSocketEndpointConfig setPortCount(int portCount) {
         if (portCount < 1) {

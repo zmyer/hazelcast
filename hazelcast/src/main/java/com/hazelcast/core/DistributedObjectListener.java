@@ -25,6 +25,7 @@ import java.util.EventListener;
  * @see DistributedObject
  * @see HazelcastInstance#addDistributedObjectListener(DistributedObjectListener)
  */
+//FGTODO: 2019/11/25 下午2:16 zmyer
 public interface DistributedObjectListener extends EventListener {
 
     /**

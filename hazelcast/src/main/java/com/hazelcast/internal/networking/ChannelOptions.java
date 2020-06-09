@@ -18,21 +18,22 @@ package com.hazelcast.internal.networking;
 
 /**
  * Contains the configuration of a {@link Channel}.
- *
+ * <p>
  * The ChannelOptions is not tied to a particular type of transport. So it could
  * contain TCP based transport, but it could also contain e.g. UDP transport
  * configuration.
  */
+//FGTODO: 2019/12/2 下午1:32 zmyer
 public interface ChannelOptions {
 
     /**
      * Sets an option value.
      *
      * @param option the option
-     * @param value the value
-     * @param <T> the type of the value
+     * @param value  the value
+     * @param <T>    the type of the value
      * @return this instance for a fluent interface.
-     * @throws NullPointerException if option or value is null.
+     * @throws NullPointerException                  if option or value is null.
      * @throws com.hazelcast.core.HazelcastException if the value could not be set.
      */
     <T> ChannelOptions setOption(ChannelOption<T> option, T value);
@@ -41,7 +42,7 @@ public interface ChannelOptions {
      * Gets an option value.
      *
      * @param option the option
-     * @param <T> the type of the value
+     * @param <T>    the type of the value
      * @return null if value is null.
      * @throws com.hazelcast.core.HazelcastException if the value could not be get.
      */

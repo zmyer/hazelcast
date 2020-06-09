@@ -31,6 +31,7 @@ import com.hazelcast.cache.ICache;
  *
  * @since 3.7
  */
+//FGTODO: 2019/11/29 下午7:43 zmyer
 public interface ICacheManager {
 
     /**
@@ -51,12 +52,10 @@ public interface ICacheManager {
      *
      * @param name the prefixed name of the cache
      * @return the cache instance with the specified prefixed name
-     *
-     * @throws com.hazelcast.cache.CacheNotExistsException  if there is no configured or created cache
-     *                                                      with the specified prefixed name
-     * @throws java.lang.IllegalStateException              if a valid JCache library does not exist in the classpath
-     *                                                      ({@code 1.0.0-PFD} or {@code 0.x} versions are not valid)
-     *
+     * @throws com.hazelcast.cache.CacheNotExistsException if there is no configured or created cache
+     *                                                     with the specified prefixed name
+     * @throws java.lang.IllegalStateException             if a valid JCache library does not exist in the classpath
+     *                                                     ({@code 1.0.0-PFD} or {@code 0.x} versions are not valid)
      * @see com.hazelcast.cache.CacheUtil#getPrefixedCacheName(String, java.net.URI, ClassLoader)
      */
     <K, V> ICache<K, V> getCache(String name);

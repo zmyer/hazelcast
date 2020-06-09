@@ -24,27 +24,28 @@ import com.hazelcast.spi.impl.eventservice.EventService;
  *
  * @param <S> the type of the {@link ManagedService}
  */
+//FGTODO: 2019/11/26 下午5:27 zmyer
 public interface NotifiableEventListener<S> {
 
     /**
      * Called when this listener registered to {@link EventService}.
      *
-     * @param service       the service instance that event belongs to
-     * @param serviceName   name of the service that event belongs to
-     * @param topic         name of the topic that event belongs to
-     * @param registration  the {@link EventRegistration} instance
-     *                      that holds information about the registration
+     * @param service      the service instance that event belongs to
+     * @param serviceName  name of the service that event belongs to
+     * @param topic        name of the topic that event belongs to
+     * @param registration the {@link EventRegistration} instance
+     *                     that holds information about the registration
      */
     void onRegister(S service, String serviceName, String topic, EventRegistration registration);
 
     /**
      * Called when this listener deregistered from {@link EventService}.
      *
-     * @param service       the service instance that event belongs to
-     * @param serviceName   name of the service that event belongs to
-     * @param topic         name of the topic that event belongs to
-     * @param registration  the {@link EventRegistration} instance
-     *                      that holds information about the registration
+     * @param service      the service instance that event belongs to
+     * @param serviceName  name of the service that event belongs to
+     * @param topic        name of the topic that event belongs to
+     * @param registration the {@link EventRegistration} instance
+     *                     that holds information about the registration
      */
     void onDeregister(S service, String serviceName, String topic, EventRegistration registration);
 

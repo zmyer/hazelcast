@@ -19,6 +19,7 @@ package com.hazelcast.internal.eviction;
 /**
  * Interface for entries, records or whatever that can be evicted.
  */
+//FGTODO: 2019/11/26 下午3:45 zmyer
 public interface Evictable<V> {
 
     /**

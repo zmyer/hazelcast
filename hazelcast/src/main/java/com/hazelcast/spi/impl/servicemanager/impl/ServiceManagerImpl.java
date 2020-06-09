@@ -79,6 +79,7 @@ import java.util.concurrent.ConcurrentMap;
 import static com.hazelcast.internal.util.EmptyStatement.ignore;
 import static com.hazelcast.internal.util.ExceptionUtil.rethrow;
 
+//FGTODO: 2019/11/22 下午3:56 zmyer
 @SuppressWarnings({"checkstyle:classdataabstractioncoupling", "checkstyle:classfanoutcomplexity"})
 public final class ServiceManagerImpl implements ServiceManager {
 
@@ -322,7 +323,7 @@ public final class ServiceManagerImpl implements ServiceManager {
                         + ", Service: " + currentServiceInfo.getService());
             }
             if (currentServiceInfo.isManagedService()) {
-                shutdownService((ManagedService) currentServiceInfo.getService(), false);
+                shutdownService(currentServiceInfo.getService(), false);
             }
             services.put(serviceName, serviceInfo);
         }

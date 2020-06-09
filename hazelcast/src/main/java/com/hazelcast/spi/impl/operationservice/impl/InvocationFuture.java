@@ -48,6 +48,7 @@ import static com.hazelcast.spi.impl.operationservice.impl.InvocationConstant.IN
  *
  * @param <E>
  */
+//FGTODO: 2019/11/26 下午5:40 zmyer
 public final class InvocationFuture<E> extends AbstractInvocationFuture<E> {
 
     final Invocation invocation;
@@ -68,9 +69,9 @@ public final class InvocationFuture<E> extends AbstractInvocationFuture<E> {
     @Override
     public boolean isCompletedExceptionally() {
         return (state instanceof ExceptionalResult
-            || state == CALL_TIMEOUT
-            || state == HEARTBEAT_TIMEOUT
-            || state == INTERRUPTED);
+                || state == CALL_TIMEOUT
+                || state == HEARTBEAT_TIMEOUT
+                || state == INTERRUPTED);
     }
 
     @Override
@@ -147,7 +148,7 @@ public final class InvocationFuture<E> extends AbstractInvocationFuture<E> {
 
         if (invocation.shouldFailOnIndeterminateOperationState()
                 && (value instanceof IndeterminateOperationState
-                    || cause instanceof IndeterminateOperationState)) {
+                || cause instanceof IndeterminateOperationState)) {
             value = wrapThrowable(new IndeterminateOperationStateException("indeterminate operation state",
                     cause == null ? (Throwable) value : cause));
         }

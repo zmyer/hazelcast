@@ -23,6 +23,7 @@ import java.io.Serializable;
 /**
  * Credentials represents an identity to be authenticated.
  */
+//FGTODO: 2019/11/25 下午4:48 zmyer
 @BinaryInterface
 public interface Credentials extends Serializable {
 

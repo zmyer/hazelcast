@@ -29,6 +29,7 @@ import java.util.Collection;
 import java.util.HashMap;
 import java.util.Map;
 
+//FGTODO: 2019/11/22 下午5:30 zmyer
 public class BindRequest {
 
     private final ILogger logger;
@@ -65,11 +66,7 @@ public class BindRequest {
         Map<ProtocolType, Collection<Address>> addressMap = new HashMap<ProtocolType, Collection<Address>>();
         Map<EndpointQualifier, Address> addressesPerEndpointQualifier = ioService.getThisAddresses();
         for (Map.Entry<EndpointQualifier, Address> addressEntry : addressesPerEndpointQualifier.entrySet()) {
-            Collection<Address> addresses = addressMap.get(addressEntry.getKey().getType());
-            if (addresses == null) {
-                addresses = new ArrayList<Address>();
-                addressMap.put(addressEntry.getKey().getType(), addresses);
-            }
+            Collection<Address> addresses = addressMap.computeIfAbsent(addressEntry.getKey().getType(), k -> new ArrayList<Address>());
             addresses.add(addressEntry.getValue());
         }
         return addressMap;

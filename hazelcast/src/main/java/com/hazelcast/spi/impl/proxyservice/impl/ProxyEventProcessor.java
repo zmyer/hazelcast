@@ -24,6 +24,7 @@ import com.hazelcast.internal.util.executor.StripedRunnable;
 
 import java.util.Collection;
 
+//FGTODO: 2019/11/25 下午2:23 zmyer
 final class ProxyEventProcessor implements StripedRunnable {
 
     private final Collection<DistributedObjectListener> listeners;

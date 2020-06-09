@@ -132,6 +132,7 @@ import static com.hazelcast.internal.util.ThreadUtil.createThreadName;
 import static java.lang.Thread.currentThread;
 import static java.security.AccessController.doPrivileged;
 
+//FGTODO: 2019/11/22 下午3:54 zmyer
 @SuppressWarnings({"checkstyle:methodcount", "checkstyle:visibilitymodifier", "checkstyle:classdataabstractioncoupling",
         "checkstyle:classfanoutcomplexity"})
 public class Node {
@@ -849,14 +850,14 @@ public class Node {
             return (Joiner) constructor.newInstance(this);
         } catch (ClassNotFoundException e) {
             String message = "Your Hazelcast network configuration has AWS discovery "
-                     + "enabled, but there is no Hazelcast AWS module on a classpath. " + LINE_SEPARATOR
-                     + "Hint: If you are using Maven then add this dependency into your pom.xml:" + LINE_SEPARATOR
-                     + "<dependency>" + LINE_SEPARATOR
-                     + "    <groupId>com.hazelcast</groupId>" + LINE_SEPARATOR
-                     + "    <artifactId>hazelcast-aws</artifactId>" + LINE_SEPARATOR
-                     + "    <version>insert hazelcast-aws version</version>" + LINE_SEPARATOR
-                     + "</dependency>" + LINE_SEPARATOR
-                     + " See https://github.com/hazelcast/hazelcast-aws for additional details";
+                    + "enabled, but there is no Hazelcast AWS module on a classpath. " + LINE_SEPARATOR
+                    + "Hint: If you are using Maven then add this dependency into your pom.xml:" + LINE_SEPARATOR
+                    + "<dependency>" + LINE_SEPARATOR
+                    + "    <groupId>com.hazelcast</groupId>" + LINE_SEPARATOR
+                    + "    <artifactId>hazelcast-aws</artifactId>" + LINE_SEPARATOR
+                    + "    <version>insert hazelcast-aws version</version>" + LINE_SEPARATOR
+                    + "</dependency>" + LINE_SEPARATOR
+                    + " See https://github.com/hazelcast/hazelcast-aws for additional details";
             throw new InvalidConfigurationException(message, e);
         } catch (Exception e) {
             throw rethrow(e);

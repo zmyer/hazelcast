@@ -16,6 +16,7 @@
 
 package com.hazelcast.internal.locksupport;
 
+//FGTODO: 2019/11/26 下午5:11 zmyer
 public interface LockStoreInfo {
 
     int getBackupCount();

@@ -39,6 +39,7 @@ import static com.hazelcast.internal.serialization.impl.SerializationUtil.writeM
 import static com.hazelcast.internal.util.MapUtil.createHashMap;
 import static java.util.Collections.singletonMap;
 
+//FGTODO: 2019/12/2 下午7:14 zmyer
 public class MemberInfo implements IdentifiedDataSerializable {
 
     private Address address;

@@ -33,6 +33,7 @@ import java.util.List;
  * This configuration class describes the top-level config of the discovery
  * SPI and its discovery strategies.
  */
+//FGTODO: 2019/12/2 下午2:05 zmyer 
 public class DiscoveryConfig implements IdentifiedDataSerializable {
 
     private List<DiscoveryStrategyConfig> discoveryStrategyConfigs = new ArrayList<DiscoveryStrategyConfig>();

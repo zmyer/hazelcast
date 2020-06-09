@@ -23,6 +23,7 @@ import com.hazelcast.nio.serialization.DataSerializable;
  *
  * @since 3.9
  */
+//FGTODO: 2019/11/25 下午2:08 zmyer 
 public interface ServiceNamespace extends DataSerializable {
     /**
      * Name of the service

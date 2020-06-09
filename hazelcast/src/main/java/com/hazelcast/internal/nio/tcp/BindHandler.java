@@ -34,6 +34,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.logging.Level;
 
+//FGTODO: 2019/12/5 下午1:40 zmyer
 final class BindHandler {
 
     private final TcpIpEndpointManager tcpIpEndpointManager;
@@ -89,7 +90,7 @@ final class BindHandler {
                 + " must be already set";
         boolean isMemberConnection = (connection.getType() == ConnectionType.MEMBER
                 && (tcpIpEndpointManager.getEndpointQualifier() == EndpointQualifier.MEMBER
-                    || unifiedEndpointManager));
+                || unifiedEndpointManager));
         boolean mustRegisterRemoteSocketAddress = !bindMessage.isReply();
 
         Address remoteEndpoint = null;
@@ -118,10 +119,10 @@ final class BindHandler {
      * with which it was registered in {@link TcpIpEndpointManager#connectionsInProgress},
      * ignoring the {@code remoteEndpoint} argument.
      *
-     * @param connection            the connection to bind
-     * @param remoteEndpoint        the address of the remote endpoint
-     * @param remoteAddressAliases  alias addresses as provided by the remote endpoint, under which the connection
-     *                              will be registered. These are the public addresses configured on the remote.
+     * @param connection           the connection to bind
+     * @param remoteEndpoint       the address of the remote endpoint
+     * @param remoteAddressAliases alias addresses as provided by the remote endpoint, under which the connection
+     *                             will be registered. These are the public addresses configured on the remote.
      */
     @SuppressWarnings({"checkstyle:npathcomplexity"})
     @SuppressFBWarnings("RV_RETURN_VALUE_OF_PUTIFABSENT_IGNORED")

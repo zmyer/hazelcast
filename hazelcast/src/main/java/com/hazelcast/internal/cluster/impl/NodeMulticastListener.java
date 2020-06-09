@@ -23,6 +23,7 @@ import com.hazelcast.logging.ILogger;
 import com.hazelcast.cluster.Address;
 import com.hazelcast.internal.nio.Packet;
 
+//FGTODO: 2019/12/5 下午1:37 zmyer
 public class NodeMulticastListener implements MulticastListener {
 
     private final Node node;

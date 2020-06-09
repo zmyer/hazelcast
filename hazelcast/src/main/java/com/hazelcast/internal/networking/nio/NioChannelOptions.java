@@ -42,6 +42,7 @@ import static java.util.logging.Level.WARNING;
 /**
  * Contains the configuration for a {@link Channel}.
  */
+//FGTODO: 2019/12/2 下午1:32 zmyer
 final class NioChannelOptions implements ChannelOptions {
 
     private static final AtomicBoolean SEND_BUFFER_WARNING = new AtomicBoolean();

@@ -32,6 +32,7 @@ import java.security.PrivilegedAction;
  * <li>https://github.com/hazelcast/hazelcast/issues/7854</li>
  * </ul>
  */
+//FGTODO: 2019/12/4 上午9:53 zmyer
 public final class JCacheDetector {
 
     private static final String JCACHE_CACHING_CLASSNAME = "javax.cache.Caching";

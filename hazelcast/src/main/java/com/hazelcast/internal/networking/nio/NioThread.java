@@ -42,6 +42,7 @@ import static com.hazelcast.internal.util.EmptyStatement.ignore;
 import static java.lang.Math.max;
 import static java.lang.System.currentTimeMillis;
 
+//FGTODO: 2019/11/22 下午5:25 zmyer
 public class NioThread extends Thread implements OperationHostileThread {
 
     // WARNING: This value has significant effect on idle CPU usage!
@@ -367,7 +368,7 @@ public class NioThread extends Thread implements OperationHostileThread {
             eventCount.inc();
             pipeline.process();
         } catch (Throwable t) {
-             pipeline.onError(t);
+            pipeline.onError(t);
         }
     }
 

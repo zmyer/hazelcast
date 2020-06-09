@@ -31,6 +31,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
+//FGTODO: 2019/12/4 下午8:38 zmyer
 public class ReplicationOperation extends Operation implements IdentifiedDataSerializable {
 
     private List<DurableHolder> list;

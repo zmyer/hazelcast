@@ -648,7 +648,7 @@ public class CacheProxy<K, V> extends CacheProxySupport<K, V>
         try {
             OperationFactory operationFactory = operationProvider.createSizeOperationFactory();
             Map<Integer, Object> results = getNodeEngine().getOperationService()
-                                                          .invokeOnAllPartitions(getServiceName(), operationFactory);
+                    .invokeOnAllPartitions(getServiceName(), operationFactory);
             int total = 0;
             for (Object result : results.values()) {
                 //noinspection RedundantCast

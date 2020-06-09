@@ -33,6 +33,7 @@ import java.util.Collection;
 import static java.util.Collections.emptySet;
 import static java.util.Collections.singleton;
 
+//FGTODO: 2019/11/22 下午5:48 zmyer
 abstract class AbstractPartitionOperation extends Operation implements IdentifiedDataSerializable {
 
     final Collection<MigrationAwareService> getMigrationAwareServices() {
@@ -70,7 +71,7 @@ abstract class AbstractPartitionOperation extends Operation implements Identifie
     }
 
     final Collection<Operation> createFragmentReplicationOperations(PartitionReplicationEvent event, ServiceNamespace ns,
-            Collection<String> serviceNames) {
+                                                                    Collection<String> serviceNames) {
         assert !(ns instanceof NonFragmentedServiceNamespace) : ns + " should be used only for non-fragmented services!";
 
         Collection<Operation> operations = emptySet();
@@ -104,7 +105,8 @@ abstract class AbstractPartitionOperation extends Operation implements Identifie
     }
 
     private Collection<Operation> prepareAndAppendReplicationOperation(PartitionReplicationEvent event, ServiceNamespace ns,
-            FragmentedMigrationAwareService service, String serviceName, Collection<Operation> operations) {
+                                                                       FragmentedMigrationAwareService service, String serviceName,
+                                                                       Collection<Operation> operations) {
 
         Operation op = service.prepareReplicationOperation(event, singleton(ns));
         if (op == null) {

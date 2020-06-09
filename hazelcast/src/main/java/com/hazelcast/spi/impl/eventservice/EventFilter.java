@@ -19,6 +19,7 @@ package com.hazelcast.spi.impl.eventservice;
 /**
  * A predicate that can filter out events.
  */
+//FGTODO: 2019/11/26 下午5:26 zmyer
 public interface EventFilter {
 
     /**

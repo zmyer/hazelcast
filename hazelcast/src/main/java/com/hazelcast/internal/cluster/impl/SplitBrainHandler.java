@@ -22,6 +22,7 @@ import com.hazelcast.instance.impl.Node;
 
 import java.util.concurrent.atomic.AtomicBoolean;
 
+//FGTODO: 2019/11/22 下午4:06 zmyer
 final class SplitBrainHandler implements Runnable {
 
     private final Node node;

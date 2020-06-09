@@ -29,6 +29,7 @@ import static com.hazelcast.internal.util.Preconditions.checkNotNull;
  * The publisher can be some other external system which is not a Hazelcast
  * cluster (e.g. JMS queue).
  */
+//FGTODO: 2019/12/4 上午10:08 zmyer
 public class CustomWanPublisherConfig extends AbstractWanPublisherConfig {
 
     @Override

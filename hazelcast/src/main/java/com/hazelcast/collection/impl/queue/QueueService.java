@@ -109,13 +109,13 @@ public class QueueService implements ManagedService, MigrationAwareService, Tran
     private final ContextMutexFactory splitBrainProtectionConfigCacheMutexFactory = new ContextMutexFactory();
     private final ConstructorFunction<String, Object> splitBrainProtectionConfigConstructor =
             new ConstructorFunction<String, Object>() {
-        @Override
-        public Object createNew(String name) {
-            QueueConfig queueConfig = nodeEngine.getConfig().findQueueConfig(name);
-            String splitBrainProtectionName = queueConfig.getSplitBrainProtectionName();
-            return splitBrainProtectionName == null ? NULL_OBJECT : splitBrainProtectionName;
-        }
-    };
+                @Override
+                public Object createNew(String name) {
+                    QueueConfig queueConfig = nodeEngine.getConfig().findQueueConfig(name);
+                    String splitBrainProtectionName = queueConfig.getSplitBrainProtectionName();
+                    return splitBrainProtectionName == null ? NULL_OBJECT : splitBrainProtectionName;
+                }
+            };
 
     private final NodeEngine nodeEngine;
     private final SerializationService serializationService;

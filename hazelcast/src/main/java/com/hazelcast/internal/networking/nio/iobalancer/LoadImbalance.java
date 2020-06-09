@@ -26,10 +26,11 @@ import java.util.Set;
 
 /**
  * Describes a state of NioThread (im-)balance.
- *
+ * <p>
  * It's used by {@link MigrationStrategy} to decide whether and what
  * {@link NioPipeline} should be migrated.
  */
+//FGTODO: 2019/12/2 下午1:26 zmyer
 class LoadImbalance {
     //load recorded by the busiest NioThread
     long maximumLoad;

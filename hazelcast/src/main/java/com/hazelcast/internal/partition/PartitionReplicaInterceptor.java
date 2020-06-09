@@ -19,6 +19,7 @@ package com.hazelcast.internal.partition;
 /**
  * Interceptor for partition replica changes.
  */
+//FGTODO: 2019/11/29 下午7:20 zmyer
 public interface PartitionReplicaInterceptor {
     /**
      * Called when a new partition arrangement has been set and a partition replica has been changed.

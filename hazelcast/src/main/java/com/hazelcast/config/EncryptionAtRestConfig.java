@@ -23,6 +23,8 @@ import static com.hazelcast.internal.util.Preconditions.checkNotNull;
 /**
  * Contains configuration for the Hot Restart Persistence at Rest encryption
  */
+//FGTODO: 2019/12/4 下午8:20 zmyer
+
 public class EncryptionAtRestConfig extends AbstractSymmetricEncryptionConfig<EncryptionAtRestConfig> {
 
     private SecureStoreConfig secureStoreConfig = new NoSecureStoreConfig();

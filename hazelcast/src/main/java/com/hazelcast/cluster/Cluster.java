@@ -34,6 +34,7 @@ import java.util.UUID;
  * <p>
  * All the methods on the Cluster are thread-safe.
  */
+//FGTODO: 2019/11/22 下午4:00 zmyer
 public interface Cluster {
 
     /**
@@ -58,7 +59,7 @@ public interface Cluster {
      * Removes the specified MembershipListener.
      * <p>
      * If the same MembershipListener is registered multiple times, it needs to be removed multiple times.
-     *
+     * <p>
      * This method can safely be called multiple times for the same registration ID; subsequent calls are ignored.
      *
      * @param registrationId the registrationId of MembershipListener to remove
@@ -123,7 +124,8 @@ public interface Cluster {
      * @return state of the cluster
      * @since 3.6
      */
-    @Nonnull ClusterState getClusterState();
+    @Nonnull
+    ClusterState getClusterState();
 
     /**
      * Changes state of the cluster to the given state transactionally. Transaction will be

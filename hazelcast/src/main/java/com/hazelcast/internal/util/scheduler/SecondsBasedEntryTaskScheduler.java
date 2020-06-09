@@ -47,6 +47,7 @@ import java.util.concurrent.atomic.AtomicLong;
  * @param <K> entry key type
  * @param <V> entry value type
  */
+//FGTODO: 2019/12/2 下午7:57 zmyer
 public final class SecondsBasedEntryTaskScheduler<K, V> implements EntryTaskScheduler<K, V> {
 
     /**
@@ -68,9 +69,13 @@ public final class SecondsBasedEntryTaskScheduler<K, V> implements EntryTaskSche
         }
     };
 
-    /** Map from entry key to the scheduler responsible for this key */
+    /**
+     * Map from entry key to the scheduler responsible for this key
+     */
     private HashMap<K, PerKeyScheduler> keys = new HashMap<>();
-    /** Map from second to the group of entries to be processed in this second */
+    /**
+     * Map from second to the group of entries to be processed in this second
+     */
     private HashMap<Integer, ScheduledGroup> groups = new HashMap<>();
 
     private final AtomicLong uniqueIdGenerator = new AtomicLong();
@@ -97,9 +102,14 @@ public final class SecondsBasedEntryTaskScheduler<K, V> implements EntryTaskSche
             PerKeyScheduler keyScheduler = keys.get(key);
             if (keyScheduler == null) {
                 switch (scheduleType) {
-                    case POSTPONE: keyScheduler = new PerKeyPostponeScheduler(key); break;
-                    case FOR_EACH: keyScheduler = new PerKeyForEachScheduler(key); break;
-                    default: throw new RuntimeException("Undefined schedule type.");
+                    case POSTPONE:
+                        keyScheduler = new PerKeyPostponeScheduler(key);
+                        break;
+                    case FOR_EACH:
+                        keyScheduler = new PerKeyForEachScheduler(key);
+                        break;
+                    default:
+                        throw new RuntimeException("Undefined schedule type.");
                 }
                 keys.put(key, keyScheduler);
             }
@@ -160,15 +170,20 @@ public final class SecondsBasedEntryTaskScheduler<K, V> implements EntryTaskSche
      */
     private abstract class PerKeyScheduler {
         abstract boolean schedule(ScheduledEntry<K, V> entry, ScheduledGroup group);
+
         abstract ScheduledEntry<K, V> get();
+
         abstract ScheduledEntry<K, V> cancel();
+
         abstract int cancelIfExists(V value);
+
         abstract void executed(ScheduledEntry<K, V> entry);
     }
 
     /**
      * Manages scheduling where there should be just one entry per key, and any subsequent scheduling request
      * for this key just postpones the execution, according to the delay specified in new request.
+     *
      * @see ScheduleType#POSTPONE
      */
     private final class PerKeyPostponeScheduler extends PerKeyScheduler {
@@ -224,6 +239,7 @@ public final class SecondsBasedEntryTaskScheduler<K, V> implements EntryTaskSche
 
     /**
      * Manages scheduling where each scheduled entry for given key should be executed when its time comes.
+     *
      * @see ScheduleType#FOR_EACH
      */
     private final class PerKeyForEachScheduler extends PerKeyScheduler {

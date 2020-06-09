@@ -28,6 +28,7 @@ import com.hazelcast.internal.nio.NetworkingService;
  * to run them faster and in-parallel, it's necessary to avoid network and some heavy-weight
  * objects creations. That's why most of the tests use a special purpose NodeContext.
  */
+//FGTODO: 2019/12/5 上午9:51 zmyer
 public interface NodeContext {
 
     NodeExtension createNodeExtension(Node node);

@@ -24,9 +24,10 @@ import java.util.UUID;
 
 /**
  * A manager for {@link com.hazelcast.client.impl.ClientEndpoint}s.
- *
+ * <p>
  * All the methods are thread-safe.
  */
+//FGTODO: 2019/12/4 上午9:51 zmyer
 public interface ClientEndpointManager {
 
     /**
@@ -62,14 +63,14 @@ public interface ClientEndpointManager {
 
     /**
      * Removes all endpoints. Nothing is done on the endpoints themselves; they are just removed from this ClientEndpointManager.
-     *
+     * <p>
      * Can safely be called when there are no endpoints.
      */
     void clear();
 
     /**
      * Registers an endpoint with this ClientEndpointManager.
-     *
+     * <p>
      * If the endpoint already is registered, the call is ignored.
      *
      * @param endpoint the endpoint to register.
@@ -81,7 +82,7 @@ public interface ClientEndpointManager {
     /**
      * Removes an endpoint from this ClientEndpointManager.
      * Closes associated connection and runs all registered destroy actions to endpoint.
-     *
+     * <p>
      * No action taken if endpoint is not registered or already removed
      *
      * @param endpoint the endpoint to remove.

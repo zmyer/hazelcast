@@ -35,8 +35,8 @@ import com.hazelcast.instance.impl.OutOfMemoryHandlerHelper;
  *
  * @see OutOfMemoryError
  * @see Hazelcast#setOutOfMemoryHandler(OutOfMemoryHandler)
- *
  */
+//FGTODO: 2019/11/22 下午3:51 zmyer
 public abstract class OutOfMemoryHandler {
 
     /**
@@ -58,12 +58,11 @@ public abstract class OutOfMemoryHandler {
      * and Hazelcast may not be informed about <code>OutOfMemoryError</code>.
      * </p>
      *
-     * @see OutOfMemoryHandler#tryCloseConnections(HazelcastInstance)
-     * @see OutOfMemoryHandler#tryShutdown(HazelcastInstance)
-     *
-     * @param oome OutOfMemoryError thrown by JVM
+     * @param oome               OutOfMemoryError thrown by JVM
      * @param hazelcastInstances All HazelcastInstances known by JVM,
      *                           can include inactive or NULL instances.
+     * @see OutOfMemoryHandler#tryCloseConnections(HazelcastInstance)
+     * @see OutOfMemoryHandler#tryShutdown(HazelcastInstance)
      */
     public abstract void onOutOfMemory(OutOfMemoryError oome, HazelcastInstance[] hazelcastInstances);
 

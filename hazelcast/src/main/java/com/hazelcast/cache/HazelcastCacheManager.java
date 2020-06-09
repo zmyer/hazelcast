@@ -26,6 +26,7 @@ import javax.cache.CacheManager;
  *
  * @see CacheManager
  */
+//FGTODO: 2019/11/29 下午7:45 zmyer
 public interface HazelcastCacheManager extends CacheManager {
 
     /**

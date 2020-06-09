@@ -21,13 +21,14 @@ import java.util.EventListener;
 /**
  * Listener to get notified when a split brain protection state is changed
  */
+//FGTODO: 2019/11/25 下午5:31 zmyer
 public interface SplitBrainProtectionListener extends EventListener {
 
     /**
      * Called when the state of the split brain detector is changed.
      *
      * @param splitBrainProtectionEvent provides information about split brain protection
-     *        presence and current member list.
+     *                                  presence and current member list.l
      */
     void onChange(SplitBrainProtectionEvent splitBrainProtectionEvent);
 

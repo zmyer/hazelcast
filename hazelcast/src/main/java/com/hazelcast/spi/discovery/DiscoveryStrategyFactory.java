@@ -42,6 +42,7 @@ import java.util.Map;
  *
  * @since 3.6
  */
+//FGTODO: 2019/12/5 下午1:44 zmyer
 public interface DiscoveryStrategyFactory {
 
     /**

@@ -30,6 +30,7 @@ import static com.hazelcast.internal.cluster.impl.ClusterDataSerializerHook.TRIG
  *
  * @since 3.9
  */
+//FGTODO: 2019/12/2 下午2:32 zmyer
 public class TriggerExplicitSuspicionOp extends AbstractClusterOperation {
 
     private int callerMemberListVersion;

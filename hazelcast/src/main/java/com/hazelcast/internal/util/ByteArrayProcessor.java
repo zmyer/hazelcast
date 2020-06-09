@@ -20,6 +20,7 @@ package com.hazelcast.internal.util;
  * A byte array processor used to produce a byte[] out of the given one.
  * Example use case would be when you have an encrypted byte array and want to decrypt it and vice-versa.
  */
+//FGTODO: 2019/12/5 下午1:34 zmyer
 public interface ByteArrayProcessor {
 
     byte[] process(byte[] src);

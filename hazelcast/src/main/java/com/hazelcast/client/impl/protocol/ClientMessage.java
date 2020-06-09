@@ -27,36 +27,36 @@ import java.util.Objects;
  * Client Message is the carrier framed data as defined below.
  * Any request parameter, response or event data will be carried in
  * the payload.
- *
+ * <p>
  * client-message               = message-first-frame *var-sized-param
  * message-first-frame          = frame-length flags message-type correlation-id *fix-sized-param
  * first-frame-flags            = %b1 %b1 %b0 13unused ; begin-fragment:1 end-fragment:1 final:0 ......
  * frame-length                 = int32
  * message-type                 = int32
  * correlation-id               = int64
- *
+ * <p>
  * var-sized-param              = string-frame / custom-type-frames / var-sized-param-list-frames / fixed-sized-param-list-frame
  * / map-fixed-to-fixed-frame / map-var-sized-to-var-sized-frames / null-frame
- *
+ * <p>
  * map-fixed-to-fixed-frame          = frame-length flags *fixed-size-entry
  * fixed-size-entry                  = fixed-sized-param fixed-sized-param
  * map-var-sized-to-var-sized-frames = begin-frame *var-sized-entry end-frame
  * var-sized-entry                   = var-sized-param var-sized-param
- *
+ * <p>
  * //map-fixed-sized-to-var-sized-frames // Not defined yet. Has no usage yet.
  * //map-var-sized-to-fixed-sized-frames // Not defined yet. Has no usage yet.
- *
+ * <p>
  * list-frames                  = var-sized-param-list-frames | fixed-sized-param-list-frame
  * var-sized-param-list-frames  = begin-frame *var-sized-param  end-frame  ; all elements should be same type
  * fixed-sized-param-list-frame = frame-length flags *fixed-sized-param    ; all elements should be same type
- *
- *
+ * <p>
+ * <p>
  * string-frame                 = frame-length flags *OCTET ; Contains UTF-8 encoded octets
- *
+ * <p>
  * custom-type-frames           = begin-frame *1custom-type-first-frame *var-sized-param end-frame
  * custom-type-first-frame      = frame-length flags *fix-sized-param
- *
- *
+ * <p>
+ * <p>
  * null-frame                   = %x00 %x00 %x00 %x05 null-flags
  * null-flags                   = %b0  %b0  %b0 %b0 %b0 %b1 10reserved  ; is-null: 1
  * ; frame-length is always 5
@@ -67,7 +67,7 @@ import java.util.Objects;
  * end-frame                    = %x00 %x00 %x00 %x05 end-flags
  * ; next:0 or 1, begin list: 0, end list: 1
  * end-flags                    = begin-fragment end-fragment final %b1 %b0 is-null 10reserved
- *
+ * <p>
  * flags          = begin-fragment end-fragment final begin-data-structure end-data-structure is-null is-event 9reserved
  * ; reserved for fragmentation
  * begin-fragment = BIT
@@ -86,7 +86,7 @@ import java.util.Objects;
  * ; Irrelevant int this context
  * unused         = BIT
  * is-event       = BIT ;
- *
+ * <p>
  * fixed-sized-param        = *OCTET
  * ;fixed-sized-param       = OCTET / boolean / int16 / int32 / int64 / UUID
  * ;boolean                 = %x00 / %x01
@@ -95,6 +95,7 @@ import java.util.Objects;
  * ;int64                   = 64BIT
  * ;UUID                    = int64 int64
  */
+//FGTODO: 2019/11/22 下午4:01 zmyer
 @SuppressWarnings("checkstyle:MagicNumber")
 public final class ClientMessage implements OutboundFrame {
 

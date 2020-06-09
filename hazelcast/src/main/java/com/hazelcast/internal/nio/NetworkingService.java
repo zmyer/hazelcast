@@ -26,6 +26,7 @@ import java.util.concurrent.TimeUnit;
  * Given an {@link EndpointQualifier} an {@link EndpointManager} can be retrieved
  * by {@link #getEndpointManager(EndpointQualifier)} to create or get connections on that end.
  */
+//FGTODO: 2019/11/22 下午4:19 zmyer
 public interface NetworkingService<T extends Connection> {
 
     /**

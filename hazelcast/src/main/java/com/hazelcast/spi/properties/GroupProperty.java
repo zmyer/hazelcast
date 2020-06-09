@@ -48,6 +48,7 @@ import static java.util.concurrent.TimeUnit.SECONDS;
 /**
  * Defines the name and default value for Hazelcast properties.
  */
+//FGTODO: 2019/11/25 下午2:11 zmyer
 @SuppressWarnings({"checkstyle:javadocvariable", "checkstyle:magicnumber"})
 public final class GroupProperty {
 
@@ -62,7 +63,6 @@ public final class GroupProperty {
      * <p>
      * If this is less than the number of partitions on a member, partition operations
      * will queue behind other operations of different partitions.
-     *
      */
     public static final HazelcastProperty PARTITION_OPERATION_THREAD_COUNT
             = new HazelcastProperty("hazelcast.operation.thread.count",
@@ -112,7 +112,7 @@ public final class GroupProperty {
      * partition-specific operation thread, but there are also requests that can't be executed on a partition-specific operation
      * thread, such as {@code multimap.containsValue(value)}, because they need to access all partitions on a given
      * member.
-     *
+     * <p>
      * When not set it is set as core-size
      */
     public static final HazelcastProperty CLIENT_ENGINE_THREAD_COUNT
@@ -205,7 +205,7 @@ public final class GroupProperty {
      * <p>
      * The default is depends on the number of available processors. If the available processors count is
      * smaller than 20, there will be 3+3 io threads, otherwise 4+4.
-     *
+     * <p>
      * If SSL is enabled, then the default number of IO threads will be corecount/2.
      */
     @SuppressWarnings("AnonInnerLength")
@@ -278,7 +278,7 @@ public final class GroupProperty {
     /**
      * Optimization that allows sending of packets over the network to be done on the calling thread if the
      * conditions are right. This can reduce latency and increase performance for low threaded environments.
-     *
+     * <p>
      * It is enabled by default.
      */
     public static final HazelcastProperty IO_WRITE_THROUGH_ENABLED
@@ -288,10 +288,10 @@ public final class GroupProperty {
      * Property needed for concurrency detection so that write through can be done correctly.
      * This property sets the window the concurrency detection will signalling
      * that concurrency has been detected, even if there are no further updates in that window.
-     *
+     * <p>
      * Normally in a concurrency system the windows keeps sliding forward so it will always remain
      * concurrent.
-     *
+     * <p>
      * Setting it too high effectively disabled the optimization because once concurrency has been detected
      * it will keep that way. Setting it too low could lead to suboptimal performance because the system
      * will try write through and other optimization even though the system is concurrent.
@@ -466,14 +466,14 @@ public final class GroupProperty {
 
     /**
      * Behaviour when JVM is about to exit while Hazelcast instance is still running.
-     *
+     * <p>
      * Possible values:
      * TERMINATE: Terminate Hazelcast immediately
      * GRACEFUL:  Initiate graceful shutdown. This can significantly slow-down JVM exit process, but it's tries to
      * retain data safety.
-     *
+     * <p>
      * Default: TERMINATE
-     *
+     * <p>
      * You should always shutdown Hazelcast explicitly via {@link HazelcastInstance#shutdown()}
      * It's not recommended to rely on shutdown hook, this is a last-effort measure.
      */
@@ -520,7 +520,7 @@ public final class GroupProperty {
      * faster detection of unavailable members.
      * </li>
      * </ul>
-     *
+     * <p>
      * Default failure detector is <code>deadline</code>.
      */
     public static final HazelcastProperty HEARTBEAT_FAILURE_DETECTOR_TYPE
@@ -575,7 +575,7 @@ public final class GroupProperty {
      * as all existing entries are smaller than the entry which is about
      * to be added and removing any old entry cannot make sufficient
      * room for the new entry.
-     *
+     * <p>
      * Default: 1
      */
     public static final HazelcastProperty MAP_EVICTION_BATCH_SIZE
@@ -738,7 +738,7 @@ public final class GroupProperty {
      * Back pressure is implemented by making asynchronous backups operations synchronous. This prevents the internal queues from
      * overflowing because the invoker will wait for the primary and for the backups to complete. The frequency of this is
      * determined by the sync-window.
-     *
+     * <p>
      * To deal with overloads of backups, the property 'hazelcast.operation.backup.timeout.millis' should be set to a larger
      * value; above 60000 is recommended. Otherwise it can still happen backups accumulate.
      */
@@ -868,11 +868,11 @@ public final class GroupProperty {
 
     /**
      * Type of Query Index result copying behavior.
-     *
+     * <p>
      * Defines the behavior for index copying on index read/write.
-     *
+     * <p>
      * Supported in BINARY and OBJECT in-memory-formats. Ignored in NATIVE in-memory-format.
-     *
+     * <p>
      * Why is it needed? In order to support correctness the internal data-structures used by indexes need to do some copying.
      * The copying may take place on-read or on-write:
      * <p>

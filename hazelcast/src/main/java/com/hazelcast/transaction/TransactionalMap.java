@@ -67,6 +67,7 @@ import java.util.concurrent.TimeUnit;
  * @see BaseMap
  * @see IMap
  */
+//FGTODO: 2019/11/25 下午2:33 zmyer
 public interface TransactionalMap<K, V> extends TransactionalObject, BaseMap<K, V> {
 
     /**

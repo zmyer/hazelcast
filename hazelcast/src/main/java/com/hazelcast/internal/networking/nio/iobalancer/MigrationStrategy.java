@@ -25,6 +25,7 @@ import com.hazelcast.internal.networking.nio.NioThread;
  *
  * @see IOBalancer
  */
+//FGTODO: 2019/12/2 下午1:25 zmyer
 interface MigrationStrategy {
 
     /**

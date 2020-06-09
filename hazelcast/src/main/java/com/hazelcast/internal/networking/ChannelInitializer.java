@@ -19,11 +19,12 @@ package com.hazelcast.internal.networking;
 /**
  * Initializes the Channel when the Channel is used for the first time.
  */
+//FGTODO: 2019/11/22 下午5:26 zmyer
 public interface ChannelInitializer {
 
     /**
      * Initializes the channel.
-     *
+     * <p>
      * So it will set up the (initial) pipeline of handlers, configure the
      * underlying transport (socket e.g.).
      *

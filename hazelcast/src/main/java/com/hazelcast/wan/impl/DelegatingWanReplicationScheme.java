@@ -38,10 +38,15 @@ import static com.hazelcast.internal.util.Preconditions.checkNotNull;
  * for multiple WAN publishers.
  * When publishing an event on this delegate, all publishers are notified.
  */
+//FGTODO: 2019/11/26 上午8:55 zmyer
 public final class DelegatingWanReplicationScheme {
-    /** Non-null WAN replication name */
+    /**
+     * Non-null WAN replication name
+     */
     final String name;
-    /** Non-null WAN publishers, grouped by publisher ID */
+    /**
+     * Non-null WAN publishers, grouped by publisher ID
+     */
     final ConcurrentMap<String, WanReplicationPublisher> publishers;
 
     public DelegatingWanReplicationScheme(@Nonnull String name,
@@ -52,7 +57,9 @@ public final class DelegatingWanReplicationScheme {
         this.publishers = publishers;
     }
 
-    /** Returns all {@link WanReplicationPublisher}s for this delegate */
+    /**
+     * Returns all {@link WanReplicationPublisher}s for this delegate
+     */
     public @Nonnull
     Collection<WanReplicationPublisher> getPublishers() {
         return publishers.values();
@@ -141,7 +148,7 @@ public final class DelegatingWanReplicationScheme {
         Map<String, Object> eventContainers = createHashMap(publishers.size());
         for (Entry<String, WanReplicationPublisher> publisherEntry : publishers.entrySet()) {
             Object eventContainer = publisherEntry.getValue()
-                                                  .prepareEventContainerReplicationData(event, namespaces);
+                    .prepareEventContainerReplicationData(event, namespaces);
             if (eventContainer != null) {
                 String publisherId = publisherEntry.getKey();
                 eventContainers.put(publisherId, eventContainer);

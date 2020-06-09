@@ -19,6 +19,7 @@ package com.hazelcast.wan;
 /**
  * Interface for all WAN replication messages
  */
+//FGTODO: 2019/11/26 上午10:07 zmyer
 public interface WanReplicationEvent {
     /**
      * Increments the count for the related event in the {@code counters}

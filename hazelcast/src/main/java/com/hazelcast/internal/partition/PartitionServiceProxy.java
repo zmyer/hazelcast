@@ -45,7 +45,7 @@ import java.util.concurrent.TimeUnit;
 
 import static com.hazelcast.internal.util.MapUtil.createHashMap;
 import static com.hazelcast.internal.util.Preconditions.checkNotNull;
-
+//FGTODO: 2019/11/25 下午2:01 zmyer
 public class PartitionServiceProxy implements PartitionService {
 
     private final NodeEngineImpl nodeEngine;
@@ -129,7 +129,7 @@ public class PartitionServiceProxy implements PartitionService {
 
         // todo this max wait is appropriate?
         final int maxWaitTime = getMaxWaitTime();
-        Collection<Boolean> results =  FutureUtil.returnWithDeadline(futures, maxWaitTime, TimeUnit.SECONDS,
+        Collection<Boolean> results = FutureUtil.returnWithDeadline(futures, maxWaitTime, TimeUnit.SECONDS,
                 exceptionHandler);
 
         if (results.size() != futures.size()) {
@@ -155,7 +155,7 @@ public class PartitionServiceProxy implements PartitionService {
         final Address target = member.getAddress();
         final Operation operation = new SafeStateCheckOperation();
         final InvocationFuture future = nodeEngine.getOperationService()
-                                                  .invokeOnTarget(InternalPartitionService.SERVICE_NAME, operation, target);
+                .invokeOnTarget(InternalPartitionService.SERVICE_NAME, operation, target);
         boolean safe;
         try {
             final Object result = future.get(10, TimeUnit.SECONDS);

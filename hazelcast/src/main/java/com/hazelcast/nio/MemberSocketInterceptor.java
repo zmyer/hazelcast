@@ -22,11 +22,12 @@ import java.net.Socket;
 /**
  * Member Socket Interceptor can be registered via
  * see {@link com.hazelcast.config.SocketInterceptorConfig}
- *
+ * <p>
  * Warning: a MemberSocketInterceptor provides access to the socket and will bypass
  * any TLS encryption. So be warned that any data send using the SocketInterceptor
  * could be visible as plain text and could therefor be a security risk.
  */
+//FGTODO: 2019/11/22 下午5:18 zmyer
 public interface MemberSocketInterceptor extends SocketInterceptor {
 
     /**

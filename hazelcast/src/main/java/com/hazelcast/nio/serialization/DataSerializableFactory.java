@@ -21,6 +21,7 @@ package com.hazelcast.nio.serialization;
  *
  * @see com.hazelcast.nio.serialization.IdentifiedDataSerializable
  */
+//FGTODO: 2019/11/25 下午12:37 zmyer
 public interface DataSerializableFactory {
 
     /**

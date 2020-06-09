@@ -38,8 +38,8 @@ import java.util.function.BiConsumer;
 
 import static com.hazelcast.internal.partition.IPartitionService.SERVICE_NAME;
 
-public abstract class AbstractPartitionPrimaryReplicaAntiEntropyTask
-        implements PartitionSpecificRunnable, UrgentSystemOperation {
+//FGTODO: 2019/11/25 下午2:12 zmyer
+public abstract class AbstractPartitionPrimaryReplicaAntiEntropyTask implements PartitionSpecificRunnable, UrgentSystemOperation {
 
     private static final int OPERATION_TRY_COUNT = 10;
 
@@ -107,10 +107,10 @@ public abstract class AbstractPartitionPrimaryReplicaAntiEntropyTask
 
         if (hasCallback) {
             operationService.createInvocationBuilder(SERVICE_NAME, op, target.address())
-                            .setTryCount(OPERATION_TRY_COUNT)
-                            .setTryPauseMillis(OPERATION_TRY_PAUSE_MILLIS)
-                            .invoke()
-                            .whenCompleteAsync(callback);
+                    .setTryCount(OPERATION_TRY_COUNT)
+                    .setTryPauseMillis(OPERATION_TRY_PAUSE_MILLIS)
+                    .invoke()
+                    .whenCompleteAsync(callback);
         } else {
             operationService.send(op, target.address());
         }

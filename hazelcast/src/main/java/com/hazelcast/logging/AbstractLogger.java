@@ -22,6 +22,7 @@ import java.util.logging.Level;
  * Abstract {@link ILogger} implementation that provides implementations for convenience methods like
  * finest, info, warning and severe.
  */
+//FGTODO: 2019/12/5 上午9:50 zmyer
 public abstract class AbstractLogger implements ILogger {
 
     @Override

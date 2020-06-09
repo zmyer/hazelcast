@@ -24,6 +24,7 @@ import java.util.Map;
 /**
  * Configuration for the Services.
  */
+//FGTODO: 2019/11/22 下午4:05 zmyer
 public class ServicesConfig {
 
     private boolean enableDefaults = true;
@@ -73,7 +74,7 @@ public class ServicesConfig {
         if (this == o) {
             return true;
         }
-        if (o == null || !(o instanceof ServicesConfig)) {
+        if (!(o instanceof ServicesConfig)) {
             return false;
         }
 

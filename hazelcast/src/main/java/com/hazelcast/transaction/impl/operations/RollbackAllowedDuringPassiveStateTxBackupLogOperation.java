@@ -22,8 +22,8 @@ import java.util.UUID;
 
 import static com.hazelcast.transaction.impl.TransactionDataSerializerHook.ROLLBACK_ALLOWED_DURING_PASSIVE_STATE_TX_BACKUP_LOG;
 
-public class RollbackAllowedDuringPassiveStateTxBackupLogOperation
-        extends RollbackTxBackupLogOperation
+//FGTODO: 2019/12/3 上午10:02 zmyer
+public class RollbackAllowedDuringPassiveStateTxBackupLogOperation extends RollbackTxBackupLogOperation
         implements AllowedDuringPassiveState {
 
     public RollbackAllowedDuringPassiveStateTxBackupLogOperation() {

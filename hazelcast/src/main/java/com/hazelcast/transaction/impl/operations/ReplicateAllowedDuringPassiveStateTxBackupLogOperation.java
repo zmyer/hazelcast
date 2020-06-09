@@ -24,8 +24,8 @@ import java.util.UUID;
 
 import static com.hazelcast.transaction.impl.TransactionDataSerializerHook.REPLICATE_ALLOWED_DURING_PASSIVE_STATE_TX_BACKUP_LOG;
 
-public final class ReplicateAllowedDuringPassiveStateTxBackupLogOperation
-        extends ReplicateTxBackupLogOperation
+//FGTODO: 2019/12/3 上午10:01 zmyer
+public final class ReplicateAllowedDuringPassiveStateTxBackupLogOperation extends ReplicateTxBackupLogOperation
         implements AllowedDuringPassiveState {
 
     public ReplicateAllowedDuringPassiveStateTxBackupLogOperation() {

@@ -22,6 +22,7 @@ package com.hazelcast.internal.util;
  * @param <K> key type
  * @param <V> value type
  */
+//FGTODO: 2019/11/25 下午2:17 zmyer
 @FunctionalInterface
 public interface ConstructorFunction<K, V> {
 

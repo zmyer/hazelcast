@@ -33,8 +33,7 @@ import static com.hazelcast.internal.metrics.ProbeLevel.MANDATORY;
 import static com.hazelcast.internal.nio.ConnectionType.MEMCACHE_CLIENT;
 import static com.hazelcast.internal.nio.ConnectionType.REST_CLIENT;
 
-class TcpIpUnifiedEndpointManager
-        extends TcpIpEndpointManager {
+class TcpIpUnifiedEndpointManager extends TcpIpEndpointManager {
 
     TcpIpUnifiedEndpointManager(NetworkingService root, EndpointConfig endpointConfig,
                                 ChannelInitializerProvider channelInitializerProvider,

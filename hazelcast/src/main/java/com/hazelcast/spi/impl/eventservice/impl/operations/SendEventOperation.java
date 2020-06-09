@@ -36,6 +36,7 @@ import java.io.IOException;
  *
  * @see EventServiceImpl#sendEvent(Address, EventEnvelope, int)
  */
+//FGTODO: 2019/12/3 上午9:40 zmyer
 public class SendEventOperation extends Operation implements AllowedDuringPassiveState, IdentifiedDataSerializable {
     private EventEnvelope eventEnvelope;
     private int orderKey;

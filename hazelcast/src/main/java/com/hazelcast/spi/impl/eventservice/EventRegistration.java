@@ -24,6 +24,7 @@ import java.util.UUID;
 /**
  * The result of a Event Registration.
  */
+//FGTODO: 2019/11/25 下午2:19 zmyer
 public interface EventRegistration extends IdentifiedDataSerializable {
 
     /**

@@ -28,6 +28,7 @@ import java.util.UUID;
  * thread defined by the {@link #orderKey}. This means that all events with the same {@link #orderKey} will be ordered.
  * Any exception thrown when processing the event will be returned to the caller.
  */
+//FGTODO: 2019/12/3 上午9:41 zmyer
 public class EventProcessor implements StripedRunnable {
 
     private final EventServiceImpl eventService;
@@ -107,7 +108,9 @@ public class EventProcessor implements StripedRunnable {
         return registration;
     }
 
-    /** Returns the deserialized event object contained in the {@code eventEnvelope} */
+    /**
+     * Returns the deserialized event object contained in the {@code eventEnvelope}
+     */
     private Object getEvent(EventEnvelope eventEnvelope) {
         Object event = eventEnvelope.getEvent();
         if (event instanceof Data) {

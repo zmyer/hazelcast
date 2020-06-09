@@ -28,6 +28,7 @@ import static com.hazelcast.spi.impl.operationservice.impl.InvocationConstant.VO
  * BaseInvocation for client and core.
  * Keep track of received response and number of backups.
  */
+//FGTODO: 2019/11/26 下午5:35 zmyer
 public abstract class BaseInvocation {
 
     private static final AtomicIntegerFieldUpdater<BaseInvocation> BACKUP_ACKS_RECEIVED =

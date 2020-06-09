@@ -40,6 +40,7 @@ import static java.util.Objects.requireNonNull;
  * @see XmlConfigLocator
  * @see YamlConfigLocator
  */
+//FGTODO: 2019/11/22 下午3:47 zmyer
 public abstract class AbstractConfigLocator {
     private static final ILogger LOGGER = Logger.getLogger(AbstractConfigLocator.class);
 

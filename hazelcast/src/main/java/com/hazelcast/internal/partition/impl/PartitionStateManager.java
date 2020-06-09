@@ -46,6 +46,7 @@ import static com.hazelcast.cluster.memberselector.MemberSelectors.DATA_MEMBER_S
 /**
  * Maintains the partition table state.
  */
+//FGTODO: 2019/11/29 下午7:19 zmyer
 public class PartitionStateManager {
 
     private final Node node;
@@ -166,7 +167,7 @@ public class PartitionStateManager {
     /**
      * Returns {@code true} if the node has started and
      * the cluster state allows migrations (see {@link ClusterState#isMigrationAllowed()}).
-     * */
+     */
     private boolean isPartitionAssignmentAllowed() {
         if (!node.getNodeExtension().isStartCompleted()) {
             logger.warning("Partitions can't be assigned since startup is not completed yet.");
@@ -280,7 +281,9 @@ public class PartitionStateManager {
         return partitions;
     }
 
-    /** Returns a copy of the current partition table. */
+    /**
+     * Returns a copy of the current partition table.
+     */
     public InternalPartition[] getPartitionsCopy() {
         NopPartitionReplicaInterceptor interceptor = new NopPartitionReplicaInterceptor();
         InternalPartition[] result = new InternalPartition[partitions.length];
@@ -328,7 +331,9 @@ public class PartitionStateManager {
         return partitions[partitionId].isMigrating();
     }
 
-    /** Sets the replica members for the {@code partitionId}. */
+    /**
+     * Sets the replica members for the {@code partitionId}.
+     */
     void updateReplicas(int partitionId, PartitionReplica[] replicas) {
         InternalPartitionImpl partition = partitions[partitionId];
         partition.setReplicas(replicas);

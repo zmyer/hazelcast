@@ -22,12 +22,12 @@ import com.hazelcast.cluster.Member;
  * ExecutionCallback allows to asynchronously get notified when the execution is completed,
  * either successfully or with error.
  *
+ * @param <V> value
  * @see IExecutorService#submit(java.util.concurrent.Callable, ExecutionCallback)
  * @see IExecutorService#submitToMember(java.util.concurrent.Callable, Member, ExecutionCallback)
  * @see IExecutorService#submitToKeyOwner(java.util.concurrent.Callable, Object, ExecutionCallback)
- *
- * @param <V> value
  */
+//FGTODO: 2019/12/3 上午9:43 zmyer
 public interface ExecutionCallback<V> {
 
     /**
@@ -39,6 +39,7 @@ public interface ExecutionCallback<V> {
 
     /**
      * Called when an execution is completed with an error.
+     *
      * @param t the exception that is thrown
      */
     void onFailure(Throwable t);

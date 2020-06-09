@@ -23,6 +23,7 @@ import java.util.Arrays;
 
 import static java.lang.System.arraycopy;
 
+//FGTODO: 2019/12/2 下午7:52 zmyer
 // read and updated only by partition threads
 final class PartitionReplicaFragmentVersions {
     private final int partitionId;
@@ -52,7 +53,8 @@ final class PartitionReplicaFragmentVersions {
 
     /**
      * Returns whether given replica version is behind the current version or not.
-     * @param newVersions new replica versions
+     *
+     * @param newVersions  new replica versions
      * @param replicaIndex replica index
      * @return true if given version is stale, false otherwise
      */
@@ -67,7 +69,7 @@ final class PartitionReplicaFragmentVersions {
      * Updates replica version if it is newer than current version. Otherwise has no effect.
      * Marks versions as dirty if version increase is not incremental.
      *
-     * @param newVersions new replica versions
+     * @param newVersions  new replica versions
      * @param replicaIndex replica index
      * @return returns false if versions are dirty, true otherwise
      */
@@ -83,7 +85,9 @@ final class PartitionReplicaFragmentVersions {
         return !dirty;
     }
 
-    /** Change versions for all replicas with an index greater than {@code fromReplica} to the new replica versions */
+    /**
+     * Change versions for all replicas with an index greater than {@code fromReplica} to the new replica versions
+     */
     private void setVersions(long[] newVersions, int fromReplica) {
         int fromIndex = fromReplica - 1;
         int len = newVersions.length - fromIndex;

@@ -21,6 +21,7 @@ import static com.hazelcast.internal.util.Preconditions.checkNotNull;
 /**
  * Utility class to manipulate and query thread ID.
  */
+//FGTODO: 2019/12/2 下午1:25 zmyer
 public final class ThreadUtil {
 
     private static final ThreadLocal<Long> THREAD_LOCAL = new ThreadLocal<Long>();

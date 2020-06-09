@@ -33,6 +33,7 @@ import static com.hazelcast.internal.cluster.impl.ClusterDataSerializerHook.EXPL
  *
  * @since 3.9
  */
+//FGTODO: 2019/12/5 上午9:14 zmyer
 public class ExplicitSuspicionOp extends AbstractClusterOperation {
 
     private MembersViewMetadata membersViewMetadata;

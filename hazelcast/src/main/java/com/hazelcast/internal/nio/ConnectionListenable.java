@@ -19,6 +19,7 @@ package com.hazelcast.internal.nio;
 /**
  * Provides connection listen capabilities.
  */
+//FGTODO: 2019/11/22 下午5:11 zmyer
 public interface ConnectionListenable {
 
     /**

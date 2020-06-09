@@ -21,8 +21,8 @@ import static java.util.Arrays.copyOf;
 /**
  * Contains configuration for symmetric encryption
  */
-public class SymmetricEncryptionConfig
-        extends AbstractSymmetricEncryptionConfig<SymmetricEncryptionConfig> {
+//FGTODO: 2019/12/5 下午1:34 zmyer
+public class SymmetricEncryptionConfig extends AbstractSymmetricEncryptionConfig<SymmetricEncryptionConfig> {
 
     /**
      * Default symmetric encryption algorithm

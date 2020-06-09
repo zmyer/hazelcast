@@ -33,6 +33,7 @@ import java.util.concurrent.RejectedExecutionException;
  * for non blocking IO using {@link java.nio.channels.Selector} in combination
  * with a non blocking {@link SocketChannel}.
  */
+//FGTODO: 2019/11/22 下午5:24 zmyer
 public final class NioChannel extends AbstractChannel {
 
     // The close delays is needed for the TLS goodbye handshake to complete.

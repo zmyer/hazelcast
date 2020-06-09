@@ -28,6 +28,7 @@ import java.util.Properties;
  * <li>reset</li>
  * </ol>
  */
+//FGTODO: 2019/11/22 下午3:59 zmyer
 public interface ManagedService {
 
     /**

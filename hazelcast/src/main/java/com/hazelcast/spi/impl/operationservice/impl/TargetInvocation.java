@@ -29,6 +29,8 @@ import static com.hazelcast.spi.impl.operationservice.ExceptionAction.THROW_EXCE
  * A {@link Invocation} evaluates a Operation Invocation for a particular target running on top of the
  * {@link OperationServiceImpl}.
  */
+
+//FGTODO: 2019/12/5 下午1:58 zmyer
 final class TargetInvocation extends Invocation<Address> {
 
     private final Address target;

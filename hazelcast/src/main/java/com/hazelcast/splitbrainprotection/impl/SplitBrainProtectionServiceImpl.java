@@ -66,6 +66,7 @@ import static com.hazelcast.splitbrainprotection.SplitBrainProtectionOn.WRITE;
 /**
  * Service containing logic for cluster split brain protection.
  */
+//FGTODO: 2019/11/22 下午4:02 zmyer
 public class SplitBrainProtectionServiceImpl implements EventPublishingService<SplitBrainProtectionEvent,
         SplitBrainProtectionListener>, MembershipAwareService, SplitBrainProtectionService, HeartbeatAware, PingAware {
 
@@ -149,9 +150,9 @@ public class SplitBrainProtectionServiceImpl implements EventPublishingService<S
 
         if (value > maxNoHeartbeatMillis) {
             throw new InvalidConfigurationException("This member is configured with maximum no-heartbeat duration "
-                + maxNoHeartbeatMillis + " millis. For the split brain protection '" + splitBrainProtectionName
-                + "' to be effective, set " + parameterName + " to a lower value. Currently configured value is " + value
-                + ", reconfigure to a value lower than " + maxNoHeartbeatMillis + ".");
+                    + maxNoHeartbeatMillis + " millis. For the split brain protection '" + splitBrainProtectionName
+                    + "' to be effective, set " + parameterName + " to a lower value. Currently configured value is " + value
+                    + ", reconfigure to a value lower than " + maxNoHeartbeatMillis + ".");
         } else if (value < heartbeatIntervalMillis) {
             throw new InvalidConfigurationException("Split brain protection '" + splitBrainProtectionName
                     + "' is misconfigured: the value of " + "acceptable heartbeat pause (" + value
@@ -177,8 +178,7 @@ public class SplitBrainProtectionServiceImpl implements EventPublishingService<S
             listener = listenerConfig.getImplementation();
         } else if (listenerConfig.getClassName() != null) {
             try {
-                listener = ClassLoaderUtil
-                        .newInstance(nodeEngine.getConfigClassLoader(), listenerConfig.getClassName());
+                listener = ClassLoaderUtil.newInstance(nodeEngine.getConfigClassLoader(), listenerConfig.getClassName());
             } catch (Exception e) {
                 throw ExceptionUtil.rethrow(e);
             }
@@ -216,7 +216,7 @@ public class SplitBrainProtectionServiceImpl implements EventPublishingService<S
      *
      * @param op the operation for which the minimum cluster size property should be satisfied
      * @throws SplitBrainProtectionException if the operation requires a split brain protection
-     * and the minimum cluster size property is not satisfied
+     *                                       and the minimum cluster size property is not satisfied
      */
     public void ensureNoSplitBrain(Operation op) {
         if (isInactive()) {

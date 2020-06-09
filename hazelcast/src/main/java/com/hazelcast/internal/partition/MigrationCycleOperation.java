@@ -19,5 +19,6 @@ package com.hazelcast.internal.partition;
 import com.hazelcast.spi.impl.operationservice.UrgentSystemOperation;
 import com.hazelcast.spi.impl.AllowedDuringPassiveState;
 
+//FGTODO: 2019/11/29 下午7:17 zmyer
 public interface MigrationCycleOperation extends UrgentSystemOperation, AllowedDuringPassiveState {
 }

@@ -56,10 +56,9 @@ import static com.hazelcast.internal.util.counters.MwCounter.newMwCounter;
 import static java.util.Collections.newSetFromMap;
 
 /**
- *
  * Maintains the version values for the partition replicas and manages the replica-related operations for partitions
- *
  */
+//FGTODO: 2019/11/25 下午2:06 zmyer
 public class PartitionReplicaManager implements PartitionReplicaVersionManager {
 
     private final Node node;
@@ -69,7 +68,9 @@ public class PartitionReplicaManager implements PartitionReplicaVersionManager {
     private final PartitionStateManager partitionStateManager;
 
     private final PartitionReplicaVersions[] replicaVersions;
-    /** Replica sync requests that have been sent to the target and awaiting response */
+    /**
+     * Replica sync requests that have been sent to the target and awaiting response
+     */
     private final Set<ReplicaFragmentSyncInfo> replicaSyncRequests;
     private final EntryTaskScheduler<ReplicaFragmentSyncInfo, Void> replicaSyncTimeoutScheduler;
     @Probe
@@ -127,7 +128,7 @@ public class PartitionReplicaManager implements PartitionReplicaVersionManager {
      * </ul>
      *
      * @param partitionId  the partition which is being synchronized
-     * @param namespaces namespaces of partition replica fragments
+     * @param namespaces   namespaces of partition replica fragments
      * @param replicaIndex the index of the replica which is being synchronized
      * @throws IllegalArgumentException if the replica index is not between 0 and {@link InternalPartition#MAX_REPLICA_COUNT}
      */
@@ -156,7 +157,9 @@ public class PartitionReplicaManager implements PartitionReplicaVersionManager {
         sendSyncReplicaRequest(partitionId, namespaces, replicaIndex, target);
     }
 
-    /** Checks preconditions for replica sync - if we don't know the owner yet, if this node is the owner or not a replica */
+    /**
+     * Checks preconditions for replica sync - if we don't know the owner yet, if this node is the owner or not a replica
+     */
     PartitionReplica checkAndGetPrimaryReplicaOwner(int partitionId, int replicaIndex) {
         InternalPartitionImpl partition = partitionStateManager.getPartitionImpl(partitionId);
         PartitionReplica owner = partition.getOwnerReplicaOrNull();
@@ -192,7 +195,7 @@ public class PartitionReplicaManager implements PartitionReplicaVersionManager {
      * partition and schedule a new sync request that is to be run in the case of timeout
      */
     private void sendSyncReplicaRequest(int partitionId, Collection<ServiceNamespace> requestedNamespaces,
-            int replicaIndex, PartitionReplica target) {
+                                        int replicaIndex, PartitionReplica target) {
         if (node.clusterService.isMissingMember(target.address(), target.uuid())) {
             return;
         }
@@ -231,7 +234,8 @@ public class PartitionReplicaManager implements PartitionReplicaVersionManager {
     }
 
     private List<ServiceNamespace> registerSyncInfoForNamespaces(int partitionId,
-            Collection<ServiceNamespace> requestedNamespaces, int replicaIndex, PartitionReplica target, int permits) {
+                                                                 Collection<ServiceNamespace> requestedNamespaces, int replicaIndex,
+                                                                 PartitionReplica target, int permits) {
 
         List<ServiceNamespace> namespaces = new ArrayList<>(permits);
         for (ServiceNamespace namespace : requestedNamespaces) {
@@ -318,9 +322,9 @@ public class PartitionReplicaManager implements PartitionReplicaVersionManager {
      * Set the new replica versions for the partition with the {@code partitionId} and reset any ongoing replica
      * synchronization request for this partition and replica index.
      *
-     * @param partitionId the partition ID
+     * @param partitionId  the partition ID
      * @param replicaIndex the index of the replica
-     * @param versions the new replica versions for the partition
+     * @param versions     the new replica versions for the partition
      */
     // called in operation threads
     public void finalizeReplicaSync(int partitionId, int replicaIndex, ServiceNamespace namespace, long[] versions) {
@@ -335,7 +339,7 @@ public class PartitionReplicaManager implements PartitionReplicaVersionManager {
      * scheduled synchronization, clear the ongoing sync flag and release a synchronization permit.
      *
      * @param partitionId  the partition being synchronized
-     * @param namespace namespace
+     * @param namespace    namespace
      * @param replicaIndex the index of the replica being synchronized
      */
     // called in operation threads
@@ -410,7 +414,7 @@ public class PartitionReplicaManager implements PartitionReplicaVersionManager {
         replicaSyncSemaphore.release(permits);
         if (logger.isFinestEnabled()) {
             logger.finest("Released " + permits + " replica sync permits. Available permits: "
-                        + replicaSyncSemaphore.availablePermits());
+                    + replicaSyncSemaphore.availablePermits());
         }
         assert availableReplicaSyncPermits() <= maxParallelReplications
                 : "Number of replica sync permits exceeded the configured number!";
@@ -457,8 +461,7 @@ public class PartitionReplicaManager implements PartitionReplicaVersionManager {
         long definedBackupSyncCheckInterval = node.getProperties().getSeconds(GroupProperty.PARTITION_BACKUP_SYNC_INTERVAL);
         long backupSyncCheckInterval = definedBackupSyncCheckInterval > 0 ? definedBackupSyncCheckInterval : 1;
 
-        executionService.scheduleWithRepetition(new AntiEntropyTask(),
-                backupSyncCheckInterval, backupSyncCheckInterval, TimeUnit.SECONDS);
+        executionService.scheduleWithRepetition(new AntiEntropyTask(), backupSyncCheckInterval, backupSyncCheckInterval, TimeUnit.SECONDS);
     }
 
     @Override
@@ -475,7 +478,7 @@ public class PartitionReplicaManager implements PartitionReplicaVersionManager {
 
         @Override
         public void process(EntryTaskScheduler<ReplicaFragmentSyncInfo, Void> scheduler,
-                Collection<ScheduledEntry<ReplicaFragmentSyncInfo, Void>> entries) {
+                            Collection<ScheduledEntry<ReplicaFragmentSyncInfo, Void>> entries) {
 
             for (ScheduledEntry<ReplicaFragmentSyncInfo, Void> entry : entries) {
                 ReplicaFragmentSyncInfo syncInfo = entry.getKey();

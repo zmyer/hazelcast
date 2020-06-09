@@ -38,6 +38,7 @@ import static java.util.Arrays.asList;
 /**
  * Utility class for Aliased Discovery Configs.
  */
+//FGTODO: 2019/12/5 下午1:29 zmyer
 public final class AliasedDiscoveryConfigUtils {
     private static final Map<String, String> ALIAS_MAPPINGS = new HashMap<>();
 

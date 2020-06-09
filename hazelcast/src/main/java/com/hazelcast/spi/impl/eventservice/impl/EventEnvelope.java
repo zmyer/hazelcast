@@ -29,6 +29,7 @@ import java.util.UUID;
 /**
  * An Envelope around an event object. The envelope adds some additional metadata to the event.
  */
+//FGTODO: 2019/11/25 下午2:25 zmyer
 public final class EventEnvelope implements IdentifiedDataSerializable {
 
     private UUID id;
@@ -52,7 +53,9 @@ public final class EventEnvelope implements IdentifiedDataSerializable {
         return event;
     }
 
-    /** The event ID. This corresponds to the listener registration ID. */
+    /**
+     * The event ID. This corresponds to the listener registration ID.
+     */
     public UUID getEventId() {
         return id;
     }

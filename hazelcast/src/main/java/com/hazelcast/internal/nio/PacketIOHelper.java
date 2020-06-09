@@ -27,14 +27,15 @@ import static com.hazelcast.internal.nio.Packet.VERSION;
  * Responsible for writing or reading an Packet. Originally the logic was placed in the Packet. The problem with this approach
  * is that a single Packet instance can't be shared between multiple connections and this leads to increased memory usage since
  * the packet needs to be copied for every connection.
- *
+ * <p>
  * The {@link PacketIOHelper} is stateful because it tracks where the packet reading from ByteBuffer or writing to ByteBuffer.
- *
+ * <p>
  * A {@link PacketIOHelper} instance should only be used for reading, or only be used for writing. So if you need to read and
  * write at the same time, you need to have 2 instances.
- *
+ * <p>
  * A {@link PacketIOHelper} is designed to be reused.
  */
+//FGTODO: 2019/12/5 下午2:04 zmyer
 public class PacketIOHelper {
     static final int HEADER_SIZE = BYTE_SIZE_IN_BYTES + SHORT_SIZE_IN_BYTES + INT_SIZE_IN_BYTES + INT_SIZE_IN_BYTES;
 
@@ -120,8 +121,7 @@ public class PacketIOHelper {
 
             byte version = src.get();
             if (VERSION != version) {
-                throw new IllegalArgumentException("Packet versions are not matching! Expected -> "
-                        + VERSION + ", Incoming -> " + version);
+                throw new IllegalArgumentException("Packet versions are not matching! Expected -> " + VERSION + ", Incoming -> " + version);
             }
 
             flags = src.getChar();

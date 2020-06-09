@@ -48,7 +48,7 @@ import static java.util.concurrent.TimeUnit.NANOSECONDS;
 /**
  * A {@link Supplier} responsible for providing a {@link Consumer} that
  * processes inbound responses.
- *
+ * <p>
  * Depending on the {@link com.hazelcast.spi.properties.GroupProperty#RESPONSE_THREAD_COUNT}
  * it will return the appropriate response handler:
  * <ol>
@@ -61,15 +61,16 @@ import static java.util.concurrent.TimeUnit.NANOSECONDS;
  * </ol>
  * Having multiple threads processing responses improves performance and
  * stability of the throughput.
- *
+ * <p>
  * In case of asynchronous response processing, the response is put in the
  * responseQueue of the ResponseThread. Then the ResponseThread takes it from
  * this responseQueue and calls a {@link Consumer} for the actual processing.
- *
+ * <p>
  * The reason that the IO thread doesn't immediately deal with the response is that
  * dealing with the response and especially notifying the invocation future can be
  * very expensive.
  */
+//FGTODO: 2019/11/26 下午6:04 zmyer
 public class InboundResponseHandlerSupplier implements StaticMetricsProvider, Supplier<Consumer<Packet>> {
 
     public static final HazelcastProperty IDLE_STRATEGY

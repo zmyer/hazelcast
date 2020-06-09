@@ -24,6 +24,7 @@ import com.hazelcast.nio.serialization.Data;
  * SPI to serialize user objects to {@link Data} and back to Object
  * {@link Data} is the internal representation of binary data in hazelcast.
  */
+//FGTODO: 2019/11/26 下午3:07 zmyer
 public interface SerializationService {
 
     /**

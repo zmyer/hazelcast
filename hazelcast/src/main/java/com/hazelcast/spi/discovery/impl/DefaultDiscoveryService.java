@@ -40,8 +40,8 @@ import java.util.Set;
 
 import static com.hazelcast.internal.util.CollectionUtil.nullToEmpty;
 
-public class DefaultDiscoveryService
-        implements DiscoveryService {
+//FGTODO: 2019/12/2 下午2:01 zmyer
+public class DefaultDiscoveryService implements DiscoveryService {
 
     private static final String SERVICE_LOADER_TAG = DiscoveryStrategyFactory.class.getCanonicalName();
 
@@ -154,8 +154,8 @@ public class DefaultDiscoveryService
     private List<DiscoveryStrategyFactory> collectFactories(Collection<DiscoveryStrategyConfig> strategyConfigs,
                                                             ClassLoader classloader)
             throws Exception {
-        Iterator<DiscoveryStrategyFactory> iterator = ServiceLoader
-                .iterator(DiscoveryStrategyFactory.class, SERVICE_LOADER_TAG, classloader);
+        Iterator<DiscoveryStrategyFactory> iterator =
+                ServiceLoader.iterator(DiscoveryStrategyFactory.class, SERVICE_LOADER_TAG, classloader);
 
         // Collect possible factories
         List<DiscoveryStrategyFactory> factories = new ArrayList<DiscoveryStrategyFactory>();

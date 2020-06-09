@@ -24,8 +24,8 @@ import com.hazelcast.internal.networking.InboundHandler;
 import com.hazelcast.internal.networking.OutboundHandler;
 import com.hazelcast.internal.nio.IOService;
 
-public class MemberChannelInitializer
-        extends AbstractChannelInitializer  {
+//FGTODO: 2019/11/22 下午5:29 zmyer
+public class MemberChannelInitializer extends AbstractChannelInitializer {
 
     MemberChannelInitializer(IOService ioService, EndpointConfig config) {
         super(ioService, config);

@@ -23,14 +23,14 @@ import javax.annotation.Nonnull;
 import java.util.concurrent.TimeUnit;
 
 /**
- *
  * Base interface for Hazelcast distributed queues.
  *
+ * @param <E>
  * @see java.util.concurrent.BlockingQueue
  * @see IQueue
  * @see TransactionalQueue
- * @param <E>
  */
+//FGTODO: 2019/11/25 下午2:32 zmyer
 public interface BaseQueue<E> extends DistributedObject {
 
     /**
@@ -41,7 +41,7 @@ public interface BaseQueue<E> extends DistributedObject {
      *
      * @param e the element to add
      * @return <code>true</code> if the element was added to this queue,
-     *         <code>false</code> otherwise
+     * <code>false</code> otherwise
      */
     boolean offer(@Nonnull E e);
 
@@ -49,13 +49,13 @@ public interface BaseQueue<E> extends DistributedObject {
      * Inserts the specified element into this queue, waiting up to the
      * specified wait time if necessary for space to become available.
      *
-     * @param e the element to add
+     * @param e       the element to add
      * @param timeout how long to wait before giving up, in units of
-     *        <code>unit</code>
-     * @param unit a <code>TimeUnit</code> determines how to interpret the
-     *        <code>timeout</code> parameter
+     *                <code>unit</code>
+     * @param unit    a <code>TimeUnit</code> determines how to interpret the
+     *                <code>timeout</code> parameter
      * @return <code>true</code> if successful, or <code>false</code> if
-     *         the specified waiting time elapses before space is available
+     * the specified waiting time elapses before space is available
      * @throws InterruptedException if interrupted while waiting
      */
     boolean offer(@Nonnull E e, long timeout, @Nonnull TimeUnit unit) throws InterruptedException;
@@ -67,7 +67,8 @@ public interface BaseQueue<E> extends DistributedObject {
      * @return the head of this queue
      * @throws InterruptedException if interrupted while waiting
      */
-    @Nonnull E take() throws InterruptedException;
+    @Nonnull
+    E take() throws InterruptedException;
 
     /**
      * Retrieves and removes the head of this queue,
@@ -82,11 +83,11 @@ public interface BaseQueue<E> extends DistributedObject {
      * specified wait time if necessary for an element to become available.
      *
      * @param timeout how long to wait before giving up, in units of
-     *        <code>unit</code>
-     * @param unit a <code>TimeUnit</code> determining how to interpret the
-     *        <code>timeout</code> parameter
+     *                <code>unit</code>
+     * @param unit    a <code>TimeUnit</code> determining how to interpret the
+     *                <code>timeout</code> parameter
      * @return the head of this queue, or <code>null</code> if the
-     *         specified waiting time elapses before an element is available
+     * specified waiting time elapses before an element is available
      * @throws InterruptedException if interrupted while waiting
      */
     E poll(long timeout, @Nonnull TimeUnit unit) throws InterruptedException;

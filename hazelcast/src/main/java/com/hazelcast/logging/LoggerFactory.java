@@ -16,6 +16,7 @@
 
 package com.hazelcast.logging;
 
+//FGTODO: 2019/12/5 上午9:48 zmyer
 public interface LoggerFactory {
 
     ILogger getLogger(String name);

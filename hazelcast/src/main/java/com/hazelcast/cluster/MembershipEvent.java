@@ -30,6 +30,7 @@ import static java.lang.String.format;
  *
  * @see MembershipListener
  */
+//FGTODO: 2019/11/22 下午4:00 zmyer
 @SuppressFBWarnings("SE_BAD_FIELD")
 public class MembershipEvent extends EventObject {
 
@@ -76,7 +77,7 @@ public class MembershipEvent extends EventObject {
      * you cannot get a deterministic view of the members. This method solves that problem.
      * <p>
      * The set is immutable and ordered. For more information see {@link Cluster#getMembers()}.
-     *
+     * <p>
      * Warning: If the event is triggered by a member attribute change then {@link #members} is empty.
      *
      * @return the members at the moment after this event.

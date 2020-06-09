@@ -37,6 +37,7 @@ import java.util.concurrent.CompletableFuture;
  * It also is possible to execute multiple operation on multiple partitions
  * using one of the invoke methods.
  */
+//FGTODO: 2019/12/4 下午8:30 zmyer
 @SuppressWarnings("checkstyle:MethodCount")
 public interface OperationService {
     String SERVICE_NAME = "hz:impl:operationService";
@@ -104,7 +105,7 @@ public interface OperationService {
     /**
      * Executes for each of the partitions, a task created by the
      * taskFactory.
-     *
+     * <p>
      * For more info see the
      * {@link com.hazelcast.spi.impl.operationexecutor.OperationExecutor#executeOnPartitions(PartitionTaskFactory, BitSet)}
      *
@@ -217,7 +218,7 @@ public interface OperationService {
      *                         grouped by owners
      * @param <T>              type of result of operations returned by {@code operationFactory}
      * @return a future returning a Map with partitionId as a key and the
-     *         outcome of the operation as a value.
+     * outcome of the operation as a value.
      */
     <T> CompletableFuture<Map<Integer, T>> invokeOnPartitionsAsync(
             String serviceName,
@@ -254,7 +255,7 @@ public interface OperationService {
 
     /**
      * Should be called when an asynchronous operations not running on a operation thread is running.
-     *
+     * <p>
      * Primary purpose is to provide heartbeats
      *
      * @param op

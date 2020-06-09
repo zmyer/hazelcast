@@ -40,6 +40,7 @@ import static com.hazelcast.internal.util.ExceptionUtil.rethrow;
 /**
  * The multicast {@link com.hazelcast.spi.discovery.DiscoveryStrategy}.
  */
+//FGTODO: 2019/12/2 下午2:08 zmyer
 public class MulticastDiscoveryStrategy extends AbstractDiscoveryStrategy {
 
     private static final int DATA_OUTPUT_BUFFER_SIZE = 64 * 1024;

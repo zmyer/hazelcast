@@ -30,6 +30,7 @@ import static com.hazelcast.internal.util.Preconditions.checkNotNull;
 /**
  * Base class for WAN publisher configuration.
  */
+//FGTODO: 2019/11/26 上午10:10 zmyer
 public abstract class AbstractWanPublisherConfig implements IdentifiedDataSerializable {
 
     protected String publisherId = "";

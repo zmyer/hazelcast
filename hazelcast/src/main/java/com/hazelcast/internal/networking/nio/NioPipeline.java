@@ -34,6 +34,7 @@ import static com.hazelcast.internal.metrics.ProbeLevel.DEBUG;
 import static com.hazelcast.internal.util.counters.SwCounter.newSwCounter;
 import static java.lang.Thread.currentThread;
 
+//FGTODO: 2019/11/22 下午5:25 zmyer
 public abstract class NioPipeline implements MigratablePipeline, Runnable {
 
     protected static final int LOAD_BALANCING_HANDLE = 0;
@@ -313,7 +314,6 @@ public abstract class NioPipeline implements MigratablePipeline, Runnable {
      * Starts the migration.
      * <p>
      * This method needs to run on a thread that is executing the {@link #process()}  method.
-     *
      */
     void startMigration() {
         assert newOwner != null : "newOwner can't be null";

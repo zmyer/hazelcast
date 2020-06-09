@@ -46,6 +46,7 @@ import static com.hazelcast.internal.util.ExceptionUtil.rethrow;
  * {@link SplitBrainProtectionImpl} can be used to notify split brain protection service for a particular split brain protection
  * result that originated externally.
  */
+//FGTODO: 2019/11/25 下午4:55 zmyer
 public class SplitBrainProtectionImpl implements SplitBrainProtection {
 
     private enum SplitBrainProtectionState {
@@ -246,7 +247,7 @@ public class SplitBrainProtectionImpl implements SplitBrainProtection {
      *
      * @param op the operation for which the minimum cluster size property should be satisfied
      * @throws SplitBrainProtectionException if the operation requires a split brain protection and the
-     * minimum cluster size property is not satisfied.
+     *                                       minimum cluster size property is not satisfied.
      */
     void ensureNoSplitBrain(Operation op) {
         if (!isSplitBrainProtectionNeeded(op)) {
@@ -276,8 +277,7 @@ public class SplitBrainProtectionImpl implements SplitBrainProtection {
         SplitBrainProtectionFunction splitBrainProtectionFunction = config.getFunctionImplementation();
         if (splitBrainProtectionFunction == null && config.getFunctionClassName() != null) {
             try {
-                splitBrainProtectionFunction = newInstance(nodeEngine.getConfigClassLoader(),
-                        config.getFunctionClassName());
+                splitBrainProtectionFunction = newInstance(nodeEngine.getConfigClassLoader(), config.getFunctionClassName());
             } catch (Exception e) {
                 throw rethrow(e);
             }

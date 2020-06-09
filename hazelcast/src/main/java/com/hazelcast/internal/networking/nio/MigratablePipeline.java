@@ -20,15 +20,16 @@ package com.hazelcast.internal.networking.nio;
  * A NioPipeline that supports migration between {@link NioThread} instances.
  * This API is called by the {@link com.hazelcast.internal.networking.nio.iobalancer.IOBalancer}.
  */
+//FGTODO: 2019/11/22 下午5:25 zmyer
 public interface MigratablePipeline {
 
     /**
      * Requests the MigratablePipeline to move to the new NioThread. This call will not wait for the
      * migration to complete.
-     *
+     * <p>
      * This method can be called by any thread, and will probably be called by the
      * {@link com.hazelcast.internal.networking.nio.iobalancer.IOBalancer}.
-     *
+     * <p>
      * Call is ignored when pipeline is moving to the same NioThread.
      *
      * @param newOwner the NioThread that is going to own this MigratablePipeline

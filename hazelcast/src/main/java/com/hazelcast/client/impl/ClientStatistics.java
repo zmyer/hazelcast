@@ -27,6 +27,7 @@ import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
  * @see ClientEndpoint#setClientStatistics(ClientStatistics)
  * @see ClientEndpoint#getClientAttributes()
  */
+//FGTODO: 2019/12/4 上午9:52 zmyer 
 public final class ClientStatistics {
     private final long timestamp;
     private final String clientAttributes;

@@ -20,6 +20,8 @@ package com.hazelcast.internal.util.scheduler;
  * Controls behaviour of {@link SecondsBasedEntryTaskScheduler} when a new entry is added
  * under already existing key.
  */
+
+//FGTODO: 2019/12/2 下午7:58 zmyer
 public enum ScheduleType {
 
     /**

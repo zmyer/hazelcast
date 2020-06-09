@@ -21,6 +21,7 @@ package com.hazelcast.cluster;
  *
  * @since 3.2.RC-2
  */
+//FGTODO: 2019/12/2 下午2:38 zmyer
 public enum MemberAttributeOperationType {
 
     /**

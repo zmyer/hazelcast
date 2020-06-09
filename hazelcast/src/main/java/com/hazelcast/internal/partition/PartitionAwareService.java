@@ -22,6 +22,7 @@ package com.hazelcast.internal.partition;
  *
  * @see IPartitionLostEvent
  */
+//FGTODO: 2019/11/25 下午1:59 zmyer
 public interface PartitionAwareService {
 
     /**

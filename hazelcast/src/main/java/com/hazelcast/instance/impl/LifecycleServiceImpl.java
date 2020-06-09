@@ -33,6 +33,7 @@ import static com.hazelcast.core.LifecycleEvent.LifecycleState.SHUTDOWN;
 import static com.hazelcast.core.LifecycleEvent.LifecycleState.SHUTTING_DOWN;
 import static com.hazelcast.internal.util.Preconditions.checkNotNull;
 
+//FGTODO: 2019/11/22 下午3:52 zmyer
 public class LifecycleServiceImpl implements LifecycleService {
 
     private final HazelcastInstanceImpl instance;

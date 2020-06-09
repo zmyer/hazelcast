@@ -25,6 +25,7 @@ import com.hazelcast.spi.exception.DistributedObjectDestroyedException;
  * @see DistributedObject
  * @see DistributedObjectListener
  */
+//FGTODO: 2019/11/25 下午2:16 zmyer
 public class DistributedObjectEvent {
 
     protected DistributedObject distributedObject;

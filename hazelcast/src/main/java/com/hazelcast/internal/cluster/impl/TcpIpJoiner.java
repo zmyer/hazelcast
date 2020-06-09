@@ -51,6 +51,7 @@ import static com.hazelcast.internal.util.EmptyStatement.ignore;
 import static com.hazelcast.internal.util.FutureUtil.RETHROW_EVERYTHING;
 import static com.hazelcast.internal.util.FutureUtil.returnWithDeadline;
 
+//FGTODO: 2019/12/2 下午1:51 zmyer
 public class TcpIpJoiner extends AbstractJoiner {
 
     private static final long JOIN_RETRY_WAIT_TIME = 1000L;

@@ -44,14 +44,14 @@ import javax.security.auth.login.LoginException;
 /**
  * The {@link com.hazelcast.client.impl.ClientEndpoint} and {@link Client} implementation.
  */
+//FGTODO: 2019/11/25 下午4:48 zmyer
 public final class ClientEndpointImpl implements ClientEndpoint {
 
     private final ClientEngine clientEngine;
     private final ILogger logger;
     private final NodeEngineImpl nodeEngine;
     private final Connection connection;
-    private final ConcurrentMap<UUID, TransactionContext> transactionContextMap
-            = new ConcurrentHashMap<>();
+    private final ConcurrentMap<UUID, TransactionContext> transactionContextMap = new ConcurrentHashMap<>();
     private final ConcurrentHashMap<UUID, Callable> removeListenerActions = new ConcurrentHashMap<UUID, Callable>();
     private final SocketAddress socketAddress;
     private final long creationTime;
@@ -208,12 +208,7 @@ public final class ClientEndpointImpl implements ClientEndpoint {
     @Override
     public void addListenerDestroyAction(final String service, final String topic, final UUID id) {
         final EventService eventService = clientEngine.getEventService();
-        addDestroyAction(id, new Callable<Boolean>() {
-            @Override
-            public Boolean call() {
-                return eventService.deregisterListener(service, topic, id);
-            }
-        });
+        addDestroyAction(id, () -> eventService.deregisterListener(service, topic, id));
     }
 
     @Override

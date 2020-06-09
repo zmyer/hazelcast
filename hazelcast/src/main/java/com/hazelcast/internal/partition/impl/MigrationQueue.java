@@ -30,6 +30,7 @@ import java.util.concurrent.atomic.AtomicInteger;
  * Once a migration task is added to the queue, queue has to be notified
  * via {@link MigrationQueue#afterTaskCompletion(MigrationRunnable)} after its execution.
  */
+//FGTODO: 2019/11/25 下午12:44 zmyer
 class MigrationQueue {
 
     private final AtomicInteger migrateTaskCount = new AtomicInteger();

@@ -30,8 +30,8 @@ import com.hazelcast.transaction.impl.operations.RollbackTxBackupLogOperation;
 import java.util.List;
 import java.util.UUID;
 
-public class AllowedDuringPassiveStateTransactionImpl
-        extends TransactionImpl {
+//FGTODO: 2019/12/3 上午9:59 zmyer
+public class AllowedDuringPassiveStateTransactionImpl extends TransactionImpl {
 
     public AllowedDuringPassiveStateTransactionImpl(TransactionManagerServiceImpl transactionManagerService,
                                                     NodeEngine nodeEngine, TransactionOptions options, UUID txOwnerUuid) {

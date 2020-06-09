@@ -27,6 +27,7 @@ package com.hazelcast.transaction;
  * @see com.hazelcast.core.HazelcastInstance#executeTransaction(TransactionalTask)
  * @see com.hazelcast.core.HazelcastInstance#executeTransaction(TransactionOptions, TransactionalTask)
  */
+//FGTODO: 2019/12/3 上午9:54 zmyer
 public interface TransactionalTask<T> {
 
     /**

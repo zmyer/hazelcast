@@ -24,6 +24,7 @@ import com.hazelcast.internal.services.ServiceNamespace;
  * the target (the owner of the partition).
  * The target is ignored when comparing if two {@link ReplicaFragmentSyncInfo} instances are the same.
  */
+//FGTODO: 2019/12/2 下午7:54 zmyer
 public final class ReplicaFragmentSyncInfo {
 
     final int partitionId;
@@ -34,7 +35,7 @@ public final class ReplicaFragmentSyncInfo {
     final PartitionReplica target;
 
     ReplicaFragmentSyncInfo(int partitionId, ServiceNamespace namespace, int replicaIndex,
-            PartitionReplica target) {
+                            PartitionReplica target) {
         this.partitionId = partitionId;
         this.namespace = namespace;
         this.replicaIndex = replicaIndex;

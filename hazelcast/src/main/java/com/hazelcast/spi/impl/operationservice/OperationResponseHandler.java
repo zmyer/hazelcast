@@ -22,6 +22,7 @@ package com.hazelcast.spi.impl.operationservice;
  *
  * @param <O> type of the {@link Operation}
  */
+//FGTODO: 2019/11/26 下午5:39 zmyer
 public interface OperationResponseHandler<O extends Operation> {
 
     /**

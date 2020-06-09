@@ -23,6 +23,7 @@ package com.hazelcast.config;
  *
  * @see RestApiConfig
  */
+//FGTODO: 2019/12/5 下午1:35 zmyer 
 public enum RestEndpointGroup {
 
     /**

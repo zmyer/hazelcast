@@ -48,6 +48,7 @@ import static com.hazelcast.spi.properties.GroupProperty.IO_WRITE_THROUGH_ENABLE
 import static java.util.Arrays.asList;
 import static java.util.Collections.unmodifiableList;
 
+//FGTODO: 2019/12/5 上午9:51 zmyer
 public class DefaultNodeContext implements NodeContext {
 
     public static final List<String> EXTENSION_PRIORITY_LIST = unmodifiableList(asList(

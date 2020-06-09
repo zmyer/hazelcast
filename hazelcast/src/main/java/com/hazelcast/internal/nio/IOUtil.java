@@ -59,6 +59,7 @@ import static com.hazelcast.internal.util.ExceptionUtil.rethrow;
 import static com.hazelcast.internal.nio.IOService.KILO_BYTE;
 import static java.lang.String.format;
 
+//FGTODO: 2019/12/5 下午2:07 zmyer
 @SuppressWarnings({"WeakerAccess", "checkstyle:methodcount", "checkstyle:magicnumber"})
 public final class IOUtil {
 
@@ -174,7 +175,7 @@ public final class IOUtil {
     }
 
     public static ObjectInputStream newObjectInputStream(final ClassLoader classLoader, ClassNameFilter classFilter,
-            InputStream in) throws IOException {
+                                                         InputStream in) throws IOException {
         return new ClassLoaderAwareObjectInputStream(classLoader, classFilter, in);
     }
 
@@ -652,9 +653,10 @@ public final class IOUtil {
 
     /**
      * Writes {@code len} bytes from the given input stream to the given output stream.
-     * @param input the input stream
+     *
+     * @param input  the input stream
      * @param output the output stream
-     * @param len the number of bytes to write
+     * @param len    the number of bytes to write
      * @throws IOException if there are not enough bytes in the input stream, or if there is any other IO error.
      */
     public static void drainTo(InputStream input, OutputStream output, int len) throws IOException {
@@ -686,17 +688,18 @@ public final class IOUtil {
 
     /**
      * Sets configured channel options on given {@link Channel}.
-     * @param channel   the {@link Channel} on which options will be set
-     * @param config    the endpoint configuration
+     *
+     * @param channel the {@link Channel} on which options will be set
+     * @param config  the endpoint configuration
      */
     public static void setChannelOptions(Channel channel, EndpointConfig config) {
         ChannelOptions options = channel.options();
         options.setOption(DIRECT_BUF, config.isSocketBufferDirect())
-               .setOption(TCP_NODELAY, config.isSocketTcpNoDelay())
-               .setOption(SO_KEEPALIVE, config.isSocketKeepAlive())
-               .setOption(SO_SNDBUF, config.getSocketSendBufferSizeKb() * KILO_BYTE)
-               .setOption(SO_RCVBUF, config.getSocketRcvBufferSizeKb() * KILO_BYTE)
-               .setOption(SO_LINGER, config.getSocketLingerSeconds());
+                .setOption(TCP_NODELAY, config.isSocketTcpNoDelay())
+                .setOption(SO_KEEPALIVE, config.isSocketKeepAlive())
+                .setOption(SO_SNDBUF, config.getSocketSendBufferSizeKb() * KILO_BYTE)
+                .setOption(SO_RCVBUF, config.getSocketRcvBufferSizeKb() * KILO_BYTE)
+                .setOption(SO_LINGER, config.getSocketLingerSeconds());
     }
 
     private static final class ClassLoaderAwareObjectInputStream extends ObjectInputStream {
@@ -705,7 +708,7 @@ public final class IOUtil {
         private final ClassNameFilter classFilter;
 
         private ClassLoaderAwareObjectInputStream(final ClassLoader classLoader, ClassNameFilter classFilter,
-                final InputStream in) throws IOException {
+                                                  final InputStream in) throws IOException {
             super(in);
             this.classLoader = classLoader;
             this.classFilter = classFilter;

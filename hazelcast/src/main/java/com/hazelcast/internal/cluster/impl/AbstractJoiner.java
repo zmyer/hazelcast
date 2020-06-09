@@ -54,8 +54,8 @@ import static com.hazelcast.spi.impl.operationservice.OperationResponseHandlerFa
 import static com.hazelcast.internal.util.FutureUtil.waitWithDeadline;
 import static java.lang.Thread.currentThread;
 
-public abstract class AbstractJoiner
-        implements Joiner {
+//FGTODO: 2019/12/2 下午1:51 zmyer
+public abstract class AbstractJoiner implements Joiner {
 
     private static final int JOIN_TRY_COUNT = 5;
     private static final int SPLIT_BRAIN_MERGE_TIMEOUT_SECONDS = 30;

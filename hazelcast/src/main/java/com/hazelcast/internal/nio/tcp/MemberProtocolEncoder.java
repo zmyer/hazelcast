@@ -30,6 +30,7 @@ import static com.hazelcast.internal.nio.Protocols.CLUSTER;
 import static com.hazelcast.internal.nio.Protocols.PROTOCOL_LENGTH;
 import static com.hazelcast.internal.util.StringUtil.stringToBytes;
 
+//FGTODO: 2019/11/22 下午5:29 zmyer
 public class MemberProtocolEncoder extends OutboundHandler<Void, ByteBuffer> {
 
     private final OutboundHandler[] outboundHandlers;
@@ -45,8 +46,8 @@ public class MemberProtocolEncoder extends OutboundHandler<Void, ByteBuffer> {
      * Decodes first 3 incoming bytes, validates against {@code supportedProtocol} and, when
      * matching, replaces itself in the inbound pipeline with the {@code next InboundHandler}.
      *
-     * @param next              the {@link OutboundHandler} to replace this one in the outbound pipeline
-     *                          upon match of protocol bytes
+     * @param next the {@link OutboundHandler} to replace this one in the outbound pipeline
+     *             upon match of protocol bytes
      */
     @SuppressFBWarnings("EI_EXPOSE_REP2")
     public MemberProtocolEncoder(OutboundHandler[] next) {
@@ -104,7 +105,7 @@ public class MemberProtocolEncoder extends OutboundHandler<Void, ByteBuffer> {
 
     /**
      * Checks if the protocol bytes have been drained.
-     *
+     * <p>
      * The protocol buffer is in write mode, so if position is 0, the protocol
      * buffer has been drained.
      *

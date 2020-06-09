@@ -29,6 +29,7 @@ import javax.annotation.Nonnull;
 import java.io.IOException;
 import java.util.UUID;
 
+//FGTODO: 2019/11/25 下午2:25 zmyer
 public class Registration implements EventRegistration {
 
     private UUID id;

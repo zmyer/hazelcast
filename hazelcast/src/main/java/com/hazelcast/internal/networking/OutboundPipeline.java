@@ -20,14 +20,15 @@ package com.hazelcast.internal.networking;
  * The outbound pipeline of a {@link Channel}. So all data that gets
  * written to the network, goes through the outbound pipeline.
  */
+//FGTODO: 2019/11/22 下午5:30 zmyer
 public interface OutboundPipeline {
 
     /**
      * Adds the handlers at the end of the pipeline
-     *
+     * <p>
      * No verification is done if the handler is already added and a handler
      * should only be added once.
-     *
+     * <p>
      * This method should only be made on the thread 'owning' the handler.
      *
      * @param handlers the handlers to add.
@@ -39,10 +40,10 @@ public interface OutboundPipeline {
      * Replaces the old OutboundHandler by the new ones. So if there
      * is a sequence of handlers [H1,H2,H3] and H2 gets replaced by [H4,H5]
      * the new pipeline will be [H1,H4,H5,H3].
-     *
+     * <p>
      * No verification is done if any of the handlers is already added and a
      * handler should only be added once.
-     *
+     * <p>
      * This method should only be made on the thread 'owning' the handler.
      *
      * @param oldHandler  the handlers to replace
@@ -55,7 +56,7 @@ public interface OutboundPipeline {
 
     /**
      * Removes the given handler from the pipeline.
-     *
+     * <p>
      * This method should only be made on the thread 'owning' the handler.
      *
      * @param handler the handler to remove.
@@ -68,14 +69,14 @@ public interface OutboundPipeline {
     /**
      * Request to flush all data to flush from the handlers to
      * the network.
-     *
+     * <p>
      * It will cause at least one processing of the OutboundPipeline.
-     *
+     * <p>
      * This method is threadsafe and can safely be called from any thread.
-     *
+     * <p>
      * Calling it while there is nothing in the pipeline will not do any damage,
      * apart from consuming cpu cycles.
-     *
+     * <p>
      * This can be used for example, with protocol or handshaking. So imagine
      * there is a handshake decoder (e.g. protocol or TLS), that as soon as it
      * has received some data like 'hello', it wants to send back a message to

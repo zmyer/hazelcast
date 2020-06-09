@@ -30,15 +30,16 @@ import static com.hazelcast.internal.nio.IOUtil.compactOrClear;
 
 /**
  * A {@link OutboundHandler} that for member to member communication.
- *
+ * <p>
  * It writes {@link Packet} instances to the {@link ByteBuffer}.
- *
+ * <p>
  * It makes use of a flyweight to allow the sharing of a packet-instance over
  * multiple connections. The flyweight contains the actual 'position' state of
  * what has been written.
  *
  * @see PacketDecoder
  */
+//FGTODO: 2019/12/5 下午2:04 zmyer
 public class PacketEncoder extends OutboundHandler<Supplier<Packet>, ByteBuffer> {
 
     private final PacketIOHelper packetWriter = new PacketIOHelper();

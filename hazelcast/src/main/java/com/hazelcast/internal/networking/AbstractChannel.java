@@ -42,6 +42,7 @@ import static java.util.Collections.newSetFromMap;
  * detail, the fact that it exposes some functionality like access to the socket
  * channel is because the current Channel implementations need the SocketChannel.
  */
+//FGTODO: 2019/11/22 下午5:24 zmyer
 public abstract class AbstractChannel implements Channel {
 
     private static final int FALSE = 0;
@@ -57,8 +58,7 @@ public abstract class AbstractChannel implements Channel {
     protected final ILogger logger;
 
     private final ConcurrentMap<?, ?> attributeMap = new ConcurrentHashMap<Object, Object>();
-    private final Set<ChannelCloseListener> closeListeners
-            = newSetFromMap(new ConcurrentHashMap<ChannelCloseListener, Boolean>());
+    private final Set<ChannelCloseListener> closeListeners = newSetFromMap(new ConcurrentHashMap<ChannelCloseListener, Boolean>());
     private final boolean clientMode;
     @SuppressWarnings("FieldCanBeLocal")
     private volatile SocketAddress remoteAddress;
@@ -142,10 +142,7 @@ public abstract class AbstractChannel implements Channel {
             if (logger.isFinestEnabled()) {
                 logger.finest("Successfully connected to: " + address + " using socket " + socketChannel.socket());
             }
-        } catch (RuntimeException e) {
-            IOUtil.closeResource(this);
-            throw e;
-        } catch (IOException e) {
+        } catch (RuntimeException | IOException e) {
             IOUtil.closeResource(this);
             throw e;
         }
@@ -167,7 +164,7 @@ public abstract class AbstractChannel implements Channel {
 
     /**
      * Template method that is called when the Channel is closed.
-     *
+     * <p>
      * It will be called only once.
      */
     protected void close0() throws IOException {

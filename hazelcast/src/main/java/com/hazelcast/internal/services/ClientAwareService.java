@@ -23,6 +23,7 @@ import java.util.UUID;
  * <p>
  * This is useful if a service needs to cleanup resources when a client leaves, e.g. release locks.
  */
+//FGTODO: 2019/12/3 上午9:55 zmyer
 public interface ClientAwareService {
 
     /**

@@ -64,6 +64,7 @@ import java.util.concurrent.ConcurrentMap;
  *
  * @see Hazelcast#newHazelcastInstance(Config config)
  */
+//FGTODO: 2019/11/22 下午3:49 zmyer
 public interface HazelcastInstance {
 
     /**
@@ -376,14 +377,16 @@ public interface HazelcastInstance {
      *
      * @return a ConcurrentMap that can be used to add user-context to the HazelcastInstance.
      */
-    @Nonnull ConcurrentMap<String, Object> getUserContext();
+    @Nonnull
+    ConcurrentMap<String, Object> getUserContext();
 
     /**
      * Gets xaResource which will participate in XATransaction.
      *
      * @return the xaResource
      */
-    @Nonnull HazelcastXAResource getXAResource();
+    @Nonnull
+    HazelcastXAResource getXAResource();
 
     /**
      * Obtain the {@link ICacheManager} that provides access to JSR-107 (JCache) caches configured on a Hazelcast cluster.
@@ -407,7 +410,8 @@ public interface HazelcastInstance {
      * @param name the name of the estimator
      * @return a {@link CardinalityEstimator}
      */
-    @Nonnull CardinalityEstimator getCardinalityEstimator(@Nonnull String name);
+    @Nonnull
+    CardinalityEstimator getCardinalityEstimator(@Nonnull String name);
 
     /**
      * Creates or returns a {@link PNCounter} with the given
@@ -421,7 +425,8 @@ public interface HazelcastInstance {
      * @param name the name of the PN counter
      * @return a {@link PNCounter}
      */
-    @Nonnull PNCounter getPNCounter(@Nonnull String name);
+    @Nonnull
+    PNCounter getPNCounter(@Nonnull String name);
 
     /**
      * Creates or returns the {@link IScheduledExecutorService} scheduled executor service for the given name.
@@ -431,14 +436,16 @@ public interface HazelcastInstance {
      * @param name name of the executor service
      * @return the scheduled executor service for the given name
      */
-    @Nonnull IScheduledExecutorService getScheduledExecutorService(@Nonnull String name);
+    @Nonnull
+    IScheduledExecutorService getScheduledExecutorService(@Nonnull String name);
 
     /**
      * Returns the CP subsystem that offers a set of in-memory linearizable data structures
      *
      * @return the CP subsystem that offers a set of in-memory linearizable data structures
      */
-    @Nonnull CPSubsystem getCPSubsystem();
+    @Nonnull
+    CPSubsystem getCPSubsystem();
 
     /**
      * Shuts down this HazelcastInstance. For more information see {@link com.hazelcast.core.LifecycleService#shutdown()}.

@@ -24,6 +24,7 @@ import java.io.ObjectInputStream;
 import java.net.DatagramPacket;
 import java.net.MulticastSocket;
 
+//FGTODO: 2019/12/2 下午2:09 zmyer
 public class MulticastDiscoveryReceiver {
 
     private static final int DATAGRAM_BUFFER_SIZE = 64 * 1024;

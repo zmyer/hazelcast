@@ -68,6 +68,7 @@ import com.hazelcast.spi.impl.operationservice.Operation;
  * During commit, destination usually doesn't expected to perform any task. But service implementation may need
  * to execute custom tasks.
  */
+//FGTODO: 2019/11/26 下午3:41 zmyer
 public interface MigrationAwareService {
 
     /**

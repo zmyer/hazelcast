@@ -37,9 +37,10 @@ import java.util.function.Consumer;
 
 /**
  * The client Engine.
- *
+ * <p>
  * todo: what is the purpose of the client engine.
  */
+//FGTODO: 2019/11/22 下午4:01 zmyer
 public interface ClientEngine extends Consumer<ClientMessage> {
 
     /**
@@ -47,7 +48,7 @@ public interface ClientEngine extends Consumer<ClientMessage> {
      * Only authenticated endpoints should be registered here.
      * bind can be called twice for same connection, as long as client is allowed to be registered all calls to this
      * method returns true
-     *
+     * <p>
      * A selector could prevent endpoint to be registered
      * see {@link #applySelector}
      *
@@ -89,7 +90,7 @@ public interface ClientEngine extends Consumer<ClientMessage> {
 
     /**
      * Returns Map which contains number of connected clients to the cluster.
-     *
+     * <p>
      * The returned map can be used to get information about connected clients to the cluster.
      *
      * @return {@code Map&lt;ClientType, Integer&gt;}.
@@ -99,12 +100,12 @@ public interface ClientEngine extends Consumer<ClientMessage> {
     /**
      * The statistics is a String that is composed of key=value pairs separated by ',' . The following characters are escaped in
      * IMap and ICache names by the escape character '\' : '=' '.' ',' '\'
-     *
+     * <p>
      * The statistics key identify the category and name of the statistics. It is formatted as:
      * mainCategory.subCategory.statisticName
-     *
+     * <p>
      * An e.g. Operating system committedVirtualMemorySize path would be: os.committedVirtualMemorySize
-     *
+     * <p>
      * The statistics key names can be one of the following (Used IMap named {@code &lt;example.fastmap&gt;} and ICache Named
      * {@code &lt;StatTestCacheName&gt;} and assuming that the Near Cache is configured):
      * <pre>

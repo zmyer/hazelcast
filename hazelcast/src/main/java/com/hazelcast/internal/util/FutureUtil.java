@@ -39,6 +39,7 @@ import java.util.logging.Level;
  * futures at the same time, e.g.
  * {@link #waitWithDeadline(java.util.Collection, long, java.util.concurrent.TimeUnit, long, java.util.concurrent.TimeUnit)}
  */
+//FGTODO: 2019/12/5 上午9:05 zmyer
 @SuppressWarnings("checkstyle:methodcount")
 public final class FutureUtil {
 

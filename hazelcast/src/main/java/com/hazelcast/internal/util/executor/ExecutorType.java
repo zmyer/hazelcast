@@ -16,6 +16,7 @@
 
 package com.hazelcast.internal.util.executor;
 
+//FGTODO: 2019/11/25 下午5:36 zmyer
 public enum ExecutorType {
     /**
      * Executor will use a ThreadPoolExecutor with unlimited pool size shared with other CACHED executors.

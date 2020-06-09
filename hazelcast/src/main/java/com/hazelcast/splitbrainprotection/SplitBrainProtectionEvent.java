@@ -26,6 +26,7 @@ import java.util.EventObject;
  * <p>
  * Hold member list, split brain protection threshold and the split brain protection result.
  */
+//FGTODO: 2019/11/25 下午4:55 zmyer
 public class SplitBrainProtectionEvent extends EventObject {
 
     private final int threshold;

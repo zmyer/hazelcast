@@ -22,6 +22,7 @@ import com.hazelcast.internal.nio.Connection;
 /**
  * Message task factory interface
  */
+//FGTODO: 2019/12/5 上午9:21 zmyer
 public interface MessageTaskFactory {
 
     MessageTask create(ClientMessage clientMessage, Connection connection);

@@ -47,9 +47,9 @@ import static com.hazelcast.internal.nio.ConnectionType.NONE;
  *
  * @see Networking
  */
+//FGTODO: 2019/11/22 下午5:11 zmyer
 @SuppressWarnings("checkstyle:methodcount")
-public class TcpIpConnection
-        implements Connection {
+public class TcpIpConnection implements Connection {
 
     private final Channel channel;
     private final ConcurrentMap attributeMap;
@@ -112,7 +112,7 @@ public class TcpIpConnection
         this.type = type;
         if (type == MEMBER) {
             logger.info("Initialized new cluster connection between "
-                        + channel.localSocketAddress() + " and " + channel.remoteSocketAddress());
+                    + channel.localSocketAddress() + " and " + channel.remoteSocketAddress());
         }
     }
 

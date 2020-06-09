@@ -30,6 +30,7 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.UUID;
 
+//FGTODO: 2019/12/2 下午7:30 zmyer
 // Used as request and response in join protocol
 public class JoinMessage implements IdentifiedDataSerializable {
 

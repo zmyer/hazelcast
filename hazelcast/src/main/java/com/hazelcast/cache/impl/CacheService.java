@@ -57,6 +57,7 @@ import static com.hazelcast.internal.partition.MigrationEndpoint.SOURCE;
  * using {@link AbstractHazelcastCacheManager#getCacheNamePrefix()}.
  * </p>
  */
+//FGTODO: 2019/11/26 下午3:16 zmyer
 public class CacheService extends AbstractCacheService {
 
     @Override
@@ -95,7 +96,7 @@ public class CacheService extends AbstractCacheService {
 
     @Override
     public Operation prepareReplicationOperation(PartitionReplicationEvent event,
-            Collection<ServiceNamespace> namespaces) {
+                                                 Collection<ServiceNamespace> namespaces) {
         assert assertAllKnownNamespaces(namespaces);
 
         CachePartitionSegment segment = segments[event.getPartitionId()];

@@ -37,6 +37,7 @@ import static com.hazelcast.internal.util.EmptyStatement.ignore;
 /**
  * AddressUtil contains Address helper methods.
  */
+//FGTODO: 2019/12/5 下午2:11 zmyer
 public final class AddressUtil {
 
     private static final int NUMBER_OF_ADDRESSES = 255;

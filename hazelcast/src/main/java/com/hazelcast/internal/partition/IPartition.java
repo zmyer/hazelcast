@@ -28,6 +28,7 @@ import com.hazelcast.partition.Partition;
  * replica's and this information will be updated. So one can cache the IPartition and keep asking for
  * partition information.
  */
+//FGTODO: 2019/11/25 下午2:13 zmyer
 public interface IPartition {
 
     /**
@@ -37,7 +38,7 @@ public interface IPartition {
 
     /**
      * Checks if the partition is local.
-     *
+     * <p>
      * A partition is local if and only if the {@link #getOwnerOrNull()} returns the same address as 'this' address of the
      * {@link ClusterService#getThisAddress()}. If the address is {@code null} or a different address, {@code false}
      * is returned.

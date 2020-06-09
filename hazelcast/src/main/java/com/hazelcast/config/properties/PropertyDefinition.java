@@ -33,6 +33,7 @@ import com.hazelcast.core.TypeConverter;
  * and are recommended to be stateless to prevent any kind of unexpected concurrency
  * issues.
  */
+//FGTODO: 2019/12/5 下午1:44 zmyer
 public interface PropertyDefinition {
 
     /**

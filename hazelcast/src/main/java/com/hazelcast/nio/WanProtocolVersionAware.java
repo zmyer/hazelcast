@@ -22,6 +22,7 @@ import com.hazelcast.version.Version;
  * An instance which is used in WAN and supports versioning. The version
  * indicates the version of the WAN protocol.
  */
+//FGTODO: 2019/12/5 上午10:28 zmyer
 public interface WanProtocolVersionAware {
 
     /**

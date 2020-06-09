@@ -24,6 +24,7 @@ import com.hazelcast.nio.ObjectDataOutput;
 
 import java.io.IOException;
 
+//FGTODO: 2019/12/5 下午1:48 zmyer
 public class JoinRequestOp extends AbstractClusterOperation {
 
     private JoinRequest request;

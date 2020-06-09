@@ -27,7 +27,8 @@ import static com.hazelcast.internal.util.EmptyStatement.ignore;
 /**
  * Default OutOfMemoryHandler implementation that tries to release local resources (threads, connections, memory)
  * immediately and disconnects members from the rest of the cluster.
-*/
+ */
+//FGTODO: 2019/11/22 下午3:50 zmyer
 public class DefaultOutOfMemoryHandler extends OutOfMemoryHandler {
 
     /*

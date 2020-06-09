@@ -20,8 +20,9 @@ import com.hazelcast.internal.management.ManagementCenterService;
 import com.hazelcast.internal.json.JsonObject;
 
 /**
- *  Represents request sent from Management Center.
+ * Represents request sent from Management Center.
  */
+//FGTODO: 2019/12/2 下午1:59 zmyer
 public interface ConsoleRequest {
     int getType();
 

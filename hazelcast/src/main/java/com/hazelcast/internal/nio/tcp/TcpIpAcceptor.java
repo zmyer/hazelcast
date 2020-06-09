@@ -52,11 +52,12 @@ import static java.util.concurrent.TimeUnit.SECONDS;
 
 /**
  * Contains the logic for accepting TcpIpConnections.
- *
+ * <p>
  * The {@link TcpIpAcceptor} and {@link TcpIpConnector} are 2 sides of the same coin. The {@link TcpIpConnector} take care
  * of the 'client' side of a connection and the {@link TcpIpAcceptor} is the 'server' side of a connection (each connection
  * has a client and server-side
  */
+//FGTODO: 2019/12/2 下午1:46 zmyer
 public class TcpIpAcceptor implements DynamicMetricsProvider {
     private static final long SHUTDOWN_TIMEOUT_MILLIS = SECONDS.toMillis(10);
     private static final long SELECT_TIMEOUT_MILLIS = SECONDS.toMillis(60);
@@ -89,7 +90,7 @@ public class TcpIpAcceptor implements DynamicMetricsProvider {
 
     TcpIpAcceptor(ServerSocketRegistry registry, TcpIpNetworkingService networkingService, IOService ioService) {
         this.registry = registry;
-            this.networkingService = networkingService;
+        this.networkingService = networkingService;
         this.ioService = networkingService.getIoService();
         this.logger = ioService.getLoggingService().getLogger(getClass());
         this.acceptorThread = new AcceptorIOThread();
@@ -133,7 +134,7 @@ public class TcpIpAcceptor implements DynamicMetricsProvider {
     @Override
     public void provideDynamicMetrics(MetricDescriptor descriptor, MetricsCollectionContext context) {
         context.collect(descriptor.withPrefix("tcp.acceptor")
-                                  .withDiscriminator("thread", acceptorThread.getName()), this);
+                .withDiscriminator("thread", acceptorThread.getName()), this);
     }
 
     private final class AcceptorIOThread extends Thread {

@@ -27,6 +27,7 @@ import java.security.cert.Certificate;
  * Represents a 'connection' between two machines. The most important implementation is the
  * {@link com.hazelcast.internal.nio.tcp.TcpIpConnection}.
  */
+//FGTODO: 2019/11/22 下午4:19 zmyer
 public interface Connection {
 
     /**

@@ -32,6 +32,7 @@ import static com.hazelcast.internal.util.MapUtil.createHashMap;
 /**
  * Static utility class to validate, verify, and map Service Discovery related properties with the given definitions.
  */
+//FGTODO: 2019/12/5 下午1:45 zmyer
 final class DiscoveryServicePropertiesUtil {
 
     private DiscoveryServicePropertiesUtil() {
@@ -84,8 +85,7 @@ final class DiscoveryServicePropertiesUtil {
         Set<String> notMappedProperties = new HashSet<String>(allProperties.keySet());
         notMappedProperties.removeAll(mappedProperties.keySet());
         if (!notMappedProperties.isEmpty()) {
-            throw new InvalidConfigurationException(
-                    String.format("Unknown properties: '%s' on discovery strategy", notMappedProperties));
+            throw new InvalidConfigurationException(String.format("Unknown properties: '%s' on discovery strategy", notMappedProperties));
         }
     }
 

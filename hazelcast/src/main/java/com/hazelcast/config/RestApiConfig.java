@@ -30,6 +30,7 @@ import java.util.Set;
  * <li>access to REST endpoint groups (see {@link RestEndpointGroup}).</li>
  * </ul>
  */
+//FGTODO: 2019/12/5 下午1:35 zmyer
 public class RestApiConfig {
 
     private boolean enabled;

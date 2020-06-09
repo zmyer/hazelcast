@@ -26,6 +26,7 @@ import java.util.UUID;
 /**
  * Event used for notification of client connection and disconnection
  */
+//FGTODO: 2019/12/3 上午10:08 zmyer
 public class ClientEvent implements Client {
 
     private final UUID uuid;

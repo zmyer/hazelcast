@@ -29,6 +29,7 @@ import java.util.concurrent.TimeUnit;
  *
  * @see EventPublishingService#dispatchEvent(Object, Object)
  */
+//FGTODO: 2019/12/4 下午8:13 zmyer
 public final class LocalEventDispatcher implements StripedRunnable, TimeoutRunnable {
 
     private final EventServiceImpl eventService;

@@ -23,6 +23,7 @@ import java.util.Map;
 /**
  * Contains configuration for attribute of member.
  */
+//FGTODO: 2019/12/5 上午10:15 zmyer
 public class MemberAttributeConfig {
 
     private final Map<String, String> attributes = new HashMap<>();

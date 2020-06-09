@@ -18,27 +18,28 @@ package com.hazelcast.internal.networking;
 
 /**
  * Represents a payload to can be written to a {@link Channel}
- *
+ * <p>
  * There are different types of OutboundFrame:
  * <ol>
  * <li>Packet: for member to member and old-client to member communication</li>
  * <li>TextMessage: for memcached and rest communication</li>
  * <li>ClientMessage: for the new client to member communication</li>
  * </ol>
- *
+ * <p>
  * Till so far, all communication over a single connection, will be of a single
  * Frame-class. E.g. member to member only uses Packets.
- *
+ * <p>
  * There is no need for an InboundFrame interface.
  *
  * @see com.hazelcast.nio.serialization.Data
  * @see Channel#write(OutboundFrame)
  */
+//FGTODO: 2019/11/25 下午4:38 zmyer
 public interface OutboundFrame {
 
     /**
      * Checks if this Frame is urgent.
-     *
+     * <p>
      * Frames that are urgent, have priority above regular frames. This is useful
      * to implement System Operations so that they can be send faster than regular
      * operations; especially when the system is under load you want these operations

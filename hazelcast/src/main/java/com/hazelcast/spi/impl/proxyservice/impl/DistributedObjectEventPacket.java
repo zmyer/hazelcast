@@ -25,6 +25,7 @@ import java.io.IOException;
 
 import static com.hazelcast.core.DistributedObjectEvent.EventType;
 
+//FGTODO: 2019/11/25 下午2:16 zmyer
 @BinaryInterface
 public final class DistributedObjectEventPacket implements DataSerializable {
 

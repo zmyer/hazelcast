@@ -25,6 +25,7 @@ package com.hazelcast.spi.discovery.integration;
  *
  * @since 3.6
  */
+//FGTODO: 2019/12/5 下午1:29 zmyer
 public interface DiscoveryServiceProvider {
 
     /**

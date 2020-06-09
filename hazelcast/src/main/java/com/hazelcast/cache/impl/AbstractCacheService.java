@@ -94,6 +94,7 @@ import static com.hazelcast.spi.tenantcontrol.TenantControlFactory.NOOP_TENANT_C
 import static java.util.Collections.newSetFromMap;
 import static java.util.Collections.singleton;
 
+//FGTODO: 2019/11/26 下午3:16 zmyer
 @SuppressWarnings("checkstyle:classdataabstractioncoupling")
 public abstract class AbstractCacheService implements ICacheService, PreJoinAwareService,
         PartitionAwareService, SplitBrainProtectionAwareService, SplitBrainHandlerService, ClusterStateListener {

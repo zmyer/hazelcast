@@ -24,6 +24,7 @@ import com.hazelcast.internal.cluster.fd.PingFailureDetector;
  * the instance of {@link PingFailureDetector} used by this member's
  * {@link com.hazelcast.internal.cluster.impl.ClusterHeartbeatManager} will be provided on initialization.
  */
+//FGTODO: 2019/11/25 下午4:57 zmyer
 public interface PingAware {
 
     /**

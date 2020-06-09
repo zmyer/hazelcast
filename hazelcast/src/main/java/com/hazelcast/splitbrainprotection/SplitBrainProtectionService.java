@@ -23,6 +23,7 @@ import javax.annotation.Nullable;
  * Split brain protection service can be used to trigger cluster split brain protections at any time.
  * Normally split brain protections are done when any change happens on the member list.
  */
+//FGTODO: 2019/12/4 上午9:58 zmyer
 public interface SplitBrainProtectionService {
 
     /**
@@ -40,15 +41,15 @@ public interface SplitBrainProtectionService {
      * Ensures that the split brain protection with the given name is present.
      * Throws a SplitBrainProtectionException if split brain protection not present.
      * Does not throw exception if splitBrainProtectionName null or split brain protection undefined.
-     *
+     * <p>
      * If (requiredSplitBrainProtectionPermissionType == READ)
-     *    -&gt; will check for presence of READ or READ_WRITE split brain protection<br>
+     * -&gt; will check for presence of READ or READ_WRITE split brain protection<br>
      * If (requiredSplitBrainProtectionPermissionType == WRITE)
-     *    -&gt; will check for presence of WRITE or READ_WRITE split brain protection<br>
+     * -&gt; will check for presence of WRITE or READ_WRITE split brain protection<br>
      * If (requiredSplitBrainProtectionPermissionType == READ_WRITE)
-     *    -&gt; will check for presence of READ_WRITE split brain protection<br>
+     * -&gt; will check for presence of READ_WRITE split brain protection<br>
      *
-     * @param splitBrainProtectionName split brain protection name to ensure, can be null or empty
+     * @param splitBrainProtectionName                   split brain protection name to ensure, can be null or empty
      * @param requiredSplitBrainProtectionPermissionType type of split brain protection required
      * @throws SplitBrainProtectionException if split brain protection defined and not present
      */

@@ -21,6 +21,7 @@ package com.hazelcast.internal.services;
  * {@link SplitBrainProtectionAwareService} to decide whether operation participates into a
  * split brain protection or not.
  */
+//FGTODO: 2019/11/26 下午5:22 zmyer
 public interface SplitBrainProtectionAwareService {
 
     /**

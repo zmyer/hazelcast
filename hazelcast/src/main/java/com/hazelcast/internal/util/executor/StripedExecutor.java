@@ -48,6 +48,7 @@ import static java.util.concurrent.TimeUnit.NANOSECONDS;
  * done on the queue. If the runnable doesn't implement TimeoutRunnable or when the blocking times out,
  * then the task is rejected and a RejectedExecutionException is thrown.
  */
+//FGTODO: 2019/11/26 下午3:06 zmyer
 public final class StripedExecutor implements Executor {
 
     public static final AtomicLong THREAD_ID_GENERATOR = new AtomicLong();

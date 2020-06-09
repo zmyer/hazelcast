@@ -31,6 +31,7 @@ package com.hazelcast.spi.discovery;
  *
  * @since 3.6
  */
+//FGTODO: 2019/12/2 下午2:05 zmyer
 public interface NodeFilter {
 
     /**

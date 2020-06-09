@@ -25,6 +25,7 @@ import static com.hazelcast.spi.impl.operationexecutor.impl.OperationExecutorImp
 /**
  * A 'batch' of tasks to be executed on a partition thread.
  */
+//FGTODO: 2019/11/26 下午5:58 zmyer
 public class TaskBatch {
 
     private final PartitionTaskFactory taskFactory;

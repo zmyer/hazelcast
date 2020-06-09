@@ -52,6 +52,7 @@ import static java.nio.ByteOrder.BIG_ENDIAN;
 import static java.nio.ByteOrder.LITTLE_ENDIAN;
 import static java.nio.ByteOrder.nativeOrder;
 
+//FGTODO: 2019/12/4 下午8:21 zmyer
 public class DefaultSerializationServiceBuilder implements SerializationServiceBuilder {
 
     static final ByteOrder DEFAULT_BYTE_ORDER = BIG_ENDIAN;
@@ -281,21 +282,21 @@ public class DefaultSerializationServiceBuilder implements SerializationServiceB
         switch (version) {
             case 1:
                 SerializationServiceV1 serializationServiceV1 = SerializationServiceV1.builder()
-                    .withInputOutputFactory(inputOutputFactory)
-                    .withVersion(version)
-                    .withPortableVersion(portableVersion)
-                    .withClassLoader(classLoader)
-                    .withDataSerializableFactories(dataSerializableFactories)
-                    .withPortableFactories(portableFactories)
-                    .withManagedContext(managedContext)
-                    .withGlobalPartitionStrategy(partitioningStrategy)
-                    .withInitialOutputBufferSize(initialOutputBufferSize)
-                    .withBufferPoolFactory(new BufferPoolFactoryImpl())
-                    .withEnableCompression(enableCompression)
-                    .withEnableSharedObject(enableSharedObject)
-                    .withNotActiveExceptionSupplier(notActiveExceptionSupplier)
-                    .withClassNameFilter(classNameFilter)
-                    .build();
+                        .withInputOutputFactory(inputOutputFactory)
+                        .withVersion(version)
+                        .withPortableVersion(portableVersion)
+                        .withClassLoader(classLoader)
+                        .withDataSerializableFactories(dataSerializableFactories)
+                        .withPortableFactories(portableFactories)
+                        .withManagedContext(managedContext)
+                        .withGlobalPartitionStrategy(partitioningStrategy)
+                        .withInitialOutputBufferSize(initialOutputBufferSize)
+                        .withBufferPoolFactory(new BufferPoolFactoryImpl())
+                        .withEnableCompression(enableCompression)
+                        .withEnableSharedObject(enableSharedObject)
+                        .withNotActiveExceptionSupplier(notActiveExceptionSupplier)
+                        .withClassNameFilter(classNameFilter)
+                        .build();
                 serializationServiceV1.registerClassDefinitions(classDefinitions, checkClassDefErrors);
                 return serializationServiceV1;
 

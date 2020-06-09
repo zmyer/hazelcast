@@ -25,8 +25,8 @@ import com.hazelcast.internal.nio.IOService;
  * channels. It will deal with the exchange of protocols and based on that it
  * will set up the appropriate handlers in the pipeline.
  */
-public abstract class AbstractChannelInitializer
-        implements ChannelInitializer {
+//FGTODO: 2019/11/22 下午5:26 zmyer
+public abstract class AbstractChannelInitializer implements ChannelInitializer {
 
     protected final IOService ioService;
     private final EndpointConfig config;

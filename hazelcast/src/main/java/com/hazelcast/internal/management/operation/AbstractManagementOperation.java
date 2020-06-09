@@ -20,6 +20,7 @@ import com.hazelcast.internal.management.ManagementDataSerializerHook;
 import com.hazelcast.nio.serialization.IdentifiedDataSerializable;
 import com.hazelcast.spi.impl.operationservice.Operation;
 
+//FGTODO: 2019/12/5 下午1:57 zmyer
 public abstract class AbstractManagementOperation extends Operation implements IdentifiedDataSerializable {
 
     @Override

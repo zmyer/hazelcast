@@ -49,6 +49,7 @@ import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 
+//FGTODO: 2019/11/22 下午4:04 zmyer
 public final class LockSupportServiceImpl implements LockSupportService, ManagedService, MembershipAwareService,
         FragmentedMigrationAwareService, ClientAwareService {
 
@@ -235,7 +236,7 @@ public final class LockSupportServiceImpl implements LockSupportService, Managed
 
     @Override
     public Operation prepareReplicationOperation(PartitionReplicationEvent event,
-            Collection<ServiceNamespace> namespaces) {
+                                                 Collection<ServiceNamespace> namespaces) {
         int partitionId = event.getPartitionId();
         LockStoreContainer container = containers[partitionId];
         int replicaIndex = event.getReplicaIndex();

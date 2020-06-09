@@ -44,28 +44,29 @@ import static com.hazelcast.splitbrainprotection.SplitBrainProtectionOn.READ_WRI
  * Since Hazelcast 3.10, two additional built-in split brain protection implementations, decoupled from the existing
  * cluster membership management, are provided:
  * <ul>
- *     <li>Probabilistic split brain protection: in this mode, member heartbeats are tracked and an adaptive failure
- *     detector determines for each member the suspicion level. Additionally, when the Hazelcast member
- *     is configured with the ICMP ping failure detector enabled and operating in parallel mode,
- *     ping information is also used to detect member failures early.
- *     <p>To create a {@code SplitBrainProtectionConfig} for probabilistic split brain protection, use
- *     {@link #newProbabilisticSplitBrainProtectionConfigBuilder(String, int)} to configure and build the
- *     {@code SplitBrainProtectionConfig}.
- *     </li>
- *     <li>Recently-active split brain protection: in this mode, for a member to be considered present for split brain
- *     protection, a heartbeat must be received within the configured time-window since now. Additionally, when the
- *     Hazelcast member is configured with the ICMP ping failure detector enabled and operating in
- *     parallel mode, ping information is also used to detect member failures early.
- *     <p>To create a {@code SplitBrainProtectionConfig} for recently-active split brain protection, use
- *     {@link #newRecentlyActiveSplitBrainProtectionConfigBuilder(String, int, int)} to configure and build the
- *     {@code SplitBrainProtectionConfig}.
- *     </li>
+ * <li>Probabilistic split brain protection: in this mode, member heartbeats are tracked and an adaptive failure
+ * detector determines for each member the suspicion level. Additionally, when the Hazelcast member
+ * is configured with the ICMP ping failure detector enabled and operating in parallel mode,
+ * ping information is also used to detect member failures early.
+ * <p>To create a {@code SplitBrainProtectionConfig} for probabilistic split brain protection, use
+ * {@link #newProbabilisticSplitBrainProtectionConfigBuilder(String, int)} to configure and build the
+ * {@code SplitBrainProtectionConfig}.
+ * </li>
+ * <li>Recently-active split brain protection: in this mode, for a member to be considered present for split brain
+ * protection, a heartbeat must be received within the configured time-window since now. Additionally, when the
+ * Hazelcast member is configured with the ICMP ping failure detector enabled and operating in
+ * parallel mode, ping information is also used to detect member failures early.
+ * <p>To create a {@code SplitBrainProtectionConfig} for recently-active split brain protection, use
+ * {@link #newRecentlyActiveSplitBrainProtectionConfigBuilder(String, int, int)} to configure and build the
+ * {@code SplitBrainProtectionConfig}.
+ * </li>
  * </ul>
  *
  * @see SplitBrainProtectionFunction
  * @see ProbabilisticSplitBrainProtectionFunction
  * @see RecentlyActiveSplitBrainProtectionFunction
  */
+//FGTODO: 2019/11/25 下午5:00 zmyer
 public class SplitBrainProtectionConfig implements IdentifiedDataSerializable, NamedConfig {
 
     private String name;
@@ -222,8 +223,8 @@ public class SplitBrainProtectionConfig implements IdentifiedDataSerializable, N
      * Returns a builder for {@link SplitBrainProtectionConfig} with the given {@code name} using a probabilistic
      * split brain protection function, for the given split brain protection {@code size} that is enabled by default.
      *
-     * @param name  the split brain protection's name
-     * @param minimumClusterSize  minimum count of members in the cluster not to be considered it split.
+     * @param name               the split brain protection's name
+     * @param minimumClusterSize minimum count of members in the cluster not to be considered it split.
      * @see ProbabilisticSplitBrainProtectionFunction
      */
     public static ProbabilisticSplitBrainProtectionConfigBuilder
@@ -234,10 +235,11 @@ public class SplitBrainProtectionConfig implements IdentifiedDataSerializable, N
     /**
      * Returns a builder for a {@link SplitBrainProtectionConfig} with the given {@code name} using a recently-active
      * split brain protection function for the given split brain protection {@code size} that is enabled by default.
-     * @param name              the split brain protection's name
-     * @param minimumClusterSize  minimum count of members in the cluster not to be considered it split.
-     * @param toleranceMillis   maximum amount of milliseconds that may have passed since last heartbeat was received for a
-     *                          member to be considered present for split brain protection.
+     *
+     * @param name               the split brain protection's name
+     * @param minimumClusterSize minimum count of members in the cluster not to be considered it split.
+     * @param toleranceMillis    maximum amount of milliseconds that may have passed since last heartbeat was received for a
+     *                           member to be considered present for split brain protection.
      * @see RecentlyActiveSplitBrainProtectionFunction
      */
     public static RecentlyActiveSplitBrainProtectionConfigBuilder

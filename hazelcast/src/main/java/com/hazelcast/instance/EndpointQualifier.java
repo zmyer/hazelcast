@@ -43,8 +43,8 @@ import static com.hazelcast.internal.util.Preconditions.checkNotNull;
  * @see com.hazelcast.config.EndpointConfig
  * @since 3.12
  */
-public final class EndpointQualifier
-        implements IdentifiedDataSerializable {
+//FGTODO: 2019/11/22 下午4:20 zmyer
+public final class EndpointQualifier implements IdentifiedDataSerializable {
 
     public static final EndpointQualifier MEMBER = new EndpointQualifier(ProtocolType.MEMBER, null);
     public static final EndpointQualifier CLIENT = new EndpointQualifier(ProtocolType.CLIENT, null);

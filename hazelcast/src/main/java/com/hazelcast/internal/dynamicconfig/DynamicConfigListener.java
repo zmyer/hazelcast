@@ -21,8 +21,8 @@ import com.hazelcast.config.MapConfig;
 
 /**
  * Listener to be notified about various events in {@link ClusterWideConfigurationService}
- *
  */
+//FGTODO: 2019/12/5 上午9:04 zmyer
 public interface DynamicConfigListener {
     /**
      * Called when a {@link ClusterWideConfigurationService} is initialized. It allows to hook custom hooks.

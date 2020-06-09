@@ -20,6 +20,7 @@ package com.hazelcast.internal.metrics;
  * To be implemented by an object that can provide metrics (so has a bunch of
  * probes).
  */
+//FGTODO: 2019/12/4 上午10:15 zmyer
 public interface StaticMetricsProvider {
 
     void provideStaticMetrics(MetricsRegistry registry);

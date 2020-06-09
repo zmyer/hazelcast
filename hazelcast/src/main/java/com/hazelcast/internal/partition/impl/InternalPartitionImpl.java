@@ -24,6 +24,8 @@ import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
 
 import java.util.Arrays;
 
+//FGTODO: 2019/11/29 下午7:20 zmyer
+
 public class InternalPartitionImpl implements InternalPartition {
 
     @SuppressFBWarnings(value = "VO_VOLATILE_REFERENCE_TO_ARRAY", justification =
@@ -45,7 +47,7 @@ public class InternalPartitionImpl implements InternalPartition {
 
     @SuppressFBWarnings("EI_EXPOSE_REP")
     public InternalPartitionImpl(int partitionId, PartitionReplicaInterceptor interceptor,
-            PartitionReplica localReplica, PartitionReplica[] replicas) {
+                                 PartitionReplica localReplica, PartitionReplica[] replicas) {
         this(partitionId, interceptor, localReplica);
         this.replicas = replicas;
     }
@@ -62,6 +64,7 @@ public class InternalPartitionImpl implements InternalPartition {
 
     /**
      * Sets migrating flag if it's not set already.
+     *
      * @return true if migrating flag is updated, false otherwise
      */
     public boolean setMigrating() {
@@ -105,7 +108,9 @@ public class InternalPartitionImpl implements InternalPartition {
         return replicas[replicaIndex];
     }
 
-    /** Swaps the replicas for {@code index1} and {@code index2} and call the partition listeners */
+    /**
+     * Swaps the replicas for {@code index1} and {@code index2} and call the partition listeners
+     */
     void swapReplicas(int index1, int index2) {
         PartitionReplica[] newReplicas = Arrays.copyOf(replicas, MAX_REPLICA_COUNT);
 
@@ -149,7 +154,9 @@ public class InternalPartitionImpl implements InternalPartition {
         callInterceptor(replicaIndex, oldReplica, newReplica);
     }
 
-    /** Calls the partition replica change interceptor for all changed replicas. */
+    /**
+     * Calls the partition replica change interceptor for all changed replicas.
+     */
     private void callInterceptor(PartitionReplica[] newReplicas, PartitionReplica[] oldReplicas) {
         for (int replicaIndex = 0; replicaIndex < MAX_REPLICA_COUNT; replicaIndex++) {
             PartitionReplica oldReplicasId = oldReplicas[replicaIndex];
@@ -158,7 +165,9 @@ public class InternalPartitionImpl implements InternalPartition {
         }
     }
 
-    /** Calls the partition replica change interceptor for the changed replica. */
+    /**
+     * Calls the partition replica change interceptor for the changed replica.
+     */
     private void callInterceptor(int replicaIndex, PartitionReplica oldReplica, PartitionReplica newReplica) {
         if (interceptor == null) {
             return;

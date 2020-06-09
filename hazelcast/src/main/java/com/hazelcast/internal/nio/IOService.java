@@ -39,6 +39,7 @@ import java.net.Socket;
 import java.util.Collection;
 import java.util.Map;
 
+//FGTODO: 2019/11/22 下午5:13 zmyer
 @SuppressWarnings({"checkstyle:methodcount"})
 public interface IOService {
 

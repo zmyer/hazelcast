@@ -30,6 +30,7 @@ import static com.hazelcast.internal.util.Preconditions.isNotNull;
  * a cluster, it will try to connect to one of the well known members. If it is able to connect, it will know
  * about all members in the cluster and won't rely on these well known members anymore.
  */
+//FGTODO: 2019/12/5 下午1:32 zmyer
 public class TcpIpConfig {
 
     private static final int CONNECTION_TIMEOUT_SEC = 5;
@@ -198,7 +199,7 @@ public class TcpIpConfig {
         if (this == o) {
             return true;
         }
-        if (o == null || !(o instanceof TcpIpConfig)) {
+        if (!(o instanceof TcpIpConfig)) {
             return false;
         }
 

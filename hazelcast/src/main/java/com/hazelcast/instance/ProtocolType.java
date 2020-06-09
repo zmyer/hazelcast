@@ -33,6 +33,7 @@ import java.util.Set;
  * @see com.hazelcast.config.AdvancedNetworkConfig
  * @since 3.12
  */
+//FGTODO: 2019/11/22 下午4:20 zmyer
 public enum ProtocolType {
 
     /*

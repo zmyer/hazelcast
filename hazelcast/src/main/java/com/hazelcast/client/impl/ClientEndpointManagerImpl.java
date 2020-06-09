@@ -42,6 +42,7 @@ import static com.hazelcast.internal.util.counters.MwCounter.newMwCounter;
 /**
  * Manages and stores {@link com.hazelcast.client.impl.ClientEndpointImpl}s.
  */
+//FGTODO: 2019/12/3 上午10:05 zmyer 
 public class ClientEndpointManagerImpl implements ClientEndpointManager {
 
     private final ILogger logger;

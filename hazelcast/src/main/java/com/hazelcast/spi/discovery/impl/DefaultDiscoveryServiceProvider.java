@@ -20,8 +20,8 @@ import com.hazelcast.spi.discovery.integration.DiscoveryService;
 import com.hazelcast.spi.discovery.integration.DiscoveryServiceProvider;
 import com.hazelcast.spi.discovery.integration.DiscoveryServiceSettings;
 
-public class DefaultDiscoveryServiceProvider
-        implements DiscoveryServiceProvider {
+//FGTODO: 2019/12/5 下午1:30 zmyer
+public class DefaultDiscoveryServiceProvider implements DiscoveryServiceProvider {
 
     @Override
     public DiscoveryService newDiscoveryService(DiscoveryServiceSettings settings) {

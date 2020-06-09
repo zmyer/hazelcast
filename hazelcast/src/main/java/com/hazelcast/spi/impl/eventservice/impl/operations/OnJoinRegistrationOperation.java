@@ -29,6 +29,7 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collection;
 
+//FGTODO: 2019/12/4 下午8:17 zmyer
 public class OnJoinRegistrationOperation extends Operation implements IdentifiedDataSerializable {
 
     private Collection<Registration> registrations;

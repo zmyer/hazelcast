@@ -23,6 +23,7 @@ import java.util.Properties;
 /**
  * Contains the configuration for interceptor socket.
  */
+//FGTODO: 2019/11/22 下午5:26 zmyer
 public class SocketInterceptorConfig {
     private boolean enabled;
     private String className;

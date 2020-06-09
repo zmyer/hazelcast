@@ -54,6 +54,7 @@ import java.util.concurrent.TimeUnit;
 import static com.hazelcast.internal.util.ThreadUtil.createThreadPoolName;
 import static java.lang.Thread.currentThread;
 
+//FGTODO: 2019/11/22 下午5:19 zmyer
 @SuppressWarnings({"checkstyle:classfanoutcomplexity", "checkstyle:methodcount"})
 public final class ExecutionServiceImpl implements ExecutionService {
 
@@ -122,10 +123,10 @@ public final class ExecutionServiceImpl implements ExecutionService {
         this.cachedExecutorService = new ThreadPoolExecutor(
                 CORE_POOL_SIZE, Integer.MAX_VALUE, KEEP_ALIVE_TIME, TimeUnit.SECONDS, new SynchronousQueue<>(),
                 threadFactory, (r, executor) -> {
-                    if (logger.isFinestEnabled()) {
-                        logger.finest("Node is shutting down; discarding the task: " + r);
-                    }
-                });
+            if (logger.isFinestEnabled()) {
+                logger.finest("Node is shutting down; discarding the task: " + r);
+            }
+        });
 
         ThreadFactory singleExecutorThreadFactory = new SingleExecutorThreadFactory(configClassLoader,
                 createThreadPoolName(hzName, "scheduled"));

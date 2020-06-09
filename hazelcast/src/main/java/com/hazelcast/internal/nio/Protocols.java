@@ -19,6 +19,7 @@ package com.hazelcast.internal.nio;
 /**
  * First bytes to send a node that defines selected protocol
  */
+//FGTODO: 2019/12/5 下午1:40 zmyer
 public final class Protocols {
 
     /**

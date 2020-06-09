@@ -24,6 +24,7 @@ import com.hazelcast.spi.impl.eventservice.impl.Registration;
 
 import java.io.IOException;
 
+//FGTODO: 2019/11/26 下午3:09 zmyer
 public class RegistrationOperation extends AbstractRegistrationOperation {
 
     private Registration registration;

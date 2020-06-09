@@ -29,6 +29,7 @@ import static com.hazelcast.internal.util.ConcurrencyUtil.getOrPutIfAbsent;
  * This class may contain counters for a single WAN publisher or multiple
  * WAN publishers, depending on its usage.
  */
+//FGTODO: 2019/11/25 下午5:38 zmyer
 public class DistributedServiceWanEventCounters {
     private static final ConstructorFunction<String, DistributedObjectWanEventCounters> EVENT_COUNTER_CONSTRUCTOR_FN
             = ignored -> new DistributedObjectWanEventCounters();
@@ -98,42 +99,58 @@ public class DistributedServiceWanEventCounters {
         private DistributedObjectWanEventCounters() {
         }
 
-        /** Increment the counter for entry sync events */
+        /**
+         * Increment the counter for entry sync events
+         */
         private void incrementSyncCount(int count) {
             syncCount.addAndGet(count);
         }
 
-        /** Increment the counter for entry update events */
+        /**
+         * Increment the counter for entry update events
+         */
         private void incrementUpdateCount() {
             updateCount.incrementAndGet();
         }
 
-        /** Increment the counter for entry remove events */
+        /**
+         * Increment the counter for entry remove events
+         */
         private void incrementRemoveCount() {
             removeCount.incrementAndGet();
         }
 
-        /** Increment the counter for dropped entry events */
+        /**
+         * Increment the counter for dropped entry events
+         */
         private void incrementDroppedCount() {
             droppedCount.incrementAndGet();
         }
 
-        /** Returns the number of dropped entry events */
+        /**
+         * Returns the number of dropped entry events
+         */
         public long getDroppedCount() {
             return droppedCount.longValue();
         }
 
-        /** Returns the number of entry sync events */
+        /**
+         * Returns the number of entry sync events
+         */
         public long getSyncCount() {
             return syncCount.longValue();
         }
 
-        /** Returns the number of entry update events */
+        /**
+         * Returns the number of entry update events
+         */
         public long getUpdateCount() {
             return updateCount.longValue();
         }
 
-        /** Returns the number of entry remove events */
+        /**
+         * Returns the number of entry remove events
+         */
         public long getRemoveCount() {
             return removeCount.longValue();
         }

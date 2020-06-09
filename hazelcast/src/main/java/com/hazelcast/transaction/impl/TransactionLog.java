@@ -33,16 +33,17 @@ import java.util.function.BiConsumer;
 /**
  * The transaction log contains all {@link
  * TransactionLogRecord} for a given transaction.
- *
+ * <p>
  * If within a transaction 3 map.puts would be done on different
  * keys and 1 queue.take would be done, than the TransactionLog
  * will contains 4 {@link TransactionLogRecord} instances.
- *
+ * <p>
  * Planned optimization:
  * Most transaction will be small, but an HashMap is created.
  * Instead use an array and do a linear search in that array.
  * When there are too many items added, then enable the hashmap.
  */
+//FGTODO: 2019/11/25 下午2:35 zmyer
 public class TransactionLog {
 
     private final Map<Object, TransactionLogRecord> recordMap = new HashMap<>();
@@ -142,8 +143,7 @@ public class TransactionLog {
             Address target = ((TargetAwareTransactionLogRecord) record).getTarget();
             operationService.invokeOnTarget(op.getServiceName(), op, target);
         } else {
-            operationService.invokeOnPartitionAsync(op.getServiceName(), op, op.getPartitionId())
-                            .whenCompleteAsync(callback);
+            operationService.invokeOnPartitionAsync(op.getServiceName(), op, op.getPartitionId()).whenCompleteAsync(callback);
         }
     }
 }

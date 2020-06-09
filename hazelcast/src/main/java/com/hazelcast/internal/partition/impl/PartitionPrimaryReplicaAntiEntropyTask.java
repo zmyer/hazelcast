@@ -25,6 +25,7 @@ import java.util.Collection;
 
 import static com.hazelcast.internal.partition.InternalPartition.MAX_REPLICA_COUNT;
 
+//FGTODO: 2019/11/25 下午2:12 zmyer
 final class PartitionPrimaryReplicaAntiEntropyTask extends AbstractPartitionPrimaryReplicaAntiEntropyTask {
 
     PartitionPrimaryReplicaAntiEntropyTask(NodeEngineImpl nodeEngine, int partitionId) {

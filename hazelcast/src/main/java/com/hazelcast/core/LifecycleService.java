@@ -23,6 +23,7 @@ import java.util.UUID;
  * LifecycleService allows you to shutdown, terminate, and listen to {@link LifecycleEvent}s
  * on HazelcastInstance.
  */
+//FGTODO: 2019/11/22 下午3:52 zmyer
 public interface LifecycleService {
 
     /**
@@ -50,7 +51,8 @@ public interface LifecycleService {
      * @param lifecycleListener the listener object
      * @return the listener ID
      */
-    @Nonnull UUID addLifecycleListener(@Nonnull LifecycleListener lifecycleListener);
+    @Nonnull
+    UUID addLifecycleListener(@Nonnull LifecycleListener lifecycleListener);
 
     /**
      * Removes a lifecycle listener.

@@ -46,6 +46,7 @@ import static java.nio.channels.SelectionKey.OP_READ;
  * out the data from the socket into a bytebuffer and hand it over to the
  * {@link InboundHandler} to get processed.
  */
+//FGTODO: 2019/11/22 下午5:25 zmyer
 public final class NioInboundPipeline extends NioPipeline implements InboundPipeline {
 
     private InboundHandler[] handlers = new InboundHandler[0];

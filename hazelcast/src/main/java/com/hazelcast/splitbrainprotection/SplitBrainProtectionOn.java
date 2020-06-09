@@ -19,6 +19,7 @@ package com.hazelcast.splitbrainprotection;
 /**
  * Represents a cluster split brain protection type
  */
+//FGTODO: 2019/11/25 下午4:57 zmyer
 public enum SplitBrainProtectionOn {
 
     /**

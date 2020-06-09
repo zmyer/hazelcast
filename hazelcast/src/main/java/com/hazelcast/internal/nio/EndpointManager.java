@@ -25,8 +25,8 @@ import java.util.function.Consumer;
 /**
  * Responsible for managing {@link Connection} objects.
  */
-public interface EndpointManager<T extends Connection>
-        extends ConnectionListenable, Consumer<Packet> {
+//FGTODO: 2019/11/22 下午4:22 zmyer
+public interface EndpointManager<T extends Connection> extends ConnectionListenable, Consumer<Packet> {
 
     /**
      * Returns connections that have been successfully established (ie. Bind was completed)

@@ -33,6 +33,7 @@ import static java.util.Collections.unmodifiableMap;
  *
  * @since 3.6
  */
+//FGTODO: 2019/12/2 下午2:07 zmyer
 public abstract class AbstractDiscoveryStrategy implements DiscoveryStrategy {
 
     private final ILogger logger;

@@ -19,5 +19,6 @@ package com.hazelcast.client.impl.protocol.task;
 /**
  * Interface for all client message tasks to implement
  */
+//FGTODO: 2019/11/25 下午4:53 zmyer
 public interface MessageTask extends Runnable {
 }

@@ -68,6 +68,7 @@ import static com.hazelcast.internal.util.FutureUtil.waitWithDeadline;
 import static com.hazelcast.internal.util.UuidUtil.newUnsecureUUID;
 import static java.util.concurrent.TimeUnit.MILLISECONDS;
 
+//FGTODO: 2019/11/25 下午2:34 zmyer
 @SuppressWarnings("checkstyle:methodcount")
 public class TransactionImpl implements Transaction {
 

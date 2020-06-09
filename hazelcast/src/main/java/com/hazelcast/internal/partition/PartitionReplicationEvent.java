@@ -19,6 +19,7 @@ package com.hazelcast.internal.partition;
 /**
  * An event send to {@link MigrationAwareService} when partition changes happen.
  */
+//FGTODO: 2019/11/26 下午3:42 zmyer
 public class PartitionReplicationEvent {
 
     private final int partitionId;

@@ -22,6 +22,7 @@ import com.hazelcast.spi.impl.operationservice.Operation;
 import static com.hazelcast.transaction.impl.TransactionDataSerializerHook.F_ID;
 import static com.hazelcast.transaction.impl.TransactionManagerServiceImpl.SERVICE_NAME;
 
+//FGTODO: 2019/12/3 上午9:58 zmyer
 public abstract class AbstractTxOperation extends Operation implements IdentifiedDataSerializable {
 
     @Override

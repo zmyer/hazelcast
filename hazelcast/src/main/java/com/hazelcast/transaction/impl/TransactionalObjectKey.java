@@ -16,6 +16,7 @@
 
 package com.hazelcast.transaction.impl;
 
+//FGTODO: 2019/11/25 下午2:34 zmyer
 public class TransactionalObjectKey {
 
     private final String serviceName;

@@ -94,6 +94,7 @@ import static java.util.logging.Level.WARNING;
  *
  * @param <T> Target type of the Invocation
  */
+//FGTODO: 2019/11/26 下午5:35 zmyer
 @SuppressWarnings("checkstyle:methodcount")
 public abstract class Invocation<T> extends BaseInvocation implements OperationResponseHandler {
 
@@ -192,7 +193,6 @@ public abstract class Invocation<T> extends BaseInvocation implements OperationR
      * Refer to {@link InvocationBuilder#setDoneCallback(Runnable)} for an explanation
      */
     private final Runnable taskDoneCallback;
-
 
     Invocation(Context context,
                Operation op,
@@ -424,10 +424,10 @@ public abstract class Invocation<T> extends BaseInvocation implements OperationR
 
     /**
      * Checks if this Invocation has received a heartbeat in time.
-     *
+     * <p>
      * If the response is already set, or if a heartbeat has been received in time, then {@code false} is returned.
      * If no heartbeat has been received, then the future.set is called with HEARTBEAT_TIMEOUT and {@code true} is returned.
-     *
+     * <p>
      * Gets called from the monitor-thread.
      *
      * @return {@code true} if there is a timeout detected, {@code false} otherwise.
@@ -791,9 +791,9 @@ public abstract class Invocation<T> extends BaseInvocation implements OperationR
     /**
      * The {@link Context} contains all 'static' dependencies for an Invocation; dependencies that don't change between
      * invocations. All invocation specific dependencies/settings are passed in through the constructor of the invocation.
-     *
+     * <p>
      * This object should have no functionality apart from providing dependencies. So no methods should be added to this class.
-     *
+     * <p>
      * The goals of the Context are:
      * <ol>
      * <li>reduce the need on having a cluster running when testing Invocations. This is one of the primary drivers behind this

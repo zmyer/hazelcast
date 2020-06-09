@@ -31,14 +31,15 @@ import java.util.function.Consumer;
  * to be executed. It can be compared to a {@link java.util.concurrent.Executor}
  * with the big difference that it is designed for assigning packets, operations
  * and PartitionSpecificRunnable to a thread instead of only runnables.
- *
+ * <p>
  * It depends on the implementation if an operation is executed on the calling
  * thread or not. For example the {@link OperationExecutorImpl} will always
  * offload a partition specific Operation to the correct partition-operation-thread.
- *
+ * <p>
  * The actual processing of a operation-packet, Operation, or a
  * PartitionSpecificRunnable is forwarded to the {@link OperationRunner}.
  */
+//FGTODO: 2019/11/26 下午5:55 zmyer
 public interface OperationExecutor extends Consumer<Packet>, LiveOperationsTracker {
 
     // Will be replaced by metrics
@@ -100,17 +101,17 @@ public interface OperationExecutor extends Consumer<Packet>, LiveOperationsTrack
 
     /**
      * Executes a task from the taskFactory for each of the given partitions.
-     *
+     * <p>
      * The reason this method exists is to prevent a bubble of operations/tasks
      * to be created on the work-queue if the regular {@link #execute(Operation)}
      * would be called in a loop.
-     *
+     * <p>
      * The consequence of this bubble is that no other operations can interleave
      * and this can lead to very bad latency for the other operations.
-     *
+     * <p>
      * This method can be used to create Operations and Runnable's to be executed
      * on a partition thread.
-     *
+     * <p>
      * No check is done if the partition is actually local or not!
      *
      * @param taskFactory the {@link PartitionTaskFactory} responsible for creating

@@ -22,6 +22,7 @@ import java.util.concurrent.TimeUnit;
  * An interface that can be implemented by SPI services to participate in graceful shutdown process, such as moving
  * their internal data to another node or releasing their allocated resources gracefully.
  */
+//FGTODO: 2019/11/22 下午3:59 zmyer
 public interface GracefulShutdownAwareService {
 
     /**
@@ -30,7 +31,7 @@ public interface GracefulShutdownAwareService {
      * return in time, then it's considered as failed to gracefully shutdown.
      *
      * @param timeout timeout for graceful shutdown
-     * @param unit time unit
+     * @param unit    time unit
      * @return true if graceful shutdown is successful, false otherwise
      */
     boolean onShutdown(long timeout, TimeUnit unit);

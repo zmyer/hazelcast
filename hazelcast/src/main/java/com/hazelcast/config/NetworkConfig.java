@@ -25,6 +25,7 @@ import java.util.HashSet;
 /**
  * Contains configuration for Network.
  */
+//FGTODO: 2019/11/22 下午5:14 zmyer
 @SuppressWarnings("checkstyle:methodcount")
 public class NetworkConfig {
 
@@ -87,7 +88,7 @@ public class NetworkConfig {
 
     /**
      * Sets the port the Hazelcast member will try to bind on.
-     *
+     * <p>
      * A valid port value is between 0 and 65535.
      * A port number of 0 will let the system pick up an ephemeral port.
      *
@@ -119,8 +120,8 @@ public class NetworkConfig {
      * The maximum number of ports allowed to use.
      *
      * @param portCount the maximum number of ports allowed to use
-     * @see #setPortAutoIncrement(boolean) for more information
      * @return this configuration
+     * @see #setPortAutoIncrement(boolean) for more information
      */
     public NetworkConfig setPortCount(int portCount) {
         if (portCount < 1) {
@@ -317,9 +318,9 @@ public class NetworkConfig {
      * Returns the current {@link SSLConfig}. It is possible that null is returned if no SSLConfig has been set.
      *
      * @return the SSLConfig
-     * @see #setSSLConfig(SSLConfig)
      * @throws SecurityException If a security manager exists and the calling method doesn't have corresponding
-     *         {@link HazelcastRuntimePermission}
+     *                           {@link HazelcastRuntimePermission}
+     * @see #setSSLConfig(SSLConfig)
      */
     public SSLConfig getSSLConfig() {
         SecurityManager sm = System.getSecurityManager();
@@ -334,9 +335,9 @@ public class NetworkConfig {
      *
      * @param sslConfig the SSLConfig
      * @return the updated NetworkConfig
-     * @see #getSSLConfig()
      * @throws SecurityException If a security manager exists and the calling method doesn't have corresponding
-     *         {@link HazelcastRuntimePermission}
+     *                           {@link HazelcastRuntimePermission}
+     * @see #getSSLConfig()
      */
     public NetworkConfig setSSLConfig(SSLConfig sslConfig) {
         SecurityManager sm = System.getSecurityManager();

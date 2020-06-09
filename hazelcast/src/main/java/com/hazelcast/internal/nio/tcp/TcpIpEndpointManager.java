@@ -69,9 +69,9 @@ import static java.util.Collections.newSetFromMap;
 import static java.util.Collections.unmodifiableCollection;
 import static java.util.Collections.unmodifiableSet;
 
+//FGTODO: 2019/11/22 下午5:11 zmyer
 @SuppressWarnings("checkstyle:methodcount")
-public class TcpIpEndpointManager
-        implements EndpointManager<TcpIpConnection>, Consumer<Packet>, DynamicMetricsProvider {
+public class TcpIpEndpointManager implements EndpointManager<TcpIpConnection>, Consumer<Packet>, DynamicMetricsProvider {
 
     private static final int RETRY_NUMBER = 5;
     private static final long DELAY_FACTOR = 100L;
@@ -408,7 +408,7 @@ public class TcpIpEndpointManager
             context.collect(descriptor.withPrefix("tcp.connection"), this);
         } else {
             context.collect(descriptor.withPrefix("tcp.connection")
-                                      .withDiscriminator("endpoint", endpointQualifier.toMetricsPrefixString()), this);
+                    .withDiscriminator("endpoint", endpointQualifier.toMetricsPrefixString()), this);
         }
     }
 

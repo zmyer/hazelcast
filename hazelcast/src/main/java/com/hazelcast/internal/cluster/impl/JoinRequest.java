@@ -38,6 +38,7 @@ import static com.hazelcast.internal.util.MapUtil.createHashMap;
 import static com.hazelcast.internal.util.SetUtil.createHashSet;
 import static java.util.Collections.unmodifiableSet;
 
+//FGTODO: 2019/12/5 下午1:48 zmyer
 public class JoinRequest extends JoinMessage {
 
     private Credentials credentials;

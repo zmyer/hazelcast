@@ -43,6 +43,7 @@ import static com.hazelcast.internal.serialization.impl.SerializationUtil.readNu
 import static com.hazelcast.internal.serialization.impl.SerializationUtil.writeNullableMap;
 import static com.hazelcast.internal.util.Preconditions.checkNotNull;
 
+//FGTODO: 2019/11/22 下午5:20 zmyer
 public abstract class AbstractMember implements Member {
 
     protected final Map<String, String> attributes = new ConcurrentHashMap<>();

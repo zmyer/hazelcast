@@ -51,6 +51,7 @@ import java.util.UUID;
  * NodeExtension is a <tt>Node</tt> extension mechanism to be able to plug different implementations of
  * some modules, like; <tt>SerializationService</tt>, <tt>ChannelFactory</tt> etc.
  */
+//FGTODO: 2019/11/22 下午5:18 zmyer
 @SuppressWarnings({"checkstyle:methodcount"})
 public interface NodeExtension {
 
@@ -117,7 +118,7 @@ public interface NodeExtension {
     /**
      * Creates additional extension services, which will be registered by
      * service manager during start-up.
-     *
+     * <p>
      * By default returned map will be empty.
      *
      * @return extension services
@@ -128,14 +129,14 @@ public interface NodeExtension {
      * Returns <tt>MemberSocketInterceptor</tt> for this <tt>Node</tt> if available,
      * otherwise returns null.
      *
-     * @return MemberSocketInterceptor
      * @param endpointQualifier
+     * @return MemberSocketInterceptor
      */
     MemberSocketInterceptor getSocketInterceptor(EndpointQualifier endpointQualifier);
 
     /**
      * Creates a <tt>InboundHandler</tt> for given <tt>Connection</tt> instance.
-     *
+     * <p>
      * For TLS and other enterprise features, instead of returning the regular protocol decoder, a TLS decoder
      * can be returned. This is the first item in the chain.
      *
@@ -186,12 +187,12 @@ public interface NodeExtension {
      */
     MemoryStats getMemoryStats();
 
-     /**
-      * Executed on the master node before allowing a new member to join from
-      * {@link com.hazelcast.internal.cluster.impl.ClusterJoinManager#handleJoinRequest(JoinRequest, Connection)}.
-      * Implementation should check if the {@code JoinMessage} should be allowed to proceed, otherwise throw an exception
-      * with a message explaining rejection reason.
-      */
+    /**
+     * Executed on the master node before allowing a new member to join from
+     * {@link com.hazelcast.internal.cluster.impl.ClusterJoinManager#handleJoinRequest(JoinRequest, Connection)}.
+     * Implementation should check if the {@code JoinMessage} should be allowed to proceed, otherwise throw an exception
+     * with a message explaining rejection reason.
+     */
     void validateJoinRequest(JoinMessage joinMessage);
 
     /**
@@ -205,11 +206,11 @@ public interface NodeExtension {
      * Called before starting a cluster state change transaction. Called only
      * on the member that initiated the state change.
      *
-     * @param currState the state before the change
+     * @param currState      the state before the change
      * @param requestedState the requested cluster state
-     * @param isTransient whether the change will be recorded in persistent storage, affecting the
-     *                    initial state after cluster restart. Transient changes happen during
-     *                    system operations such as an orderly all-cluster shutdown.
+     * @param isTransient    whether the change will be recorded in persistent storage, affecting the
+     *                       initial state after cluster restart. Transient changes happen during
+     *                       system operations such as an orderly all-cluster shutdown.
      */
     void beforeClusterStateChange(ClusterState currState, ClusterState requestedState, boolean isTransient);
 
@@ -218,7 +219,7 @@ public interface NodeExtension {
      * just after updating the value of the cluster state on the local member,
      * while still holding the cluster lock. Called on all cluster members.
      *
-     * @param newState the new cluster state
+     * @param newState    the new cluster state
      * @param isTransient whether the change will be recorded in persistent storage, affecting the
      *                    initial state after cluster restart. Transient changes happen during
      *                    system operations such as an orderly all-cluster shutdown.
@@ -230,9 +231,9 @@ public interface NodeExtension {
      * (successfully or otherwise). Called only on the member that initiated
      * the state change.
      *
-     * @param oldState the state before the change
-     * @param newState the new cluster state, can be equal to {@code oldState} if the
-     *                 state change transaction failed
+     * @param oldState    the state before the change
+     * @param newState    the new cluster state, can be equal to {@code oldState} if the
+     *                    state change transaction failed
      * @param isTransient whether the change will be recorded in persistent storage, affecting the
      *                    initial state after cluster restart. Transient changes happen during
      *                    system operations such as an orderly all-cluster shutdown.
@@ -258,6 +259,7 @@ public interface NodeExtension {
 
     /**
      * Check if this node's codebase version is compatible with given cluster version.
+     *
      * @param clusterVersion the cluster version to check against
      * @return {@code true} if compatible, otherwise false.
      */
@@ -265,25 +267,32 @@ public interface NodeExtension {
 
     /**
      * Registers given listener if it's a known type.
+     *
      * @param listener listener instance
      * @return true if listener is registered, false otherwise
      */
     boolean registerListener(Object listener);
 
-    /** Returns the public hot restart service */
+    /**
+     * Returns the public hot restart service
+     */
     HotRestartService getHotRestartService();
 
-    /** Returns the internal hot restart service */
+    /**
+     * Returns the internal hot restart service
+     */
     InternalHotRestartService getInternalHotRestartService();
 
     /**
      * Creates a UUID for local member
+     *
      * @return new UUID
      */
     UUID createMemberUuid();
 
     /**
      * Creates a TimedMemberStateFactory for a given Hazelcast instance
+     *
      * @param instance The instance to associate with the timed member state factory
      * @return {@link TimedMemberStateFactory}
      */
@@ -295,10 +304,14 @@ public interface NodeExtension {
 
     TextCommandService createTextCommandService();
 
-    /** Returns a byte array processor for incoming data on the Multicast joiner */
+    /**
+     * Returns a byte array processor for incoming data on the Multicast joiner
+     */
     ByteArrayProcessor createMulticastInputProcessor(IOService ioService);
 
-    /** Returns a byte array processor for outgoing data on the Multicast joiner */
+    /**
+     * Returns a byte array processor for outgoing data on the Multicast joiner
+     */
     ByteArrayProcessor createMulticastOutputProcessor(IOService ioService);
 
     /**

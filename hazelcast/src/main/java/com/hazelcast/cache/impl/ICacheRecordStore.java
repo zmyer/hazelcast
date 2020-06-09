@@ -50,6 +50,7 @@ import java.util.UUID;
  *
  * @see com.hazelcast.cache.impl.CacheRecordStore
  */
+//FGTODO: 2019/11/26 下午3:44 zmyer
 @SuppressWarnings("checkstyle:methodcount")
 public interface ICacheRecordStore {
 

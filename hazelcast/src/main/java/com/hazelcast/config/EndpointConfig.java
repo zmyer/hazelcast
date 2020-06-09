@@ -26,12 +26,13 @@ import java.util.HashSet;
 /**
  * Endpoint configuration that defines communication/networking properties common to both incoming/outgoing connections
  * eg.
- *
+ * <p>
  * - Encryption / Security
  * - Hazelcast protocol type
  *
  * @since 3.12
  */
+//FGTODO: 2019/11/22 下午5:26 zmyer
 @SuppressWarnings("checkstyle:methodcount")
 public class EndpointConfig implements NamedConfig {
 

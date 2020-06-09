@@ -16,6 +16,7 @@
 
 package com.hazelcast.internal.cluster.impl;
 
+//FGTODO: 2019/12/5 下午1:33 zmyer 
 public interface MulticastListener {
     void onMessage(Object msg);
 }

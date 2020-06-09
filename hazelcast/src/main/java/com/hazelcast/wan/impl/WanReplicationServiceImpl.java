@@ -49,14 +49,19 @@ import static com.hazelcast.internal.util.StringUtil.isNullOrEmptyAfterTrim;
 /**
  * Open source implementation of the {@link WanReplicationService}
  */
+//FGTODO: 2019/11/25 下午5:36 zmyer
 public class WanReplicationServiceImpl implements WanReplicationService {
 
     private final Node node;
 
-    /** WAN event counters for all services and only received events */
+    /**
+     * WAN event counters for all services and only received events
+     */
     private final WanEventCounters receivedWanEventCounters = new WanEventCounters();
 
-    /** WAN event counters for all services and only sent events */
+    /**
+     * WAN event counters for all services and only sent events
+     */
     private final WanEventCounters sentWanEventCounters = new WanEventCounters();
 
     private final ConcurrentMap<String, DelegatingWanReplicationScheme> wanReplications = createConcurrentHashMap(1);
@@ -69,8 +74,7 @@ public class WanReplicationServiceImpl implements WanReplicationService {
                     if (wanReplicationConfig == null) {
                         return null;
                     }
-                    List<WanBatchReplicationPublisherConfig> batchPublisherConfigs
-                            = wanReplicationConfig.getBatchPublisherConfigs();
+                    List<WanBatchReplicationPublisherConfig> batchPublisherConfigs = wanReplicationConfig.getBatchPublisherConfigs();
                     if (!batchPublisherConfigs.isEmpty()) {
                         throw new InvalidConfigurationException("Built-in batching WAN replication implementation "
                                 + "is only available in Hazelcast enterprise edition.");

@@ -37,6 +37,7 @@ import static com.hazelcast.internal.cluster.impl.SplitBrainJoinMessage.SplitBra
 /**
  * Validate whether clusters may merge to recover from a split brain, based on configuration &amp; cluster version.
  */
+//FGTODO: 2019/12/2 下午7:34 zmyer
 public class SplitBrainMergeValidationOp extends AbstractJoinOperation {
 
     private SplitBrainJoinMessage request;

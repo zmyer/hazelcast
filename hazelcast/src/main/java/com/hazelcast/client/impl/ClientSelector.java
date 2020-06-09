@@ -18,8 +18,8 @@ package com.hazelcast.client.impl;
 
 import com.hazelcast.client.Client;
 
+//FGTODO: 2019/12/3 上午10:05 zmyer
 public interface ClientSelector {
 
     boolean select(Client client);
-
 }

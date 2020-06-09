@@ -33,6 +33,7 @@ import static com.hazelcast.spi.impl.executionservice.ExecutionService.SYSTEM_EX
 /**
  * Resets CP state of a member and restarts CP Subsystem initialization process
  */
+//FGTODO: 2019/11/30 下午12:54 zmyer
 public class ResetCPMemberOp extends Operation implements RaftSystemOperation, IdentifiedDataSerializable {
 
     private long seed;

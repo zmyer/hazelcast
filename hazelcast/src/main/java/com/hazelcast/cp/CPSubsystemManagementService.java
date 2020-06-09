@@ -82,6 +82,7 @@ import java.util.concurrent.TimeUnit;
  * @see CPMember
  * @see CPSubsystemConfig
  */
+//FGTODO: 2019/11/22 下午3:55 zmyer
 public interface CPSubsystemManagementService {
 
     /**
@@ -183,10 +184,10 @@ public interface CPSubsystemManagementService {
      * from Hazelcast's member list. The behavior is undefined when a running
      * CP member is removed from CP Subsystem.
      *
-     * @throws IllegalStateException When another CP member is currently being
-     *         removed from CP Subsystem
+     * @throws IllegalStateException    When another CP member is currently being
+     *                                  removed from CP Subsystem
      * @throws IllegalArgumentException if the given CP member is already
-     *         removed from CP Subsystem
+     *                                  removed from CP Subsystem
      */
     CompletionStage<Void> removeCPMember(UUID cpMemberUuid);
 
@@ -231,10 +232,9 @@ public interface CPSubsystemManagementService {
      * before making another call.</strong>
      *
      * @throws IllegalStateException When this method is called on
-     *         a Hazelcast member that is not the Hazelcast cluster master
+     *                               a Hazelcast member that is not the Hazelcast cluster master
      * @throws IllegalStateException if current member count of the cluster
-     *         is smaller than {@link CPSubsystemConfig#getCPMemberCount()}
-     *
+     *                               is smaller than {@link CPSubsystemConfig#getCPMemberCount()}
      */
     CompletionStage<Void> reset();
 
@@ -242,8 +242,7 @@ public interface CPSubsystemManagementService {
      * Returns whether the CP discovery process is completed or not.
      *
      * @return {@code true} if the CP discovery process completed,
-     *         {@code false} otherwise
-     *
+     * {@code false} otherwise
      * @see #awaitUntilDiscoveryCompleted(long, TimeUnit)
      */
     boolean isDiscoveryCompleted();

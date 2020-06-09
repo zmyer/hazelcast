@@ -30,8 +30,8 @@ import java.net.MulticastSocket;
 
 import static java.lang.Thread.currentThread;
 
+//FGTODO: 2019/12/2 下午2:26 zmyer
 public class MulticastDiscoverySender implements Runnable {
-
     private static final int SLEEP_DURATION = 2000;
     private MulticastSocket multicastSocket;
     private MulticastMemberInfo multicastMemberInfo;

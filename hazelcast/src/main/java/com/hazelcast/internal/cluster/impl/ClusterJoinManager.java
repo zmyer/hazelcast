@@ -79,13 +79,13 @@ import static java.lang.String.format;
  * If this is master node, it will handle join request and notify all other members
  * about newly joined member.
  */
+//FGTODO: 2019/11/22 下午5:43 zmyer
 @SuppressWarnings({"checkstyle:methodcount", "checkstyle:classfanoutcomplexity", "checkstyle:npathcomplexity"})
 public class ClusterJoinManager {
 
     public static final String STALE_JOIN_PREVENTION_DURATION_PROP = "hazelcast.stale.join.prevention.duration.seconds";
     private static final int CLUSTER_OPERATION_RETRY_COUNT = 100;
-    private static final int STALE_JOIN_PREVENTION_DURATION_SECONDS
-            = Integer.getInteger(STALE_JOIN_PREVENTION_DURATION_PROP, 30);
+    private static final int STALE_JOIN_PREVENTION_DURATION_SECONDS = Integer.getInteger(STALE_JOIN_PREVENTION_DURATION_PROP, 30);
 
     private final ILogger logger;
     private final Node node;
@@ -146,7 +146,7 @@ public class ClusterJoinManager {
      * joining node know the current master. Otherwise, if no other join is in progress, execute the {@link JoinRequest}
      *
      * @param joinRequest the join request
-     * @param connection the connection to the joining node
+     * @param connection  the connection to the joining node
      * @see JoinRequestOp
      */
     public void handleJoinRequest(JoinRequest joinRequest, Connection connection) {
@@ -168,8 +168,7 @@ public class ClusterJoinManager {
 
         if (joinInProgress) {
             if (logger.isFineEnabled()) {
-                logger.fine(format("Join or membership claim is in progress, cannot handle join request from %s at the moment",
-                        target));
+                logger.fine(format("Join or membership claim is in progress, cannot handle join request from %s at the moment", target));
             }
             return;
         }
@@ -404,7 +403,7 @@ public class ClusterJoinManager {
     /**
      * Start processing the join request. This method is executed by the master node. In the case that there hasn't been any
      * previous join requests from the {@code memberInfo}'s address the master will first respond by sending the master answer.
-     *
+     * <p>
      * Also, during the first {@link GroupProperty#MAX_WAIT_SECONDS_BEFORE_JOIN} period since the master received the first
      * join request from any node, the master will always wait for {@link GroupProperty#WAIT_SECONDS_BEFORE_JOIN} before
      * allowing any join request to proceed. This means that in the initial period from receiving the first ever join request,
@@ -605,7 +604,7 @@ public class ClusterJoinManager {
 
         if (masterAddress.equals(node.getThisAddress())
                 && node.getNodeExtension().getInternalHotRestartService()
-                    .isMemberExcluded(masterAddress, clusterService.getThisUuid())) {
+                .isMemberExcluded(masterAddress, clusterService.getThisUuid())) {
             // I already know that I will do a force-start so I will not allow target to join me
             logger.info("Cannot send master answer because " + target + " should not join to this master node.");
             return;
@@ -908,7 +907,7 @@ public class ClusterJoinManager {
      * This is a pure function that must produce always the same output when called with the same parameters.
      * This logic should not be changed, otherwise compatibility will be broken.
      *
-     * @param thisAddress this address
+     * @param thisAddress   this address
      * @param targetAddress target address
      * @return true if this address should merge to target, false otherwise
      */

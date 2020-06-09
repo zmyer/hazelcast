@@ -28,10 +28,12 @@ import java.util.Collection;
  *
  * @since 3.9
  */
+//FGTODO: 2019/11/25 下午2:06 zmyer
 public interface PartitionReplicaVersionManager {
 
     /**
      * Returns all registered namespaces for given partition ID
+     *
      * @param partitionId partition ID
      * @return known namespaces for partition ID
      */
@@ -39,10 +41,11 @@ public interface PartitionReplicaVersionManager {
 
     /**
      * Returns whether given replica version is behind the current version or not.
-     * @param partitionId partition ID
-     * @param namespace replica namespace
+     *
+     * @param partitionId     partition ID
+     * @param namespace       replica namespace
      * @param replicaVersions replica versions
-     * @param replicaIndex specific replica index
+     * @param replicaIndex    specific replica index
      * @return true if given version is stale, false otherwise
      */
     boolean isPartitionReplicaVersionStale(int partitionId, ServiceNamespace namespace,
@@ -50,8 +53,9 @@ public interface PartitionReplicaVersionManager {
 
     /**
      * Returns replica versions for given partition and namespace.
+     *
      * @param partitionId partition ID
-     * @param namespace replica namespace
+     * @param namespace   replica namespace
      * @return replica versions
      */
     long[] getPartitionReplicaVersions(int partitionId, ServiceNamespace namespace);
@@ -60,10 +64,10 @@ public interface PartitionReplicaVersionManager {
      * Updates the partition replica version and triggers replica sync if the replica is dirty (e.g. the
      * received version is not expected and this node might have missed an update)
      *
-     * @param partitionId the ID of the partition for which we received a new version
-     * @param namespace replica namespace
+     * @param partitionId     the ID of the partition for which we received a new version
+     * @param namespace       replica namespace
      * @param replicaVersions the received replica versions
-     * @param replicaIndex the index of this replica
+     * @param replicaIndex    the index of this replica
      */
     void updatePartitionReplicaVersions(int partitionId, ServiceNamespace namespace,
                                         long[] replicaVersions, int replicaIndex);
@@ -72,7 +76,7 @@ public interface PartitionReplicaVersionManager {
      * Increments replica versions for given partition and namespace by the number of backup count.
      *
      * @param partitionId partition ID
-     * @param namespace replica namespace
+     * @param namespace   replica namespace
      * @param backupCount number of desired backups
      * @return incremented replica versions
      */

@@ -27,13 +27,13 @@ import java.util.concurrent.TimeUnit;
  * Once you call the {@link #executeWithDelay()} it will wait specified amount of time before actually executing
  * the Runnable. If {@link #executeWithDelay()} is invoked again within the interval then the Runnable will
  * be executed only once.
- *
+ * <p>
  * It also guarantees no execution will be delayed more than specified maximum delay.
- *
+ * <p>
  * This class is not thread-safe and external synchronization must be ensured when multiple
  * threads are calling {@link #executeWithDelay()}
- *
  */
+//FGTODO: 2019/11/25 下午2:02 zmyer
 public class CoalescingDelayedTrigger {
 
     private final ExecutionService executionService;
@@ -46,9 +46,9 @@ public class CoalescingDelayedTrigger {
 
     /**
      * @param executionService
-     * @param delay execution delay in ms
-     * @param maxDelay maximum delay in ms. No action will be delayed more specified number of ms.
-     * @param runnable action to be executed
+     * @param delay            execution delay in ms
+     * @param maxDelay         maximum delay in ms. No action will be delayed more specified number of ms.
+     * @param runnable         action to be executed
      */
     public CoalescingDelayedTrigger(ExecutionService executionService, long delay, long maxDelay, Runnable runnable) {
         if (delay <= 0) {
@@ -62,7 +62,7 @@ public class CoalescingDelayedTrigger {
             throw new IllegalArgumentException("Runnable cannot be null");
         }
 
-        this.executionService  = executionService;
+        this.executionService = executionService;
         this.delay = delay;
         this.maxDelay = maxDelay;
         this.runnable = runnable;
@@ -70,7 +70,6 @@ public class CoalescingDelayedTrigger {
 
     /**
      * invoke delayed execution.
-     *
      */
     public void executeWithDelay() {
         long now = Clock.currentTimeMillis();

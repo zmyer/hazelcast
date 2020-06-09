@@ -23,6 +23,7 @@ import com.hazelcast.cluster.ClusterState;
  *
  * @since 3.8
  */
+//FGTODO: 2019/11/25 下午1:59 zmyer
 public interface ClusterStateListener {
 
     /**

@@ -22,6 +22,7 @@ import java.io.Closeable;
 import java.io.IOException;
 import java.nio.ByteOrder;
 
+//FGTODO: 2019/12/5 上午10:18 zmyer 
 public interface BufferObjectDataInput extends ObjectDataInput, Closeable {
 
     int UTF_BUFFER_SIZE = 1024;

@@ -87,6 +87,7 @@ import static com.hazelcast.internal.util.ThreadUtil.createThreadPoolName;
 /**
  * Class that requests, listeners from client handled in node side.
  */
+//FGTODO: 2019/11/22 下午4:01 zmyer
 @SuppressWarnings("checkstyle:classdataabstractioncoupling")
 public class ClientEngineImpl implements ClientEngine, CoreService,
         ManagedService, MembershipAwareService, EventPublishingService<ClientEvent, ClientListener> {
@@ -390,7 +391,6 @@ public class ClientEngineImpl implements ClientEngine, CoreService,
         ClientHeartbeatMonitor heartbeatMonitor = new ClientHeartbeatMonitor(
                 endpointManager, getLogger(ClientHeartbeatMonitor.class), nodeEngine.getExecutionService(), node.getProperties());
         heartbeatMonitor.start();
-
         lifecycleMonitor.start();
     }
 

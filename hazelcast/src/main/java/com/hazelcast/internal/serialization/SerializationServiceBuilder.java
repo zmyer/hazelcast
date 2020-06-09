@@ -27,6 +27,7 @@ import com.hazelcast.nio.serialization.PortableFactory;
 import java.nio.ByteOrder;
 import java.util.function.Supplier;
 
+//FGTODO: 2019/12/4 下午8:21 zmyer
 public interface SerializationServiceBuilder {
 
     SerializationServiceBuilder setVersion(byte version);

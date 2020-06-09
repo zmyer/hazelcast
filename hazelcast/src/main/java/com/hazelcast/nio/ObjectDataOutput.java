@@ -26,6 +26,7 @@ import java.nio.ByteOrder;
 /**
  * Provides serialization methods for arrays by extending DataOutput
  */
+//FGTODO: 2019/12/5 上午10:28 zmyer
 public interface ObjectDataOutput extends DataOutput, VersionAware, WanProtocolVersionAware {
 
     /**

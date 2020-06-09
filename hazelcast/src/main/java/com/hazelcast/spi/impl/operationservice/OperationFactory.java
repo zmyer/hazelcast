@@ -27,6 +27,7 @@ import com.hazelcast.nio.serialization.IdentifiedDataSerializable;
  * {@link #createOperation()}
  * </p>
  */
+//FGTODO: 2019/12/4 下午8:34 zmyer
 public interface OperationFactory extends IdentifiedDataSerializable {
 
     /**

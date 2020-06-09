@@ -39,6 +39,7 @@ import static com.hazelcast.spi.impl.SpiDataSerializerHook.NORMAL_RESPONSE;
  *
  * @author mdogan 4/10/13
  */
+//FGTODO: 2019/12/5 下午1:59 zmyer
 public class NormalResponse extends Response {
     public static final int OFFSET_BACKUP_ACKS = RESPONSE_SIZE_IN_BYTES;
     public static final int OFFSET_IS_DATA = OFFSET_BACKUP_ACKS + 1;

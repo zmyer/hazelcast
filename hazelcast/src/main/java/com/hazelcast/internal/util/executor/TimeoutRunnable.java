@@ -21,6 +21,7 @@ import java.util.concurrent.TimeUnit;
 /**
  * Interface for runnable with timeout value
  */
+//FGTODO: 2019/12/4 下午8:13 zmyer
 public interface TimeoutRunnable extends Runnable {
 
     long getTimeout();

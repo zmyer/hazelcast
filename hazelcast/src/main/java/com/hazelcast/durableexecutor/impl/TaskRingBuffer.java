@@ -30,6 +30,7 @@ import java.util.concurrent.RejectedExecutionException;
  * A RingBuffer implementation to store tasks and results of those task
  * Only a single thread (partition-operation-thread) accesses the instance
  */
+//FGTODO: 2019/12/4 下午8:28 zmyer 
 public class TaskRingBuffer {
 
     private Object[] ringItems;

@@ -50,6 +50,7 @@ import com.hazelcast.internal.util.ConstructorFunction;
 import static com.hazelcast.internal.serialization.impl.FactoryIdHelper.PARTITION_DS_FACTORY;
 import static com.hazelcast.internal.serialization.impl.FactoryIdHelper.PARTITION_DS_FACTORY_ID;
 
+//FGTODO: 2019/11/25 下午12:37 zmyer
 public final class PartitionDataSerializerHook implements DataSerializerHook {
 
     public static final int F_ID = FactoryIdHelper.getFactoryId(PARTITION_DS_FACTORY, PARTITION_DS_FACTORY_ID);

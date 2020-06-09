@@ -50,6 +50,7 @@ import java.util.concurrent.atomic.AtomicReferenceFieldUpdater;
 
 import static com.hazelcast.internal.util.ConcurrencyUtil.getOrPutSynchronized;
 
+//FGTODO: 2019/11/26 下午5:22 zmyer
 public class DistributedExecutorService implements ManagedService, RemoteService,
         StatisticsAwareService<LocalExecutorStats>, SplitBrainProtectionAwareService {
 
@@ -68,8 +69,7 @@ public class DistributedExecutorService implements ManagedService, RemoteService
     private NodeEngine nodeEngine;
     private ExecutionService executionService;
     private final ConcurrentMap<UUID, Processor> submittedTasks = new ConcurrentHashMap<>(100);
-    private final Set<String> shutdownExecutors
-            = Collections.newSetFromMap(new ConcurrentHashMap<>());
+    private final Set<String> shutdownExecutors = Collections.newSetFromMap(new ConcurrentHashMap<>());
     private final ConcurrentHashMap<String, LocalExecutorStatsImpl> statsMap = new ConcurrentHashMap<>();
     private final ConstructorFunction<String, LocalExecutorStatsImpl> localExecutorStatsConstructorFunction
             = key -> new LocalExecutorStatsImpl();
@@ -78,13 +78,13 @@ public class DistributedExecutorService implements ManagedService, RemoteService
     private final ContextMutexFactory splitBrainProtectionConfigCacheMutexFactory = new ContextMutexFactory();
     private final ConstructorFunction<String, Object> splitBrainProtectionConfigConstructor =
             new ConstructorFunction<String, Object>() {
-        @Override
-        public Object createNew(String name) {
-            ExecutorConfig executorConfig = nodeEngine.getConfig().findExecutorConfig(name);
-            String splitBrainProtectionName = executorConfig.getSplitBrainProtectionName();
-            return splitBrainProtectionName == null ? NULL_OBJECT : splitBrainProtectionName;
-        }
-    };
+                @Override
+                public Object createNew(String name) {
+                    ExecutorConfig executorConfig = nodeEngine.getConfig().findExecutorConfig(name);
+                    String splitBrainProtectionName = executorConfig.getSplitBrainProtectionName();
+                    return splitBrainProtectionName == null ? NULL_OBJECT : splitBrainProtectionName;
+                }
+            };
 
     private ILogger logger;
 

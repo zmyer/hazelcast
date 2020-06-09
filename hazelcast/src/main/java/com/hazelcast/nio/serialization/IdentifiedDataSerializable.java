@@ -19,7 +19,7 @@ package com.hazelcast.nio.serialization;
 /**
  * IdentifiedDataSerializable is an extension to {@link com.hazelcast.nio.serialization.DataSerializable}
  * to avoid reflection during de-serialization.
- *
+ * <p>
  * Each IdentifiedDataSerializable is
  * created by a registered {@link com.hazelcast.nio.serialization.DataSerializableFactory}.
  *
@@ -27,6 +27,7 @@ package com.hazelcast.nio.serialization;
  * @see com.hazelcast.nio.serialization.Portable
  * @see com.hazelcast.nio.serialization.DataSerializableFactory
  */
+//FGTODO: 2019/11/25 下午12:38 zmyer
 public interface IdentifiedDataSerializable extends DataSerializable {
 
     /**

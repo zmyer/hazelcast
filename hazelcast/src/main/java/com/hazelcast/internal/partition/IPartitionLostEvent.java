@@ -23,6 +23,7 @@ import com.hazelcast.cluster.Address;
  * <p>
  * It contains the partition ID, number of replicas that is lost and the address of node that detects the partition lost.
  */
+//FGTODO: 2019/11/25 下午1:59 zmyer
 public interface IPartitionLostEvent {
 
     /**

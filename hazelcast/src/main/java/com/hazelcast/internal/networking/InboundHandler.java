@@ -24,12 +24,12 @@ import static com.hazelcast.internal.nio.IOUtil.newByteBuffer;
  * The {@link InboundHandler} provides control when data is received and
  * needs to be processed. For example data has received on the socket and needs
  * to be decoded into a Packet.
- *
+ * <p>
  * {@link InboundHandler} are not expected to be thread-safe; each channel
  * will gets its own instance(s).
- *
+ * <p>
  * A {@link InboundHandler} is constructed through a {@link ChannelInitializer}.
- *
+ * <p>
  * If the main task of a InboundHandler is to decode a message (e.g. a Packet),
  * it is best to call this handler a decoder. For example PacketDecoder.
  *
@@ -39,12 +39,13 @@ import static com.hazelcast.internal.nio.IOUtil.newByteBuffer;
  * @see ChannelErrorHandler
  * @see Channel
  */
+//FGTODO: 2019/11/22 下午5:28 zmyer
 public abstract class InboundHandler<S, D> extends ChannelHandler<InboundHandler, S, D> {
 
     /**
      * A callback to indicate that data is available in the src to be
      * processed.
-     *
+     * <p>
      * InboundHandlers should be able to deal with spurious onReads
      * (so a read even though there is nothing to be processed).
      *
@@ -58,7 +59,7 @@ public abstract class InboundHandler<S, D> extends ChannelHandler<InboundHandler
     /**
      * Initializes the src buffer. Should only be called by InboundHandler
      * implementations that have a ByteBuffer as source.
-     *
+     * <p>
      * The capacity of the src buffer will come from the {@link ChannelOptions} using
      * {@link ChannelOption#SO_RCVBUF}
      */

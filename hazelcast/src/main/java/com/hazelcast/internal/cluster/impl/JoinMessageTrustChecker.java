@@ -26,14 +26,14 @@ import static java.lang.String.format;
 
 /**
  * Check if a received join message is to be trusted.
- *
+ * <p>
  * To be precise it's checking if IP of the JoinMessage sender
  * is among configured {@link MulticastConfig#getTrustedInterfaces()}
- *
+ * <p>
  * When no trusted interfaces were explicitly configured then all messages are deemed
  * as trusted.
- *
  */
+//FGTODO: 2019/12/5 下午1:33 zmyer
 final class JoinMessageTrustChecker {
     private final Set<String> trustedInterfaces;
     private final ILogger logger;

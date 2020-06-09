@@ -23,6 +23,7 @@ import java.util.UUID;
 /**
  * A lock for a specific key in a specific namespace. It contains the details of a single lock in the system.
  */
+//FGTODO: 2019/11/26 下午5:11 zmyer
 public interface LockResource {
 
     Data getKey();

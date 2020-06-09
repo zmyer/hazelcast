@@ -21,6 +21,7 @@ package com.hazelcast.internal.util.executor;
  * Runnable will run on associated thread depending on its key
  * returned by getKey method.
  */
+//FGTODO: 2019/11/25 下午2:23 zmyer
 public interface StripedRunnable extends Runnable {
 
     int getKey();

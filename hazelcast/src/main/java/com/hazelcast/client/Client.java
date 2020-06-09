@@ -29,6 +29,7 @@ import java.util.UUID;
  * @see ClientService
  * @see ClientListener
  */
+//FGTODO: 2019/11/25 下午4:42 zmyer
 public interface Client extends Endpoint {
 
     /**

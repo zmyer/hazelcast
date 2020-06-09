@@ -19,6 +19,7 @@ package com.hazelcast.config;
 /**
  * Specifies the policy that will be respected during hot restart cluster start
  */
+//FGTODO: 2019/12/4 下午8:20 zmyer
 public enum HotRestartClusterDataRecoveryPolicy {
 
     /**

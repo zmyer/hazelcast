@@ -25,6 +25,7 @@ import com.hazelcast.internal.services.ManagedService;
  *
  * @author mdogan 6/8/13
  */
+//FGTODO: 2019/11/22 下午3:57 zmyer
 public final class ServiceInfo {
 
     private final String name;

@@ -30,6 +30,7 @@ import java.util.concurrent.Callable;
 /**
  * Represents an endpoint to a client. So for each client connected to a member, a ClientEndpoint object is available.
  */
+//FGTODO: 2019/11/25 下午4:42 zmyer
 public interface ClientEndpoint extends Client {
 
     /**

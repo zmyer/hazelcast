@@ -24,6 +24,7 @@ import java.util.Map;
 /**
  * Contains configuration for attribute of member (Read-Only).
  */
+//FGTODO: 2019/12/5 上午10:15 zmyer
 public class MemberAttributeConfigReadOnly extends MemberAttributeConfig {
 
     public MemberAttributeConfigReadOnly(MemberAttributeConfig source) {

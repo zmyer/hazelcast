@@ -30,6 +30,7 @@ import static com.hazelcast.internal.util.EmptyStatement.ignore;
  *
  * @see EventServiceImpl#sendEvent(Address, EventEnvelope, int)
  */
+//FGTODO: 2019/12/4 下午8:16 zmyer 
 public class RemoteEventProcessor extends EventProcessor implements StripedRunnable {
 
     private final EventServiceImpl eventService;

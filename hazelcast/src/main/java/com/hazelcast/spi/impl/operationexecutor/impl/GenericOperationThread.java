@@ -23,6 +23,7 @@ import com.hazelcast.spi.impl.operationexecutor.OperationRunner;
 /**
  * An {@link OperationThread} for non partition specific operations.
  */
+//FGTODO: 2019/11/26 下午6:03 zmyer
 public final class GenericOperationThread extends OperationThread {
 
     private final OperationRunner operationRunner;

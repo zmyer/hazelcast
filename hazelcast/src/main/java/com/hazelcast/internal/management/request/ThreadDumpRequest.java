@@ -29,6 +29,7 @@ import static com.hazelcast.internal.util.JsonUtil.getBoolean;
 /**
  * Request for generating thread dumps.
  */
+//FGTODO: 2019/12/2 下午1:59 zmyer
 public class ThreadDumpRequest implements ConsoleRequest {
 
     private boolean dumpDeadlocks;

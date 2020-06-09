@@ -24,6 +24,7 @@ import com.hazelcast.cluster.Address;
  * @see Transaction
  * @see TransactionLogRecord
  */
+//FGTODO: 2019/11/25 下午2:36 zmyer
 public interface TargetAwareTransactionLogRecord extends TransactionLogRecord {
 
     /**

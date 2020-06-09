@@ -46,6 +46,7 @@ import java.util.concurrent.TimeUnit;
 import static com.hazelcast.config.ConfigAccessor.getActiveMemberNetworkConfig;
 import static com.hazelcast.internal.util.EmptyStatement.ignore;
 
+//FGTODO: 2019/12/5 下午1:32 zmyer
 public final class MulticastService implements Runnable {
 
     /**

@@ -19,6 +19,7 @@ package com.hazelcast.internal.cluster.fd;
 /**
  * Failure detector tracks heartbeats of a member and decides liveness/availability of the member.
  */
+//FGTODO: 2019/11/22 下午5:44 zmyer
 public interface FailureDetector {
 
     /**
@@ -30,6 +31,7 @@ public interface FailureDetector {
 
     /**
      * Returns true if the tracked member is considered as alive/available.
+     *
      * @param timestamp timestamp in milliseconds
      * @return true if the member is alive
      */
@@ -37,6 +39,7 @@ public interface FailureDetector {
 
     /**
      * Returns the last heartbeat timestamp for the tracked member.
+     *
      * @return heartbeat timestamp in milliseconds
      */
     long lastHeartbeat();
@@ -44,6 +47,7 @@ public interface FailureDetector {
     /**
      * Returns suspicion level about the tracked member. Returned value is mostly implementation dependent.
      * <code>0</code> indicates no suspicion at all.
+     *
      * @param timestamp timestamp in milliseconds
      * @return suspicion level
      */

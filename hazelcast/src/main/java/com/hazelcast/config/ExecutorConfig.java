@@ -26,6 +26,7 @@ import java.io.IOException;
 /**
  * Contains the configuration for an {@link com.hazelcast.core.IExecutorService}.
  */
+//FGTODO: 2019/12/4 下午8:25 zmyer
 public class ExecutorConfig implements IdentifiedDataSerializable, NamedConfig {
 
     /**

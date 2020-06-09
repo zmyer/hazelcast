@@ -19,6 +19,7 @@ package com.hazelcast.internal.nio;
 /**
  * An enumeration of all possible Connection types.
  */
+//FGTODO: 2019/12/3 上午10:08 zmyer
 public enum ConnectionType {
 
     NONE(false, false),

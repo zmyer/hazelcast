@@ -47,6 +47,7 @@ import java.util.Map;
  *
  * @since 3.6
  */
+//FGTODO: 2019/12/2 下午2:03 zmyer
 public abstract class DiscoveryNode {
 
     /**

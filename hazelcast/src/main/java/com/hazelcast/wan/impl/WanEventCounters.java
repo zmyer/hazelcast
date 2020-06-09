@@ -32,6 +32,7 @@ import static com.hazelcast.internal.util.ConcurrencyUtil.getOrPutIfAbsent;
  * The publisher is defined by the WAN replication name and the target group
  * name.
  */
+//FGTODO: 2019/11/25 下午5:37 zmyer
 public class WanEventCounters {
     private static final ConstructorFunction<String, WanPublisherEventCounters> WAN_EVENT_COUNTER_CONSTRUCTOR_FN
             = ignored -> new WanPublisherEventCounters();

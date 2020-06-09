@@ -23,6 +23,7 @@ import java.util.function.Function;
 /**
  * Utility functions for working with {@link Iterable}
  */
+//FGTODO: 2019/11/26 下午5:32 zmyer
 public final class IterableUtil {
 
     private IterableUtil() {
@@ -36,12 +37,16 @@ public final class IterableUtil {
         return iterator.hasNext() ? iterator.next() : defaultValue;
     }
 
-    /** Transform the Iterable by applying a function to each element  **/
+    /**
+     * Transform the Iterable by applying a function to each element
+     **/
     public static <T, R> Iterable<R> map(Iterable<T> iterable, Function<T, R> mapper) {
         return () -> map(iterable.iterator(), mapper);
     }
 
-    /** Transform the Iterator by applying a function to each element  **/
+    /**
+     * Transform the Iterator by applying a function to each element
+     **/
     public static <T, R> Iterator<R> map(Iterator<T> iterator, Function<T, R> mapper) {
         return new Iterator<R>() {
             @Override
@@ -83,7 +88,9 @@ public final class IterableUtil {
         };
     }
 
-    /** Return empty Iterable if argument is null **/
+    /**
+     * Return empty Iterable if argument is null
+     **/
     public static <T> Iterable<T> nullToEmpty(Iterable<T> iterable) {
         return iterable == null ? Collections.<T>emptyList() : iterable;
     }

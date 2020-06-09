@@ -35,6 +35,7 @@ import static com.hazelcast.spi.impl.operationservice.ExceptionAction.THROW_EXCE
  * A {@link Invocation} evaluates a Operation Invocation for a particular partition running on top of the
  * {@link OperationServiceImpl}.
  */
+//FGTODO: 2019/12/2 下午7:34 zmyer
 final class PartitionInvocation extends Invocation<PartitionReplica> {
 
     private final boolean failOnIndeterminateOperationState;

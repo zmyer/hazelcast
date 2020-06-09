@@ -365,6 +365,7 @@ import java.util.UUID;
  * @see CPSession
  * @see CPSubsystemManagementService
  */
+//FGTODO: 2019/11/22 下午3:55 zmyer
 public interface CPSubsystem {
 
     /**
@@ -435,7 +436,8 @@ public interface CPSubsystem {
      * @return {@link ICountDownLatch} proxy for the given name
      * @throws HazelcastException if CP Subsystem is not enabled
      */
-    @Nonnull ICountDownLatch getCountDownLatch(@Nonnull String name);
+    @Nonnull
+    ICountDownLatch getCountDownLatch(@Nonnull String name);
 
     /**
      * Returns a proxy for an {@link FencedLock} instance created on CP
@@ -458,7 +460,8 @@ public interface CPSubsystem {
      * @throws HazelcastException if CP Subsystem is not enabled
      * @see FencedLockConfig
      */
-    @Nonnull FencedLock getLock(@Nonnull String name);
+    @Nonnull
+    FencedLock getLock(@Nonnull String name);
 
     /**
      * Returns a proxy for an {@link ISemaphore} instance created on CP
@@ -481,7 +484,8 @@ public interface CPSubsystem {
      * @throws HazelcastException if CP Subsystem is not enabled
      * @see SemaphoreConfig
      */
-    @Nonnull ISemaphore getSemaphore(@Nonnull String name);
+    @Nonnull
+    ISemaphore getSemaphore(@Nonnull String name);
 
     /**
      * Returns the local CP member if this Hazelcast member is part of

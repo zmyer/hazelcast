@@ -52,9 +52,10 @@ import static java.util.concurrent.TimeUnit.SECONDS;
 
 /**
  * Central manager for all Hazelcast members of the JVM.
- *
+ * <p>
  * All creation functionality will be stored here and a particular instance of a member will delegate here.
  */
+//FGTODO: 2019/11/22 下午3:46 zmyer
 @SuppressWarnings("SynchronizationOnStaticField")
 public final class HazelcastInstanceFactory {
 

@@ -24,6 +24,7 @@ import com.hazelcast.logging.ILogger;
 /**
  * A periodic task to publish partition state to cluster members in a predefined interval.
  */
+//FGTODO: 2019/11/22 下午5:46 zmyer
 class PublishPartitionRuntimeStateTask implements Runnable {
     private final Node node;
     private final InternalPartitionServiceImpl partitionService;
@@ -48,7 +49,7 @@ class PublishPartitionRuntimeStateTask implements Runnable {
 
             if (migrationManager.hasOnGoingMigration()) {
                 logger.info("Remaining migration tasks: " + partitionService.getMigrationQueueSize()
-                    + ". (" + migrationManager.getStats().formatToString(logger.isFineEnabled()) + ")");
+                        + ". (" + migrationManager.getStats().formatToString(logger.isFineEnabled()) + ")");
             } else if (node.getState() == NodeState.ACTIVE) {
                 partitionService.checkClusterPartitionRuntimeStates();
             }

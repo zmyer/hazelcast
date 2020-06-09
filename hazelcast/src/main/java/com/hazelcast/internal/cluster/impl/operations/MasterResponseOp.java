@@ -24,7 +24,10 @@ import com.hazelcast.nio.ObjectDataOutput;
 
 import java.io.IOException;
 
-/** Operation sent by any node to set the master address on the receiver */
+/**
+ * Operation sent by any node to set the master address on the receiver
+ */
+//FGTODO: 2019/12/5 下午1:55 zmyer
 public class MasterResponseOp extends AbstractClusterOperation {
 
     protected Address masterAddress;

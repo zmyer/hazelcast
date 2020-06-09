@@ -40,6 +40,7 @@ import static java.lang.String.format;
  * <p>
  * It can be used from multiple threads, but not concurrently.
  */
+//FGTODO: 2019/11/26 下午3:11 zmyer
 public class RestartingMemberIterator implements Iterator<Member>, ChainingFuture.ExceptionHandler {
 
     private final Queue<Member> memberQueue = new ConcurrentLinkedQueue<Member>();

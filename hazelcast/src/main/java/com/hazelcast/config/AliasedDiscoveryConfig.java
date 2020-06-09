@@ -31,6 +31,7 @@ import java.util.Map.Entry;
  *
  * @param <T> Subclass that extends {@link AliasedDiscoveryConfig}.
  */
+//FGTODO: 2019/12/5 下午1:29 zmyer
 public abstract class AliasedDiscoveryConfig<T extends AliasedDiscoveryConfig<T>>
         implements IdentifiedDataSerializable {
     private static final String USE_PUBLIC_IP_PROPERTY = "use-public-ip";

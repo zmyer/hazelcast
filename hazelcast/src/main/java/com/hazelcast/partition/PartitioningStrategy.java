@@ -24,6 +24,7 @@ import java.io.Serializable;
  *
  * @param <K> key type
  */
+//FGTODO: 2019/11/26 下午3:07 zmyer
 public interface PartitioningStrategy<K> extends Serializable {
 
     /**

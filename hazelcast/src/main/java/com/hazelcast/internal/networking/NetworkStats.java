@@ -27,6 +27,7 @@ import com.hazelcast.internal.nio.EndpointManager;
  * @see EndpointManager#getNetworkStats()
  * @see AggregateEndpointManager#getNetworkStats()
  */
+//FGTODO: 2019/12/3 上午9:44 zmyer
 public interface NetworkStats {
 
     /**

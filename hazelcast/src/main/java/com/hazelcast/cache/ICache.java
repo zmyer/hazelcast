@@ -124,6 +124,7 @@ import java.util.concurrent.ForkJoinPool;
  * @see javax.cache.Cache
  * @since 3.3.1
  */
+//FGTODO: 2019/11/29 下午7:44 zmyer
 public interface ICache<K, V>
         extends javax.cache.Cache<K, V>, PrefixedDistributedObject {
 

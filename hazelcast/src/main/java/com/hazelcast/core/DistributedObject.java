@@ -27,7 +27,7 @@ import com.hazelcast.multimap.MultiMap;
 
 /**
  * Base interface for all distributed objects.
- *
+ * <p>
  * All distributed objects are not garbage collectable unless {@link #destroy()} is called first.
  * Note: Failure to destroy after you are done using a distributed object will lead to memory leaks.
  *
@@ -40,6 +40,7 @@ import com.hazelcast.multimap.MultiMap;
  * @see TransactionalQueue
  * @see TransactionalMultiMap
  */
+//FGTODO: 2019/11/22 下午3:55 zmyer
 public interface DistributedObject {
 
     /**
@@ -53,7 +54,7 @@ public interface DistributedObject {
 
     /**
      * Returns the unique name for this DistributedObject. The returned value will never be null.
-     *
+     * <p>
      * The suggested way for getting name is retrieving it through
      * {@link com.hazelcast.core.DistributedObjectUtil#getName(DistributedObject)}
      * because this might be also a {@link com.hazelcast.core.PrefixedDistributedObject}.

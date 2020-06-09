@@ -18,6 +18,7 @@ package com.hazelcast.internal.partition;
 
 import java.util.stream.IntStream;
 
+//FGTODO: 2019/11/25 下午2:13 zmyer
 public interface InternalPartition extends IPartition {
 
     int MAX_REPLICA_COUNT = MAX_BACKUP_COUNT + 1;

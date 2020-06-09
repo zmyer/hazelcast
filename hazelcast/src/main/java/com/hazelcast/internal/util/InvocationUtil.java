@@ -40,6 +40,7 @@ import static com.hazelcast.spi.impl.InternalCompletableFuture.newCompletedFutur
 /**
  * Utility methods for invocations.
  */
+//FGTODO: 2019/11/26 下午3:10 zmyer
 public final class InvocationUtil {
 
     /**
@@ -52,18 +53,18 @@ public final class InvocationUtil {
 
     /**
      * Invoke operation on all cluster members.
-     *
+     * <p>
      * The invocation is serial: It iterates over all members starting from the oldest member to the youngest one.
      * If there is a cluster membership change while invoking then it will restart invocations on all members. This
      * implies the operation should be idempotent.
-     *
+     * <p>
      * If there is an exception - other than {@link com.hazelcast.core.MemberLeftException} or
      * {@link com.hazelcast.spi.exception.TargetNotMemberException} while invoking then the iteration
      * is interrupted and the exception is propagated to the caller.
      */
     public static InternalCompletableFuture<Object> invokeOnStableClusterSerial(NodeEngine nodeEngine,
-                                                                         Supplier<? extends Operation> operationSupplier,
-                                                                         int maxRetries) {
+                                                                                Supplier<? extends Operation> operationSupplier,
+                                                                                int maxRetries) {
 
         ClusterService clusterService = nodeEngine.getClusterService();
         if (!clusterService.isJoined()) {
@@ -119,7 +120,7 @@ public final class InvocationUtil {
         private volatile int lastRetryCount;
 
         InvokeOnMemberFunction(Supplier<? extends Operation> operationSupplier, NodeEngine nodeEngine,
-                RestartingMemberIterator memberIterator) {
+                               RestartingMemberIterator memberIterator) {
             this.operationSupplier = operationSupplier;
             this.nodeEngine = nodeEngine;
             this.memberIterator = memberIterator;

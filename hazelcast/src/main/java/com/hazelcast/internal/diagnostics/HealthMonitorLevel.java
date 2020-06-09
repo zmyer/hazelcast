@@ -20,9 +20,10 @@ import com.hazelcast.spi.properties.GroupProperty;
 
 /**
  * Health monitor can be configured with system properties.
- *
+ * <p>
  * {@link GroupProperty#HEALTH_MONITORING_LEVEL}
  */
+//FGTODO: 2019/12/5 下午1:28 zmyer
 public enum HealthMonitorLevel {
 
     /**

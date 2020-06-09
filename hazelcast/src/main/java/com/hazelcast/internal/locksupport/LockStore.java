@@ -24,6 +24,7 @@ import java.util.UUID;
 /**
  * A container for multiple locks. Each lock is differentiated by a different {@code key}.
  */
+//FGTODO: 2019/11/26 下午5:10 zmyer
 public interface LockStore {
 
     /**

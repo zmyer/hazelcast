@@ -25,6 +25,7 @@ import com.hazelcast.nio.serialization.IdentifiedDataSerializable;
 import java.io.IOException;
 import java.util.UUID;
 
+//FGTODO: 2019/12/2 下午2:32 zmyer
 public class MembersViewMetadata implements IdentifiedDataSerializable {
 
     private Address memberAddress;

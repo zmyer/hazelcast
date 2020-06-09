@@ -44,17 +44,25 @@ import static java.util.Collections.newSetFromMap;
  *
  * @param <S> the service type for which this segment is responsible
  */
+//FGTODO: 2019/11/25 下午2:25 zmyer
 public class EventServiceSegment<S> {
-    /** The name of the service for which this segment is responsible */
+    /**
+     * The name of the service for which this segment is responsible
+     */
     private final String serviceName;
-    /** The service for which this segment is responsible */
+    /**
+     * The service for which this segment is responsible
+     */
     private final S service;
 
-    /** Map of {@link Registration}s grouped by event topic */
-    private final ConcurrentMap<String, Collection<Registration>> registrations
-            = new ConcurrentHashMap<String, Collection<Registration>>();
+    /**
+     * Map of {@link Registration}s grouped by event topic
+     */
+    private final ConcurrentMap<String, Collection<Registration>> registrations = new ConcurrentHashMap<String, Collection<Registration>>();
 
-    /** Registration ID to registration map */
+    /**
+     * Registration ID to registration map
+     */
     @Probe(name = "listenerCount")
     private final ConcurrentMap<UUID, Registration> registrationIdMap = new ConcurrentHashMap<UUID, Registration>();
 

@@ -19,6 +19,7 @@ package com.hazelcast.internal.cluster.impl.operations;
 import com.hazelcast.internal.cluster.impl.ClusterDataSerializerHook;
 import com.hazelcast.spi.impl.operationservice.Operation;
 
+//FGTODO: 2019/12/2 下午7:35 zmyer
 public abstract class AbstractJoinOperation extends Operation implements JoinOperation {
 
     @Override

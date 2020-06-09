@@ -27,6 +27,7 @@ import com.hazelcast.internal.eviction.Expirable;
  *
  * @param <V> the type of the value stored by this {@link CacheRecord}
  */
+//FGTODO: 2019/11/26 下午3:44 zmyer
 public interface CacheRecord<V, E> extends Expirable, Evictable<V> {
 
     /**

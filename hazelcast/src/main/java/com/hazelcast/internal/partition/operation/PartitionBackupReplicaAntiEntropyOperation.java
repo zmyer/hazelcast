@@ -35,9 +35,9 @@ import java.util.Map;
 
 import static com.hazelcast.internal.partition.impl.PartitionDataSerializerHook.PARTITION_BACKUP_REPLICA_ANTI_ENTROPY;
 
+//FGTODO: 2019/11/25 下午2:13 zmyer
 // should not be an urgent operation. required to be in order with backup operations on target node
-public final class PartitionBackupReplicaAntiEntropyOperation
-        extends AbstractPartitionOperation
+public final class PartitionBackupReplicaAntiEntropyOperation extends AbstractPartitionOperation
         implements PartitionAwareOperation, AllowedDuringPassiveState {
 
     private Map<ServiceNamespace, Long> versions;

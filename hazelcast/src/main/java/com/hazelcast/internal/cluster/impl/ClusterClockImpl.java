@@ -24,7 +24,7 @@ import com.hazelcast.internal.util.Clock;
 import static com.hazelcast.internal.metrics.ProbeLevel.MANDATORY;
 import static java.lang.Math.abs;
 
-
+//FGTODO: 2019/12/2 下午2:39 zmyer
 public class ClusterClockImpl implements ClusterClock {
 
     private final ILogger logger;
@@ -54,7 +54,9 @@ public class ClusterClockImpl implements ClusterClock {
         setClusterTimeDiff(diff);
     }
 
-    /** Set the cluster time diff and records the maximum observed cluster time diff */
+    /**
+     * Set the cluster time diff and records the maximum observed cluster time diff
+     */
     void setClusterTimeDiff(long diff) {
         if (logger.isFineEnabled()) {
             logger.fine("Setting cluster time diff to " + diff + "ms.");

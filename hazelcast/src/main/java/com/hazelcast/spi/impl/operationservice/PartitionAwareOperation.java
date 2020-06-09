@@ -19,7 +19,7 @@ package com.hazelcast.spi.impl.operationservice;
 /**
  * An interface that can be implemented by an operation to indicate that it should
  * be invoked on a particular partition.
- *
+ * <p>
  * This interface only has meaning for documentation purposes. Because every operation has a {@link Operation#getPartitionId()}
  * method, the system will use that to determine if an Operation is partition-aware. So the system is fine if you create
  * an Operation that doesn't implement PartitionAwareOperation, but returns a partitionId equal or larger than 0 (and therefore is
@@ -28,6 +28,7 @@ package com.hazelcast.spi.impl.operationservice;
  *
  * @author mdogan 12/3/12
  */
+//FGTODO: 2019/12/2 下午8:01 zmyer 
 public interface PartitionAwareOperation {
 
     /**

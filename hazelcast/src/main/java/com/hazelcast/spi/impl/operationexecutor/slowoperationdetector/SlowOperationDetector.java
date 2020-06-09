@@ -43,6 +43,7 @@ import static java.lang.String.format;
  * <p>
  * Slow operations are logged and can be accessed e.g. to write to a log file or report to management center.
  */
+//FGTODO: 2019/11/26 下午6:06 zmyer
 public final class SlowOperationDetector {
 
     private static final int FULL_LOG_FREQUENCY = 100;

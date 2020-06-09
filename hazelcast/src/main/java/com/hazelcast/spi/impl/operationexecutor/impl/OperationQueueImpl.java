@@ -23,6 +23,7 @@ import java.util.concurrent.LinkedBlockingQueue;
 
 import static com.hazelcast.internal.util.Preconditions.checkNotNull;
 
+//FGTODO: 2019/11/26 下午6:00 zmyer
 public final class OperationQueueImpl implements OperationQueue {
 
     static final Object TRIGGER_TASK = new Object() {

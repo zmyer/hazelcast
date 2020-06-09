@@ -35,6 +35,7 @@ import java.util.Collection;
 
 import static com.hazelcast.internal.util.EmptyStatement.ignore;
 
+//FGTODO: 2019/12/5 上午9:17 zmyer
 public class PostJoinProxyOperation extends Operation implements IdentifiedDataSerializable {
 
     private Collection<ProxyInfo> proxies;

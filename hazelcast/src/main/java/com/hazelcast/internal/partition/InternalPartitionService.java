@@ -29,6 +29,7 @@ import com.hazelcast.internal.services.ManagedService;
 
 import java.util.List;
 
+//FGTODO: 2019/11/22 下午3:58 zmyer
 public interface InternalPartitionService extends IPartitionService, ManagedService, GracefulShutdownAwareService {
 
     /**
@@ -62,9 +63,9 @@ public interface InternalPartitionService extends IPartitionService, ManagedServ
     /**
      * Number of the member groups to be used in partition assignments.
      *
+     * @return number of member groups
      * @see com.hazelcast.partition.membergroup.MemberGroupFactory
      * @see com.hazelcast.config.PartitionGroupConfig
-     * @return number of member groups
      */
     int getMemberGroupsSize();
 
@@ -80,6 +81,7 @@ public interface InternalPartitionService extends IPartitionService, ManagedServ
 
     /**
      * Called when a member is added to the cluster. Triggers partition rebalancing.
+     *
      * @param member new member
      */
     void memberAdded(Member member);
@@ -87,6 +89,7 @@ public interface InternalPartitionService extends IPartitionService, ManagedServ
     /**
      * Called when a member is removed from the cluster.
      * Executes maintenance tasks, removes the member from partition table and triggers promotions.
+     *
      * @param member removed member
      */
     void memberRemoved(Member member);
@@ -125,6 +128,7 @@ public interface InternalPartitionService extends IPartitionService, ManagedServ
 
     /**
      * Creates an immutable/readonly view of partition table.
+     *
      * @return immutable view of partition table
      */
     PartitionTableView createPartitionTableView();

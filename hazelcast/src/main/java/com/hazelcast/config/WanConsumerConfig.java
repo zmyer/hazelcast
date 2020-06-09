@@ -39,6 +39,7 @@ import java.util.Map;
  * @see WanReplicationConfig#setWanConsumerConfig(WanConsumerConfig)
  * @see CustomWanPublisherConfig#setClassName(String)
  */
+//FGTODO: 2019/11/26 上午10:08 zmyer
 public class WanConsumerConfig implements IdentifiedDataSerializable {
 
     /**

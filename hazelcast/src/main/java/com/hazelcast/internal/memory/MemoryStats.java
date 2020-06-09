@@ -28,6 +28,7 @@ import static com.hazelcast.internal.metrics.ProbeLevel.MANDATORY;
  *
  * @see com.hazelcast.internal.memory.GarbageCollectorStats
  */
+//FGTODO: 2019/12/4 下午8:19 zmyer
 public interface MemoryStats {
 
     /**

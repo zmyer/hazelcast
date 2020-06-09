@@ -57,6 +57,7 @@ import static com.hazelcast.internal.serialization.impl.SerializationUtil.writeL
  * </ul>
  * An empty response can be sent if the current replica version is 0.
  */
+//FGTODO: 2019/12/2 下午7:59 zmyer
 public final class PartitionReplicaSyncRequest extends AbstractPartitionOperation
         implements PartitionAwareOperation, MigrationCycleOperation {
 
@@ -156,7 +157,9 @@ public final class PartitionReplicaSyncRequest extends AbstractPartitionOperatio
         }
     }
 
-    /** Checks if we are the primary owner of the partition. */
+    /**
+     * Checks if we are the primary owner of the partition.
+     */
     private boolean checkPartitionOwner() {
         InternalPartitionServiceImpl partitionService = getService();
         PartitionStateManager partitionStateManager = partitionService.getPartitionStateManager();
@@ -175,7 +178,9 @@ public final class PartitionReplicaSyncRequest extends AbstractPartitionOperatio
         return true;
     }
 
-    /** Send a response to the replica to retry the replica sync */
+    /**
+     * Send a response to the replica to retry the replica sync
+     */
     private void sendRetryResponse() {
         NodeEngine nodeEngine = getNodeEngine();
         int partitionId = getPartitionId();
@@ -188,7 +193,9 @@ public final class PartitionReplicaSyncRequest extends AbstractPartitionOperatio
         operationService.send(response, target);
     }
 
-    /** Send a synchronization response to the caller replica containing the replication operations to be executed */
+    /**
+     * Send a synchronization response to the caller replica containing the replication operations to be executed
+     */
     private void sendResponse(Collection<Operation> operations, ServiceNamespace ns) {
         NodeEngine nodeEngine = getNodeEngine();
 
@@ -223,7 +230,7 @@ public final class PartitionReplicaSyncRequest extends AbstractPartitionOperatio
         ILogger logger = getLogger();
         if (logger.isFinestEnabled()) {
             logger.finest("No replica data is found for partitionId=" + partitionId + ", replicaIndex=" + replicaIndex
-                + ", namespace= " + namespace);
+                    + ", namespace= " + namespace);
         }
     }
 

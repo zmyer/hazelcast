@@ -35,6 +35,7 @@ import java.util.UUID;
  * @see CPSubsystemConfig
  * @see CPSubsystemManagementService
  */
+//FGTODO: 2019/11/29 下午7:45 zmyer
 public interface CPMember {
 
     /**

@@ -18,6 +18,7 @@ package com.hazelcast.spi.impl;
 
 import com.hazelcast.internal.serialization.SerializationService;
 
+//FGTODO: 2019/11/22 下午3:50 zmyer
 public interface SerializationServiceSupport {
     SerializationService getSerializationService();
 }

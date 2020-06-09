@@ -25,6 +25,7 @@ import java.util.Map;
  * Strategy to select an {@link Address} that a Hazelcast cluster member binds its server socket to
  * and a (potentially different) address that Hazelcast will advertise to other cluster members and clients.
  */
+//FGTODO: 2019/12/5 上午9:50 zmyer
 public interface AddressPicker {
 
     /**

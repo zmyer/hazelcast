@@ -18,15 +18,16 @@ package com.hazelcast.spi.impl.operationservice;
 
 /**
  * An factory for creating partition specific tasks.
- *
+ * <p>
  * A task can be:
  * <ol>
  * <li>Operation</li>
  * <li>Runnable</li>
  * </ol>
- *
+ * <p>
  * See {@link InternalOperationService#executeOnPartitions} for more details.
  */
+//FGTODO: 2019/11/26 下午5:58 zmyer
 public interface PartitionTaskFactory<T> {
 
     /**

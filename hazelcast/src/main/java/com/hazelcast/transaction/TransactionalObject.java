@@ -21,5 +21,6 @@ import com.hazelcast.core.DistributedObject;
 /**
  * Marker interface for all transactional distributed objects.
  */
+//FGTODO: 2019/11/25 下午2:32 zmyer
 public interface TransactionalObject extends DistributedObject {
 }

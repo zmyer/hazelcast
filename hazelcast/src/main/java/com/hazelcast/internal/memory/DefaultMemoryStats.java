@@ -24,6 +24,7 @@ import static com.hazelcast.internal.memory.MemoryStatsSupport.totalPhysicalMemo
 /**
  * Default implementation of MemoryStats.
  */
+//FGTODO: 2019/12/4 下午8:19 zmyer
 public class DefaultMemoryStats implements MemoryStats {
 
     private final Runtime runtime = Runtime.getRuntime();

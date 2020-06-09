@@ -32,6 +32,7 @@ import java.util.Map;
  * This configuration class describes a {@link com.hazelcast.spi.discovery.DiscoveryStrategy}
  * based on a parsed XML or configured manually using the config API
  */
+//FGTODO: 2019/12/2 下午2:05 zmyer
 public class DiscoveryStrategyConfig implements IdentifiedDataSerializable {
     private String className;
     // we skip serialization since this may be a user-supplied object and

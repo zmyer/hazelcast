@@ -33,6 +33,7 @@ import java.util.concurrent.TimeUnit;
  * @see MigrationListener
  * @see PartitionLostListener
  */
+//FGTODO: 2019/11/25 下午2:01 zmyer
 public interface PartitionService {
 
     /**

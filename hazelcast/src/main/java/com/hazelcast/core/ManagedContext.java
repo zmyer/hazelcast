@@ -19,6 +19,7 @@ package com.hazelcast.core;
 /**
  * Container managed context, such as Spring, Guice and etc.
  */
+//FGTODO: 2019/11/22 下午3:54 zmyer
 public interface ManagedContext {
 
     /**

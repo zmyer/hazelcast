@@ -25,6 +25,7 @@ import java.util.function.Supplier;
 /**
  * Supplier that creates {@link DeregistrationOperation}s for a listener registration.
  */
+//FGTODO: 2019/11/26 下午3:10 zmyer
 public class DeregistrationOperationSupplier implements Supplier<Operation> {
     private final Registration registration;
     private final ClusterService clusterService;

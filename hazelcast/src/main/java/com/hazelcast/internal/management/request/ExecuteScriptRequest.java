@@ -40,6 +40,7 @@ import static com.hazelcast.internal.util.SetUtil.createHashSet;
 /**
  * Request for executing scripts on the nodes from Management Center.
  */
+//FGTODO: 2019/12/2 下午1:59 zmyer
 public class ExecuteScriptRequest implements ConsoleRequest {
 
     private String script;
@@ -85,7 +86,7 @@ public class ExecuteScriptRequest implements ConsoleRequest {
             }
         }
 
-        root.add("result",  responseJson);
+        root.add("result", responseJson);
     }
 
     private String prettyPrint(Object result) {

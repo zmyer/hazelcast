@@ -37,6 +37,7 @@ import static java.util.Collections.unmodifiableMap;
 /**
  * Utility class to deal with class loaders.
  */
+//FGTODO: 2019/11/26 下午5:20 zmyer
 @SuppressWarnings({"checkstyle:magicnumber", "checkstyle:npathcomplexity"})
 public final class ClassLoaderUtil {
 
@@ -340,10 +341,10 @@ public final class ClassLoaderUtil {
      * <p>
      * An interface is considered as implemented when either:
      * <ul>
-     *     <li>The class directly implements the interface</li>
-     *     <li>The class implements an interface which extends the original interface</li>
-     *     <li>One of superclasses directly implements the interface</li>
-     *     <li>One of superclasses implements an interface which extends the original interface</li>
+     * <li>The class directly implements the interface</li>
+     * <li>The class implements an interface which extends the original interface</li>
+     * <li>One of superclasses directly implements the interface</li>
+     * <li>One of superclasses implements an interface which extends the original interface</li>
      * </ul>
      * <p>
      * This is useful for logging purposes.

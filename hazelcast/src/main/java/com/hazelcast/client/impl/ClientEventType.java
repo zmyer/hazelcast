@@ -19,6 +19,7 @@ package com.hazelcast.client.impl;
 /**
  * Event type used for client connection and disconnect events
  */
+//FGTODO: 2019/12/3 上午10:08 zmyer
 public enum ClientEventType {
     /**
      * Client Connected Event

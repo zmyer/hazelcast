@@ -36,9 +36,10 @@ import static com.hazelcast.transaction.impl.TransactionDataSerializerHook.REPLI
 
 /**
  * Replicates the transactionlog to a remote system.
- *
+ * <p>
  * This operation is only executed when durability &gt; 0
  */
+//FGTODO: 2019/12/3 上午10:01 zmyer
 public class ReplicateTxBackupLogOperation extends AbstractTxOperation {
 
     // todo: probably we don't want to use linked list.

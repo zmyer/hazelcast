@@ -22,6 +22,7 @@ import com.hazelcast.internal.json.JsonObject;
  * JsonSerializable is a serialization interface that serializes/de-serializes
  * to/from JSON.
  */
+//FGTODO: 2019/11/25 下午5:37 zmyer
 public interface JsonSerializable {
 
     /**

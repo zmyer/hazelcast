@@ -25,9 +25,9 @@ import java.util.UUID;
  * This wrapper helps to manage the suspended transaction within {@link TransactionContextImpl}.
  *
  * @author Sergey Bespalov
- *
  * @see SuspendedTransaction
  */
+//FGTODO: 2019/11/25 下午2:33 zmyer
 class TransactionWrapper implements Transaction {
 
     private Transaction transaction;

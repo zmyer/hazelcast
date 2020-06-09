@@ -77,6 +77,7 @@ import static com.hazelcast.core.EntryEventType.INVALIDATION;
  * @see MapClientAwareService
  * @see MapServiceContext
  */
+//FGTODO: 2019/11/22 下午4:03 zmyer
 public class MapService implements ManagedService, FragmentedMigrationAwareService,
         TransactionalService, RemoteService, EventPublishingService<Object, ListenerAdapter>,
         PostJoinAwareService, SplitBrainHandlerService, ReplicationSupportingService, StatisticsAwareService<LocalMapStats>,
@@ -139,7 +140,7 @@ public class MapService implements ManagedService, FragmentedMigrationAwareServi
 
     @Override
     public Operation prepareReplicationOperation(PartitionReplicationEvent event,
-            Collection<ServiceNamespace> namespaces) {
+                                                 Collection<ServiceNamespace> namespaces) {
         return migrationAwareService.prepareReplicationOperation(event, namespaces);
     }
 

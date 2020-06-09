@@ -31,6 +31,7 @@ import static com.hazelcast.internal.util.Preconditions.checkNotNull;
  *
  * @see com.hazelcast.core.ICacheManager
  */
+//FGTODO: 2019/11/29 下午7:43 zmyer
 public class HazelcastInstanceCacheManager implements ICacheManager {
 
     private final HazelcastInstanceImpl original;

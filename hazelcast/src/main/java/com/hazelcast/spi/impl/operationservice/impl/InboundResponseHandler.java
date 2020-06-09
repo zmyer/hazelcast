@@ -48,11 +48,12 @@ import static com.hazelcast.internal.util.Preconditions.checkTrue;
  * Responsible for handling responses for invocations. Based on the content of the
  * response packet, it will lookup the Invocation from the InvocationRegistry and
  * notify the Invocation.
- *
+ * <p>
  * InboundResponseHandlers are not thread-safe. So if there are multiple threads
  * processing responses, each thread needs to get its own instance. Only the backup
  * handling is thread-safe since backups can be completed locally by any thread.
  */
+//FGTODO: 2019/11/26 下午6:04 zmyer
 public final class InboundResponseHandler implements Consumer<Packet> {
 
     final SwCounter responsesNormal = newSwCounter();

@@ -30,6 +30,7 @@ import java.io.IOException;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicBoolean;
 
+//FGTODO: 2019/11/29 下午7:20 zmyer
 public class MigrationInfo implements IdentifiedDataSerializable {
 
     public enum MigrationStatus {
@@ -88,8 +89,8 @@ public class MigrationInfo implements IdentifiedDataSerializable {
     }
 
     public MigrationInfo(int partitionId, PartitionReplica source, PartitionReplica destination,
-            int sourceCurrentReplicaIndex, int sourceNewReplicaIndex,
-            int destinationCurrentReplicaIndex, int destinationNewReplicaIndex) {
+                         int sourceCurrentReplicaIndex, int sourceNewReplicaIndex,
+                         int destinationCurrentReplicaIndex, int destinationNewReplicaIndex) {
         this.uuid = UuidUtil.newUnsecureUUID();
         this.partitionId = partitionId;
         this.source = source;

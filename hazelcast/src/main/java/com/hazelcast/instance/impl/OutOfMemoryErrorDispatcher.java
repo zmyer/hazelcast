@@ -26,6 +26,7 @@ import static com.hazelcast.internal.util.EmptyStatement.ignore;
 import static com.hazelcast.internal.util.Preconditions.isNotNull;
 import static java.lang.System.arraycopy;
 
+//FGTODO: 2019/11/22 下午3:50 zmyer
 public final class OutOfMemoryErrorDispatcher {
 
     private static final int MAX_REGISTERED_INSTANCES = 50;
@@ -69,7 +70,7 @@ public final class OutOfMemoryErrorDispatcher {
     }
 
     public static void registerServer(HazelcastInstance instance) {
-       register(SERVER_INSTANCES_REF, instance);
+        register(SERVER_INSTANCES_REF, instance);
     }
 
     public static void registerClient(HazelcastInstance instance) {
@@ -79,7 +80,7 @@ public final class OutOfMemoryErrorDispatcher {
     private static void register(AtomicReference<HazelcastInstance[]> ref, HazelcastInstance instance) {
         isNotNull(instance, "instance");
 
-        for (;;) {
+        for (; ; ) {
             HazelcastInstance[] oldInstances = ref.get();
             if (oldInstances.length == MAX_REGISTERED_INSTANCES) {
                 return;
@@ -106,7 +107,7 @@ public final class OutOfMemoryErrorDispatcher {
     private static void deregister(AtomicReference<HazelcastInstance[]> ref, HazelcastInstance instance) {
         isNotNull(instance, "instance");
 
-        for (;;) {
+        for (; ; ) {
             HazelcastInstance[] oldInstances = ref.get();
             int indexOf = indexOf(oldInstances, instance);
             if (indexOf == -1) {
@@ -200,7 +201,7 @@ public final class OutOfMemoryErrorDispatcher {
     }
 
     private static HazelcastInstance[] removeRegisteredInstances(AtomicReference<HazelcastInstance[]> ref) {
-        for (;;) {
+        for (; ; ) {
             HazelcastInstance[] instances = ref.get();
             if (ref.compareAndSet(instances, EMPTY_INSTANCES)) {
                 return instances;

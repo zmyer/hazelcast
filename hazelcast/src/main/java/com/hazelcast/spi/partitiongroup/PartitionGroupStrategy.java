@@ -33,6 +33,7 @@ import com.hazelcast.spi.discovery.AbstractDiscoveryStrategy;
  * be injected into Hazelcast by overriding
  * {@link AbstractDiscoveryStrategy#getPartitionGroupStrategy()}.
  */
+//FGTODO: 2019/12/2 下午2:04 zmyer
 public interface PartitionGroupStrategy {
 
     Iterable<MemberGroup> getMemberGroups();

@@ -20,6 +20,7 @@ import com.hazelcast.core.DistributedObject;
 import com.hazelcast.spi.impl.InitializingObject;
 import com.hazelcast.internal.util.ExceptionUtil;
 
+//FGTODO: 2019/11/25 下午2:22 zmyer
 public class DistributedObjectFuture {
 
     private volatile DistributedObject proxy;

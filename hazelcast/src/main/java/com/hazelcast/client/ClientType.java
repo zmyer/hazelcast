@@ -19,6 +19,7 @@ package com.hazelcast.client;
 /**
  * Type of a Hazelcast client.
  */
+//FGTODO: 2019/11/25 下午4:43 zmyer
 public enum ClientType {
     /**
      * Hazelcast Java client.

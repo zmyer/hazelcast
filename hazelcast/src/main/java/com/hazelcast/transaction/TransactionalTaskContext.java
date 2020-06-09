@@ -19,6 +19,7 @@ package com.hazelcast.transaction;
 /**
  * Provides a context to access transactional data-structures, like the {@link TransactionalMap}.
  */
+//FGTODO: 2019/11/25 下午2:32 zmyer
 public interface TransactionalTaskContext {
 
     /**
@@ -66,7 +67,7 @@ public interface TransactionalTaskContext {
      * Returns the transactional object instance with the specified name and service name.
      *
      * @param serviceName service name for the transactional object instance
-     * @param name name of the transactional object instance
+     * @param name        name of the transactional object instance
      * @return transactional object instance with the specified name
      */
     <T extends TransactionalObject> T getTransactionalObject(String serviceName, String name);

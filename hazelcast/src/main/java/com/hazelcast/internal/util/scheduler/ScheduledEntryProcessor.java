@@ -19,10 +19,10 @@ package com.hazelcast.internal.util.scheduler;
 import java.util.Collection;
 
 /**
- *
  * @param <K> key type of related entries
  * @param <V> value type of related entries
  */
+//FGTODO: 2019/12/2 下午7:56 zmyer
 public interface ScheduledEntryProcessor<K, V> {
 
     /**
@@ -32,7 +32,7 @@ public interface ScheduledEntryProcessor<K, V> {
      * throws an exception, you might want to reschedule the failed records.
      *
      * @param scheduler the EntryTaskScheduler
-     * @param entries the entries (key and value) to process
+     * @param entries   the entries (key and value) to process
      */
     void process(EntryTaskScheduler<K, V> scheduler, Collection<ScheduledEntry<K, V>> entries);
 }

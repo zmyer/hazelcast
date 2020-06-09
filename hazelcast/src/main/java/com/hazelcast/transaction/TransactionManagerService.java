@@ -20,6 +20,7 @@ import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
 import java.util.UUID;
 
+//FGTODO: 2019/11/25 下午2:31 zmyer
 public interface TransactionManagerService {
 
     <T> T executeTransaction(@Nonnull TransactionOptions options,

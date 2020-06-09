@@ -30,6 +30,7 @@ import static com.hazelcast.internal.util.Preconditions.checkPositive;
 /**
  * Contains the configuration for an {@link DurableExecutorService}.
  */
+//FGTODO: 2019/12/4 下午8:36 zmyer 
 public class DurableExecutorConfig implements IdentifiedDataSerializable, NamedConfig {
 
     /**

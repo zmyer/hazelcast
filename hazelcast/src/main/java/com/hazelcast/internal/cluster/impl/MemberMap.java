@@ -37,6 +37,7 @@ import static java.util.Collections.unmodifiableCollection;
  * A special, immutable {@link MemberImpl} map type,
  * that allows querying members using address or UUID.
  */
+//FGTODO: 2019/11/22 下午4:07 zmyer
 final class MemberMap {
 
     static final int SINGLETON_MEMBER_LIST_VERSION = 1;

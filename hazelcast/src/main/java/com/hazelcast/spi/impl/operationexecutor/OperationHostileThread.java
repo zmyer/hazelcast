@@ -19,5 +19,6 @@ package com.hazelcast.spi.impl.operationexecutor;
 /**
  * Marker interface for threads that are not allowed to run operations.
  */
+//FGTODO: 2019/11/22 下午5:25 zmyer
 public interface OperationHostileThread {
 }

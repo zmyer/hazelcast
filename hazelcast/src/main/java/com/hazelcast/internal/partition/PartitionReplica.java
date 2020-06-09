@@ -42,6 +42,7 @@ import java.util.UUID;
  * @see Member
  * @since 3.12
  */
+//FGTODO: 2019/11/25 下午2:13 zmyer
 public final class PartitionReplica implements IdentifiedDataSerializable {
 
     private Address address;

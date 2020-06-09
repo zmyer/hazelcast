@@ -31,6 +31,7 @@ import java.util.UUID;
 import static com.hazelcast.spi.impl.operationservice.ExceptionAction.THROW_EXCEPTION;
 import static com.hazelcast.transaction.impl.TransactionDataSerializerHook.BROADCAST_TX_ROLLBACK;
 
+//FGTODO: 2019/12/3 上午9:58 zmyer
 public final class BroadcastTxRollbackOperation extends AbstractTxOperation {
 
     private UUID txnId;

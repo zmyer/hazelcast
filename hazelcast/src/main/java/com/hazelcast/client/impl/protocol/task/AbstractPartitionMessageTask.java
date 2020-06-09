@@ -31,6 +31,7 @@ import java.util.function.BiConsumer;
 /**
  * AbstractPartitionMessageTask
  */
+//FGTODO: 2019/11/25 下午4:53 zmyer
 public abstract class AbstractPartitionMessageTask<P> extends AbstractMessageTask<P>
         implements Executor, PartitionSpecificRunnable, BiConsumer<Object, Throwable> {
 
@@ -70,9 +71,9 @@ public abstract class AbstractPartitionMessageTask<P> extends AbstractMessageTas
         }
         op.setCallerUuid(endpoint.getUuid());
         InternalCompletableFuture f = nodeEngine.getOperationService()
-                                                .createInvocationBuilder(getServiceName(), op, getPartitionId())
-                                                .setResultDeserialized(false)
-                                                .invoke();
+                .createInvocationBuilder(getServiceName(), op, getPartitionId())
+                .setResultDeserialized(false)
+                .invoke();
 
         f.whenCompleteAsync(this, this);
     }

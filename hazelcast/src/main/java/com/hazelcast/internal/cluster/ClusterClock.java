@@ -16,11 +16,13 @@
 
 package com.hazelcast.internal.cluster;
 
+//FGTODO: 2019/12/2 下午2:39 zmyer
 public interface ClusterClock {
 
     /**
      * Returns the cluster-time in milliseconds.
      * The cluster-time measures elapsed time since the cluster was created. Comparable to the {@link System#nanoTime()}.
+     *
      * @return the cluster-time (elapsed milliseconds since the cluster was created).
      */
     long getClusterTime();
@@ -33,5 +35,5 @@ public interface ClusterClock {
      *
      * @return the cluster-up-time
      */
-     long getClusterUpTime();
+    long getClusterUpTime();
 }

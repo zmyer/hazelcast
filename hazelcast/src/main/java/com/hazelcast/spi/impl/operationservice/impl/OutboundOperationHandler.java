@@ -30,6 +30,7 @@ import static com.hazelcast.internal.util.Preconditions.checkNotNull;
 /**
  * Responsible for sending Operations to another member.
  */
+//FGTODO: 2019/11/22 下午4:19 zmyer 
 public class OutboundOperationHandler {
     private final Address thisAddress;
     private final InternalSerializationService serializationService;

@@ -21,6 +21,7 @@ import com.hazelcast.spi.impl.eventservice.EventFilter;
 /**
  * Contract point for {@link EventFilter} instances these wrap listeners.
  */
+//FGTODO: 2019/11/26 下午5:27 zmyer
 public interface ListenerWrapperEventFilter extends EventFilter {
 
     /**

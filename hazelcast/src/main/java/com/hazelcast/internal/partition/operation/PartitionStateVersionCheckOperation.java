@@ -31,8 +31,8 @@ import java.io.IOException;
  *
  * @since 3.12
  */
-public final class PartitionStateVersionCheckOperation extends AbstractPartitionOperation
-        implements MigrationCycleOperation {
+//FGTODO: 2019/11/22 下午5:48 zmyer
+public final class PartitionStateVersionCheckOperation extends AbstractPartitionOperation implements MigrationCycleOperation {
 
     private int version;
     private transient boolean stale;

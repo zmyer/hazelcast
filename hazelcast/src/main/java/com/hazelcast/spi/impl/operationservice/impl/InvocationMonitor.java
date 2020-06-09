@@ -65,11 +65,12 @@ import static java.util.logging.Level.INFO;
 /**
  * The InvocationMonitor monitors all pending invocations and determines if there are any problems like timeouts. It uses the
  * {@link InvocationRegistry} to access the pending invocations.
- *
+ * <p>
  * The {@link InvocationMonitor} sends Operation heartbeats to the other member informing them about if the operation is still
  * alive. Also if no operations are running, it will still send a period packet to each member. This is a different system than
  * the regular heartbeats, but it has similar characteristics. The reason the packet is always send is for debugging purposes.
  */
+//FGTODO: 2019/11/26 下午5:43 zmyer
 public class InvocationMonitor implements Consumer<Packet>, StaticMetricsProvider {
 
     private static final int HEARTBEAT_CALL_TIMEOUT_RATIO = 4;
@@ -287,7 +288,7 @@ public class InvocationMonitor implements Consumer<Packet>, StaticMetricsProvide
      * - getting rid of duplicates
      * - checking for heartbeat timeout
      * - checking for backup timeout
-     *
+     * <p>
      * In the future additional checks can be added here like checking if a retry is needed etc.
      */
     private final class MonitorInvocationsTask extends FixedRateMonitorTask {

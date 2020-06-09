@@ -30,6 +30,7 @@ import static java.util.concurrent.TimeUnit.SECONDS;
  * Monitors client heartbeats.. As soon as a client has not used its connection for a certain amount of time,
  * the client is disconnected.
  */
+//FGTODO: 2019/11/25 下午4:49 zmyer
 public class ClientHeartbeatMonitor implements Runnable {
 
     private static final int HEART_BEAT_CHECK_INTERVAL_SECONDS = 10;
@@ -87,7 +88,6 @@ public class ClientHeartbeatMonitor implements Runnable {
                 clientEndpointManager.removeEndpoint(endpoint);
             }
         }
-
     }
 
     private void monitor(ClientEndpoint clientEndpoint) {

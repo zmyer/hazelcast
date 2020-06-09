@@ -27,6 +27,7 @@ import java.util.function.Consumer;
 /**
  * Component responsible for handling events like topic events or map.listener events. The events are divided into topics.
  */
+//FGTODO: 2019/11/25 下午2:18 zmyer
 public interface EventService extends Consumer<Packet>, PreJoinAwareService, PostJoinAwareService {
 
     /**

@@ -23,6 +23,7 @@ import com.hazelcast.internal.serialization.SerializationService;
  * Data is basic unit of serialization. It stores binary form of an object serialized
  * by {@link SerializationService#toData(Object)}.
  */
+//FGTODO: 2019/12/2 下午7:37 zmyer 
 public interface Data {
 
     /**
@@ -42,7 +43,7 @@ public interface Data {
 
     /**
      * Returns the total size of Data in bytes.
-     *
+     * <p>
      * The total size is the size of a byte array to contain the full content of this data object. For example in case
      * of an HeapData object, the total size will be the length of the payload.
      *
@@ -52,14 +53,14 @@ public interface Data {
 
     /**
      * Copies the payload contained in the Data to the destination buffer.
-     *
+     * <p>
      * The dest byte-buffer needs to be large enough to contain the payload. Otherwise an exception is thrown.
-     *
+     * <p>
      * The reason this method exists instead of relying on the {@link #toByteArray()} is the existence of the NativeMemoryData.
      * With the NativeMemoryData it would lead to a temporary byte-array. This method prevents this temporary byte-array needing
      * to be created.
-      *
-     * @param dest to byte-buffer to write to
+     *
+     * @param dest    to byte-buffer to write to
      * @param destPos the position in the destination buffer.
      */
     void copyTo(byte[] dest, int destPos);

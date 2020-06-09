@@ -30,8 +30,8 @@ import java.io.IOException;
 
 import static java.lang.String.format;
 
-abstract class AbstractRegistrationOperation extends Operation
-        implements AllowedDuringPassiveState, IdentifiedDataSerializable {
+//FGTODO: 2019/11/26 下午3:09 zmyer
+abstract class AbstractRegistrationOperation extends Operation implements AllowedDuringPassiveState, IdentifiedDataSerializable {
 
     private int memberListVersion = -1;
 

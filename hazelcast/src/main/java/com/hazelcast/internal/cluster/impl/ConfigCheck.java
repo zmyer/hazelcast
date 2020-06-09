@@ -34,6 +34,7 @@ import static com.hazelcast.internal.util.MapUtil.createHashMap;
  * Contains enough information about Hazelcast Config to do a validation check so that clusters with different configurations
  * don't join.
  */
+//FGTODO: 2019/12/5 下午1:37 zmyer
 public final class ConfigCheck implements IdentifiedDataSerializable {
 
     private String clusterName;

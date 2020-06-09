@@ -69,6 +69,7 @@ import static com.hazelcast.transaction.impl.Transaction.State.COMMITTING;
 import static com.hazelcast.transaction.impl.Transaction.State.ROLLING_BACK;
 import static java.util.Collections.shuffle;
 
+//FGTODO: 2019/11/22 下午4:01 zmyer
 public class TransactionManagerServiceImpl implements TransactionManagerService, ManagedService,
         MembershipAwareService, ClientAwareService {
 

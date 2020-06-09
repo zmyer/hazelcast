@@ -31,9 +31,9 @@ import java.util.Comparator;
  *
  * @since 3.8
  */
+//FGTODO: 2019/12/2 下午7:15 zmyer
 @SuppressWarnings("checkstyle:magicnumber")
-public final class MemberVersion
-        implements IdentifiedDataSerializable, Serializable, Comparable<MemberVersion> {
+public final class MemberVersion implements IdentifiedDataSerializable, Serializable, Comparable<MemberVersion> {
 
     /**
      * UNKNOWN version.

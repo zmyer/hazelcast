@@ -28,6 +28,7 @@ import static com.hazelcast.internal.config.DeclarativeConfigUtil.YAML_ACCEPTED_
  * <li>default</li>
  * </ol>
  */
+//FGTODO: 2019/11/22 下午3:48 zmyer
 public class YamlConfigLocator extends AbstractConfigLocator {
 
     @Override

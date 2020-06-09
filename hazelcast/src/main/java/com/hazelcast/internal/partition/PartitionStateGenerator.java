@@ -20,6 +20,7 @@ import com.hazelcast.partition.membergroup.MemberGroup;
 
 import java.util.Collection;
 
+//FGTODO: 2019/11/29 下午7:19 zmyer
 public interface PartitionStateGenerator {
 
     /**
@@ -49,9 +50,9 @@ public interface PartitionStateGenerator {
      *
      * @param groups       member groups
      * @param currentState current partition state.
-     * @param partitions Partitions to be arranged only.
+     * @param partitions   Partitions to be arranged only.
      * @return proposed partition table
      */
     PartitionReplica[][] arrange(Collection<MemberGroup> groups, InternalPartition[] currentState,
-            Collection<Integer> partitions);
+                                 Collection<Integer> partitions);
 }

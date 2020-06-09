@@ -21,10 +21,12 @@ package com.hazelcast.internal.eviction;
  * <p>This interface provides a time variable to be compared against other time values
  * to decide on "future" or "past".</p>
  */
+//FGTODO: 2019/11/26 下午3:44 zmyer
 public interface Expirable {
 
     /**
      * Gets the expiration time in milliseconds.
+     *
      * @return expiration time.
      * @see System#currentTimeMillis()
      */
@@ -32,6 +34,7 @@ public interface Expirable {
 
     /**
      * Sets the expiration time in milliseconds.
+     *
      * @param expirationTime
      * @see System#currentTimeMillis()
      */
@@ -40,6 +43,7 @@ public interface Expirable {
     /**
      * Checks whether the expiration time is passed with respect to the provided time.
      * <p>Returns <tt>true</tt> if and only if {@code now > getExpirationTime()}</p>.
+     *
      * @param now time in milliseconds.
      * @return true if expired.
      */

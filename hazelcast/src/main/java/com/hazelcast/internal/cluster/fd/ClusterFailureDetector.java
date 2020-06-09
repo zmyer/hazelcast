@@ -21,19 +21,21 @@ import com.hazelcast.cluster.Member;
 /**
  * Cluster failure detector tracks heartbeats of the members and decides liveness/availability of them.
  */
+//FGTODO: 2019/11/22 下午5:42 zmyer
 public interface ClusterFailureDetector {
 
     /**
      * Notifies this failure detector about received heartbeat message from a member.
      *
-     * @param member member which heartbeat message is received from
+     * @param member    member which heartbeat message is received from
      * @param timestamp timestamp of heartbeat message in milliseconds
      */
     void heartbeat(Member member, long timestamp);
 
     /**
      * Returns true if given member is considered as alive/available.
-     * @param member member whose liveness is questioned
+     *
+     * @param member    member whose liveness is questioned
      * @param timestamp timestamp in milliseconds
      * @return true if member is alive
      */
@@ -41,6 +43,7 @@ public interface ClusterFailureDetector {
 
     /**
      * Returns the last heartbeat timestamp for a member.
+     *
      * @param member member whose heartbeat timestamp is requested
      * @return heartbeat timestamp in milliseconds
      */
@@ -49,7 +52,8 @@ public interface ClusterFailureDetector {
     /**
      * Returns suspicion level about a given member. Returned value is mostly implementation dependent.
      * <code>0</code> indicates no suspicion at all.
-     * @param member member
+     *
+     * @param member    member
      * @param timestamp timestamp in milliseconds
      * @return suspicion level
      */
@@ -57,6 +61,7 @@ public interface ClusterFailureDetector {
 
     /**
      * Deregister member from tracking and cleanup resources related to this member.
+     *
      * @param member member to be removed
      */
     void remove(Member member);

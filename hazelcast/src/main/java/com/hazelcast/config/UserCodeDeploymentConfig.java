@@ -23,6 +23,7 @@ import com.hazelcast.cluster.Member;
  * members. This simplifies deployment as you do not have to deploy your domain classes into the classpath of all
  * cluster members.
  */
+//FGTODO: 2019/12/5 上午8:57 zmyer
 public class UserCodeDeploymentConfig {
 
     /**
@@ -108,7 +109,7 @@ public class UserCodeDeploymentConfig {
      *
      *     HazelcastInstance instance = Hazelcast.newHazelcastInstance(hazelcastConfig);
      * </pre>
-     *
+     * <p>
      * In the following example, the started member will be marked with the <code>class-provider</code> attribute -
      * the member configured above may use it to provide a class which is not locally available:
      * <pre>
@@ -119,7 +120,7 @@ public class UserCodeDeploymentConfig {
      *
      * HazelcastInstance instance = Hazelcast.newHazelcastInstance(hazelcastConfig);
      * </pre>
-     *
+     * <p>
      * Setting the filter to null allows using any member to load classes.
      * <p>
      * Default: {@code null}

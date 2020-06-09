@@ -24,7 +24,10 @@ import com.hazelcast.internal.partition.impl.PartitionDataSerializerHook;
 import com.hazelcast.spi.exception.TargetNotMemberException;
 import com.hazelcast.spi.impl.operationservice.ExceptionAction;
 
-/** Sent from non-master nodes to the master to initialize the partition assignment. */
+/**
+ * Sent from non-master nodes to the master to initialize the partition assignment.
+ */
+//FGTODO: 2019/11/29 下午7:17 zmyer
 public class AssignPartitions extends AbstractPartitionOperation implements MigrationCycleOperation {
 
     private PartitionRuntimeState partitionState;

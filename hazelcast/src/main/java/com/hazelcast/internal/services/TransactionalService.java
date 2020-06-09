@@ -25,6 +25,7 @@ import java.util.UUID;
 /**
  * An interface that can be implemented by SPI services that want to deal with transactions.
  */
+//FGTODO: 2019/12/2 下午2:29 zmyer
 @PrivateApi
 public interface TransactionalService {
 

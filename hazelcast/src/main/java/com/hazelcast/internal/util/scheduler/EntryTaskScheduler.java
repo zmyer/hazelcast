@@ -22,6 +22,7 @@ package com.hazelcast.internal.util.scheduler;
  * @param <K> key type of related entries
  * @param <V> value type of related entries
  */
+//FGTODO: 2019/12/2 下午7:55 zmyer
 public interface EntryTaskScheduler<K, V> {
     /**
      * Schedules (or reschedules) the execution of given entry. Key parameter is
@@ -41,7 +42,7 @@ public interface EntryTaskScheduler<K, V> {
      *
      * @param key the scheduled key
      * @return the cancelled scheduled execution, in case of {@link ScheduleType#FOR_EACH} a random one will be returned,
-     *          or {@code null} if nothing was scheduled or everything already executed for this key
+     * or {@code null} if nothing was scheduled or everything already executed for this key
      */
     ScheduledEntry<K, V> cancel(K key);
 
@@ -57,12 +58,15 @@ public interface EntryTaskScheduler<K, V> {
 
     /**
      * Return the entry for the scheduled key.
+     *
      * @param key the scheduled key
      * @return the scheduled execution, in case of {@link ScheduleType#FOR_EACH} a random one will be returned,
-     *          or {@code null} if nothing was scheduled or everything already executed for this key
+     * or {@code null} if nothing was scheduled or everything already executed for this key
      */
     ScheduledEntry<K, V> get(K key);
 
-    /** Cancel all scheduled executions */
+    /**
+     * Cancel all scheduled executions
+     */
     void cancelAll();
 }

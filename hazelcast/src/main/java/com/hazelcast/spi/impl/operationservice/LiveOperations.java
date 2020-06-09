@@ -23,13 +23,14 @@ import com.hazelcast.cluster.Address;
  * so it can contribute the call IDs of invocations it is responsible for.
  * The object is not thread-safe and is recycled.
  */
+//FGTODO: 2019/11/26 下午5:54 zmyer
 public interface LiveOperations {
 
     /**
      * Registers an invocation with this object.
      *
      * @param address address of the sender of the operation
-     * @param callId call ID of the operation
+     * @param callId  call ID of the operation
      */
     void add(Address address, long callId);
 

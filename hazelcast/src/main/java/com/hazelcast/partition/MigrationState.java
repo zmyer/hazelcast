@@ -24,6 +24,7 @@ package com.hazelcast.partition;
  * @see MigrationListener
  * @see ReplicaMigrationEvent
  */
+//FGTODO: 2019/12/2 下午7:38 zmyer
 public interface MigrationState {
     /**
      * Returns the start time of the migration in milliseconds since the epoch.

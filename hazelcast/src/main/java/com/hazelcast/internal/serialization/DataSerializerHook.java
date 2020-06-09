@@ -18,6 +18,7 @@ package com.hazelcast.internal.serialization;
 
 import com.hazelcast.nio.serialization.DataSerializableFactory;
 
+//FGTODO: 2019/11/25 下午12:37 zmyer
 public interface DataSerializerHook {
 
     int F_ID_OFFSET_WEBMODULE = -1000;

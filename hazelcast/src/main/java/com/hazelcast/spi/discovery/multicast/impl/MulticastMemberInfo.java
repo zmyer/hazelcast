@@ -20,6 +20,7 @@ import com.hazelcast.internal.serialization.BinaryInterface;
 
 import java.io.Serializable;
 
+//FGTODO: 2019/12/2 下午2:09 zmyer
 @BinaryInterface
 public class MulticastMemberInfo implements Serializable {
 

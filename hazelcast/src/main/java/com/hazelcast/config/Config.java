@@ -76,6 +76,7 @@ import static com.hazelcast.partition.strategy.StringPartitioningStrategy.getBas
  * Config instances can be shared between threads, but should not be
  * modified after they are used to create HazelcastInstances.
  */
+//FGTODO: 2019/11/22 下午5:13 zmyer
 @SuppressWarnings({"checkstyle:methodcount", "checkstyle:classfanoutcomplexity", "checkstyle:classdataabstractioncoupling"})
 public class Config {
 
@@ -229,8 +230,8 @@ public class Config {
      * By default the {@link MatchingPointConfigPatternMatcher} is used.
      *
      * @param configPatternMatcher the pattern matcher
-     * @throws IllegalArgumentException if the pattern matcher is {@code null}
      * @return this configuration
+     * @throws IllegalArgumentException if the pattern matcher is {@code null}
      */
     public Config setConfigPatternMatcher(ConfigPatternMatcher configPatternMatcher) {
         if (configPatternMatcher == null) {
@@ -354,6 +355,7 @@ public class Config {
     /**
      * Sets the cluster name uniquely identifying the hazelcast cluster. This name is
      * used in different scenarios, such as identifying cluster for WAN publisher.
+     *
      * @param clusterName the new cluster name
      * @return this config instance
      * @throws IllegalArgumentException if name is {@code null}

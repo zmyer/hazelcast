@@ -25,6 +25,7 @@ import com.hazelcast.cluster.impl.MemberImpl;
  *
  * @see MembershipAwareService
  */
+//FGTODO: 2019/12/3 上午10:04 zmyer 
 public class MembershipServiceEvent extends MembershipEvent {
 
     public MembershipServiceEvent(MembershipEvent e) {

@@ -23,6 +23,7 @@ import com.hazelcast.spi.annotation.PrivateApi;
  *
  * @since 3.12
  */
+//FGTODO: 2019/12/5 上午10:30 zmyer
 @PrivateApi
 public final class ConfigAccessor {
 

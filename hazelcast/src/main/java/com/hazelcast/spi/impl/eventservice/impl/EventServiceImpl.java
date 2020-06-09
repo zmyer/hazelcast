@@ -96,6 +96,7 @@ import static java.util.concurrent.TimeUnit.MILLISECONDS;
  * and we don't wait for the response before publishing the next event. The previously published
  * event can be retransmitted causing it to be received by the target node at a later time.
  */
+//FGTODO: 2019/11/22 下午4:03 zmyer
 @SuppressWarnings({"checkstyle:classfanoutcomplexity", "checkstyle:methodcount"})
 public class EventServiceImpl implements EventService, StaticMetricsProvider {
 
@@ -138,9 +139,13 @@ public class EventServiceImpl implements EventService, StaticMetricsProvider {
     final ILogger logger;
     final NodeEngineImpl nodeEngine;
 
-    /** Service name to event service segment map */
+    /**
+     * Service name to event service segment map
+     */
     private final ConcurrentMap<String, EventServiceSegment> segments;
-    /** The executor responsible for processing events */
+    /**
+     * The executor responsible for processing events
+     */
     private final StripedExecutor eventExecutor;
     /**
      * The timeout in milliseconds for offering an event to the local executor for processing. If the queue is full
@@ -150,10 +155,14 @@ public class EventServiceImpl implements EventService, StaticMetricsProvider {
      */
     private final long eventQueueTimeoutMs;
 
-    /** The thread count for the executor processing the events. */
+    /**
+     * The thread count for the executor processing the events.
+     */
     @Probe(name = "threadCount")
     private final int eventThreadCount;
-    /** The capacity of the executor processing the events. This capacity is shared for all events. */
+    /**
+     * The capacity of the executor processing the events. This capacity is shared for all events.
+     */
     @Probe(name = "queueCapacity")
     private final int eventQueueCapacity;
     @Probe(name = "totalFailureCount")
@@ -291,12 +300,6 @@ public class EventServiceImpl implements EventService, StaticMetricsProvider {
                                                        @Nonnull EventFilter filter,
                                                        @Nonnull Object listener,
                                                        boolean localOnly) {
-        if (listener == null) {
-            throw new IllegalArgumentException("Null listener is not allowed!");
-        }
-        if (filter == null) {
-            throw new IllegalArgumentException("Null filter is not allowed!");
-        }
         EventServiceSegment segment = getSegment(serviceName, true);
         UUID id = UuidUtil.newUnsecureUUID();
         Registration reg = new Registration(id, serviceName, topic, filter, nodeEngine.getThisAddress(), listener, localOnly);
@@ -579,7 +582,9 @@ public class EventServiceImpl implements EventService, StaticMetricsProvider {
         return segment;
     }
 
-    /** Returns {@code true} if the subscriber of the registration is this node */
+    /**
+     * Returns {@code true} if the subscriber of the registration is this node
+     */
     boolean isLocal(EventRegistration reg) {
         return nodeEngine.getThisAddress().equals(reg.getSubscriber());
     }

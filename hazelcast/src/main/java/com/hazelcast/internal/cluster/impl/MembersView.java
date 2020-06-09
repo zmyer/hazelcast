@@ -39,6 +39,7 @@ import static java.util.Collections.unmodifiableList;
 /**
  * MembersView is a container object to carry member list and version together.
  */
+//FGTODO: 2019/11/22 下午4:08 zmyer
 public final class MembersView implements IdentifiedDataSerializable {
 
     private int version;

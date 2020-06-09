@@ -30,6 +30,7 @@ import java.util.UUID;
  * A {@code JoinMessage} issued by the master node of a subcluster to the master of another subcluster
  * while searching for other clusters for split brain recovery.
  */
+//FGTODO: 2019/12/2 下午7:30 zmyer
 public class SplitBrainJoinMessage extends JoinMessage {
 
     public enum SplitBrainMergeCheckResult {

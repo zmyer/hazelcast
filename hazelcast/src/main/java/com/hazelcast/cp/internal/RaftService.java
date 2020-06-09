@@ -134,10 +134,11 @@ import static java.util.concurrent.TimeUnit.SECONDS;
  * Contains {@link RaftNode} instances that run the Raft consensus algorithm
  * for the created CP groups. Also implements CP Subsystem management methods.
  */
+//FGTODO: 2019/11/29 下午7:48 zmyer
 @SuppressWarnings({"checkstyle:methodcount", "checkstyle:classfanoutcomplexity", "checkstyle:classdataabstractioncoupling"})
 public class RaftService implements ManagedService, SnapshotAwareService<MetadataRaftGroupSnapshot>, GracefulShutdownAwareService,
-                                    MembershipAwareService, PreJoinAwareService, RaftNodeLifecycleAwareService,
-                                    MigrationAwareService, DynamicMetricsProvider {
+        MembershipAwareService, PreJoinAwareService, RaftNodeLifecycleAwareService,
+        MigrationAwareService, DynamicMetricsProvider {
 
     public static final String SERVICE_NAME = "hz:core:raft";
 
@@ -397,14 +398,14 @@ public class RaftService implements ManagedService, SnapshotAwareService<Metadat
         logger.info("Adding new CP member: " + member);
 
         invocationManager.invoke(getMetadataGroupId(), new AddCPMemberOp(member))
-                         .whenCompleteAsync((response, t) -> {
-                             if (t == null) {
-                                 metadataGroupManager.initPromotedCPMember(member);
-                                 future.complete(null);
-                             } else {
-                                 complete(future, t);
-                             }
-                         });
+                .whenCompleteAsync((response, t) -> {
+                    if (t == null) {
+                        metadataGroupManager.initPromotedCPMember(member);
+                        future.complete(null);
+                    } else {
+                        complete(future, t);
+                    }
+                });
         return future;
     }
 
@@ -430,29 +431,29 @@ public class RaftService implements ManagedService, SnapshotAwareService<Metadat
 
         invocationManager.<Collection<CPMember>>invoke(getMetadataGroupId(), new GetActiveCPMembersOp())
                 .whenCompleteAsync((cpMembers, t) -> {
-            if (t == null) {
-                CPMemberInfo cpMemberToRemove = null;
-                for (CPMember cpMember : cpMembers) {
-                    if (cpMember.getUuid().equals(cpMemberUuid)) {
-                        cpMemberToRemove = (CPMemberInfo) cpMember;
-                        break;
+                    if (t == null) {
+                        CPMemberInfo cpMemberToRemove = null;
+                        for (CPMember cpMember : cpMembers) {
+                            if (cpMember.getUuid().equals(cpMemberUuid)) {
+                                cpMemberToRemove = (CPMemberInfo) cpMember;
+                                break;
+                            }
+                        }
+                        if (cpMemberToRemove == null) {
+                            complete(future, new IllegalArgumentException("No CPMember found with uuid: " + cpMemberUuid));
+                            return;
+                        } else {
+                            Member member = clusterService.getMember(cpMemberToRemove.getAddress());
+                            if (member != null) {
+                                logger.warning("Only unreachable/crashed CP members should be removed. " + member + " is alive but "
+                                        + cpMemberToRemove + " with the same address is being removed.");
+                            }
+                        }
+                        invokeTriggerRemoveMember(cpMemberToRemove).whenCompleteAsync(removeMemberCallback);
+                    } else {
+                        complete(future, t);
                     }
-                }
-                if (cpMemberToRemove == null) {
-                    complete(future, new IllegalArgumentException("No CPMember found with uuid: " + cpMemberUuid));
-                    return;
-                } else {
-                    Member member = clusterService.getMember(cpMemberToRemove.getAddress());
-                    if (member != null) {
-                        logger.warning("Only unreachable/crashed CP members should be removed. " + member + " is alive but "
-                                + cpMemberToRemove + " with the same address is being removed.");
-                    }
-                }
-                invokeTriggerRemoveMember(cpMemberToRemove).whenCompleteAsync(removeMemberCallback);
-            } else {
-                complete(future, t);
-            }
-        });
+                });
 
         return future;
     }
@@ -833,7 +834,7 @@ public class RaftService implements ManagedService, SnapshotAwareService<Metadat
     }
 
     public boolean updateInvocationManagerMembers(long groupIdSeed, long membersCommitIndex,
-            Collection<? extends CPMember> members) {
+                                                  Collection<? extends CPMember> members) {
         return invocationManager.getRaftInvocationContext().setMembers(groupIdSeed, membersCommitIndex, members);
     }
 
@@ -985,8 +986,8 @@ public class RaftService implements ManagedService, SnapshotAwareService<Metadat
     }
 
     private static <T> void complete(InternalCompletableFuture<T> future,
-                                                      T value,
-                                                      Throwable t) {
+                                     T value,
+                                     Throwable t) {
         if (t == null) {
             future.complete(value);
         } else {

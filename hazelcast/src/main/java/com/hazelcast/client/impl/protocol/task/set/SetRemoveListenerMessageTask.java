@@ -32,8 +32,8 @@ import java.util.UUID;
 /**
  * SetRemoveListenerMessageTask
  */
-public class SetRemoveListenerMessageTask
-        extends AbstractRemoveListenerMessageTask<SetRemoveListenerCodec.RequestParameters> {
+//FGTODO: 2019/12/5 上午9:21 zmyer
+public class SetRemoveListenerMessageTask extends AbstractRemoveListenerMessageTask<SetRemoveListenerCodec.RequestParameters> {
 
     public SetRemoveListenerMessageTask(ClientMessage clientMessage, Node node, Connection connection) {
         super(clientMessage, node, connection);

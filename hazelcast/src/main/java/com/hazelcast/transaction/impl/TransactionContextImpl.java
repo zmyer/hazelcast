@@ -43,12 +43,12 @@ import java.util.UUID;
 
 import static com.hazelcast.transaction.impl.Transaction.State.ACTIVE;
 
+//FGTODO: 2019/11/25 下午2:32 zmyer
 final class TransactionContextImpl implements TransactionContext {
 
     private final NodeEngineImpl nodeEngine;
     private final TransactionWrapper transaction;
-    private final Map<TransactionalObjectKey, TransactionalObject> txnObjectMap
-            = new HashMap<>(2);
+    private final Map<TransactionalObjectKey, TransactionalObject> txnObjectMap = new HashMap<>(2);
 
     TransactionContextImpl(@Nonnull TransactionManagerServiceImpl transactionManagerService,
                            @Nonnull NodeEngineImpl nodeEngine,

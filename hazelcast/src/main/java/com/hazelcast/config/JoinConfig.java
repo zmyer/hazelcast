@@ -23,6 +23,7 @@ import static com.hazelcast.internal.util.Preconditions.isNotNull;
 /**
  * Contains the 3 different join configurations; TCP-IP/multicast/AWS. Only one of them should be enabled!
  */
+//FGTODO: 2019/12/5 下午1:31 zmyer
 public class JoinConfig {
 
     private MulticastConfig multicastConfig = new MulticastConfig();

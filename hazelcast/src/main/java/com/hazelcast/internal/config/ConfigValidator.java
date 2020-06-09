@@ -92,6 +92,7 @@ import static java.lang.String.format;
  * Validates a Hazelcast configuration in a specific
  * context like OS vs. EE or client vs. member nodes.
  */
+//FGTODO: 2019/12/5 下午12:45 zmyer
 @SuppressWarnings({"checkstyle:classfanoutcomplexity", "checkstyle:methodcount"})
 public final class ConfigValidator {
 
@@ -265,8 +266,7 @@ public final class ConfigValidator {
             return;
         }
 
-        EnumMap<ProtocolType, MutableInteger> serverSocketsPerProtocolType
-                = new EnumMap<ProtocolType, MutableInteger>(ProtocolType.class);
+        EnumMap<ProtocolType, MutableInteger> serverSocketsPerProtocolType = new EnumMap<ProtocolType, MutableInteger>(ProtocolType.class);
         for (ProtocolType protocolType : ProtocolType.values()) {
             serverSocketsPerProtocolType.put(protocolType, new MutableInteger());
         }

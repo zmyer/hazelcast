@@ -29,6 +29,7 @@ import static com.hazelcast.internal.serialization.SerializableByConvention.Reas
 /**
  * Contains the configuration for a Hazelcast transaction.
  */
+//FGTODO: 2019/11/25 下午2:35 zmyer
 @SerializableByConvention(PUBLIC_API)
 public final class TransactionOptions implements DataSerializable {
 
@@ -206,7 +207,7 @@ public final class TransactionOptions implements DataSerializable {
          * The two phase commit is separated in 2 parts. First it tries to execute
          * the prepare; if there are any conflicts, the prepare will fail. Once the
          * prepare has succeeded, the commit (writing the changes) can be executed.
-         *
+         * <p>
          * Hazelcast also provides three phase transaction by
          * automatically copying the backlog to another member so
          * that in case of failure during a commit, another member

@@ -27,6 +27,7 @@ import static com.hazelcast.internal.util.Preconditions.checkNotNull;
 /**
  * A Metric pack for exposing {@link ThreadMXBean} metric.
  */
+//FGTODO: 2019/12/5 上午9:07 zmyer
 public final class ThreadMetricSet {
 
     private ThreadMetricSet() {

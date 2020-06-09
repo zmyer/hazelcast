@@ -22,15 +22,16 @@ import com.hazelcast.internal.util.ConstructorFunction;
 /**
  * Helper which is used to create a {@link MapService} object.
  */
+//FGTODO: 2019/11/26 下午3:46 zmyer
 public final class MapServiceConstructor {
 
     private static final ConstructorFunction<NodeEngine, MapService> DEFAULT_MAP_SERVICE_CONSTRUCTOR
             = nodeEngine -> {
-                MapServiceContext defaultMapServiceContext = new MapServiceContextImpl(nodeEngine);
-                MapServiceFactory factory
-                        = new DefaultMapServiceFactory(nodeEngine, defaultMapServiceContext);
-                return factory.createMapService();
-            };
+        MapServiceContext defaultMapServiceContext = new MapServiceContextImpl(nodeEngine);
+        MapServiceFactory factory
+                = new DefaultMapServiceFactory(nodeEngine, defaultMapServiceContext);
+        return factory.createMapService();
+    };
 
     private MapServiceConstructor() {
     }

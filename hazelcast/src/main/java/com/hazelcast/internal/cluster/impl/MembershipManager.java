@@ -79,6 +79,7 @@ import static java.util.Collections.unmodifiableSet;
  *
  * @since 3.9
  */
+//FGTODO: 2019/11/22 下午4:06 zmyer
 @SuppressWarnings({"checkstyle:methodcount", "checkstyle:classfanoutcomplexity"})
 public class MembershipManager {
 
@@ -232,7 +233,9 @@ public class MembershipManager {
         }
     }
 
-    /** Invoked on the master to send the member list (see {@link MembersUpdateOp}) to non-master nodes. */
+    /**
+     * Invoked on the master to send the member list (see {@link MembersUpdateOp}) to non-master nodes.
+     */
     private void sendMemberListToOthers() {
         if (!clusterService.isMaster() || !clusterService.isJoined()
                 || clusterService.getClusterJoinManager().isMastershipClaimInProgress()) {
@@ -240,7 +243,7 @@ public class MembershipManager {
                 logger.fine("Cannot publish member list to cluster. Is-master: "
                         + clusterService.isMaster() + ", joined: " + clusterService.isJoined()
                         + " , mastership claim in progress: " + clusterService.getClusterJoinManager()
-                                                                              .isMastershipClaimInProgress());
+                        .isMastershipClaimInProgress());
             }
 
             return;
@@ -386,13 +389,13 @@ public class MembershipManager {
         }
 
         return builder.version(memberInfo.getVersion())
-                      .localMember(localMember)
-                      .uuid(memberInfo.getUuid())
-                      .attributes(attributes)
-                      .liteMember(memberInfo.isLiteMember())
-                      .memberListJoinVersion(memberInfo.getMemberListJoinVersion())
-                      .instance(node.hazelcastInstance)
-                      .build();
+                .localMember(localMember)
+                .uuid(memberInfo.getUuid())
+                .attributes(attributes)
+                .liteMember(memberInfo.isLiteMember())
+                .memberListJoinVersion(memberInfo.getMemberListJoinVersion())
+                .instance(node.hazelcastInstance)
+                .build();
     }
 
     private void repairPartitionTableIfReturningMember(MemberImpl member) {
@@ -477,7 +480,7 @@ public class MembershipManager {
         clusterServiceLock.lock();
         try {
             if (!suspectedMembers.contains(address)) {
-                 return true;
+                return true;
             }
 
             MemberMap memberMap = getMemberMap();
@@ -503,7 +506,7 @@ public class MembershipManager {
     }
 
     void handleExplicitSuspicionTrigger(Address caller, int callerMemberListVersion,
-            MembersViewMetadata suspectedMembersViewMetadata) {
+                                        MembersViewMetadata suspectedMembersViewMetadata) {
         clusterServiceLock.lock();
         try {
             Address masterAddress = clusterService.getMasterAddress();
@@ -596,7 +599,7 @@ public class MembershipManager {
 
             localMemberMap = getMemberMap();
             membersToAsk = collectMembersToAsk(localMemberMap);
-            logger.info("Local " + localMemberMap.toMembersView() + " with suspected members: "  + suspectedMembers
+            logger.info("Local " + localMemberMap.toMembersView() + " with suspected members: " + suspectedMembers
                     + " and initial addresses to ask: " + membersToAsk);
         } finally {
             clusterServiceLock.unlock();
@@ -642,7 +645,7 @@ public class MembershipManager {
     }
 
     private boolean addSuspectedMember(MemberImpl suspectedMember, String reason,
-            boolean shouldCloseConn) {
+                                       boolean shouldCloseConn) {
 
         if (getMember(suspectedMember.getAddress(), suspectedMember.getUuid()) == null) {
             if (logger.isFineEnabled()) {
@@ -948,7 +951,7 @@ public class MembershipManager {
      * depending on Hot Restart is enabled or not) is a known missing member or not.
      *
      * @param address Address of the missing member
-     * @param uuid Uuid of the missing member
+     * @param uuid    Uuid of the missing member
      * @return true if it's a known missing member, false otherwise
      */
     boolean isMissingMember(Address address, UUID uuid) {
@@ -961,7 +964,7 @@ public class MembershipManager {
      * depending on Hot Restart is enabled or not.
      *
      * @param address Address of the missing member
-     * @param uuid Uuid of the missing member
+     * @param uuid    Uuid of the missing member
      * @return the missing member
      */
     MemberImpl getMissingMember(Address address, UUID uuid) {

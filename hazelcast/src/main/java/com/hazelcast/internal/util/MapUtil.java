@@ -28,6 +28,7 @@ import java.util.concurrent.ConcurrentMap;
 /**
  * Utility class for Maps
  */
+//FGTODO: 2019/11/26 上午10:13 zmyer
 public final class MapUtil {
 
     /**
@@ -35,7 +36,8 @@ public final class MapUtil {
      */
     public static final float HASHMAP_DEFAULT_LOAD_FACTOR = 0.75f;
 
-    private MapUtil() { }
+    private MapUtil() {
+    }
 
     /**
      * Utility method that creates an {@link java.util.HashMap} with its initialCapacity calculated
@@ -88,8 +90,9 @@ public final class MapUtil {
 
     /**
      * Test the given map and return {@code true} if the map is null or empty.
+     *
      * @param map the map to test
-     * @return    {@code true} if {@code map} is null or empty, otherwise {@code false}.
+     * @return {@code true} if {@code map} is null or empty, otherwise {@code false}.
      */
     public static boolean isNullOrEmpty(Map map) {
         return map == null || map.isEmpty();

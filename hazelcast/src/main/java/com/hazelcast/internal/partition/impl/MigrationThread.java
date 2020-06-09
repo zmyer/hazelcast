@@ -30,6 +30,7 @@ import static java.lang.Math.max;
  * MigrationThread is responsible to execute migration related tasks submitted to its
  * migration-queue.
  */
+//FGTODO: 2019/11/25 下午12:44 zmyer
 class MigrationThread extends Thread implements Runnable {
 
     private static final long DEFAULT_MIGRATION_SLEEP_INTERVAL = 250L;

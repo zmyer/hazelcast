@@ -21,6 +21,7 @@ package com.hazelcast.internal.services;
  *
  * @author mdogan 9/14/12
  */
+//FGTODO: 2019/11/22 下午3:59 zmyer
 public interface CoreService {
 
 }

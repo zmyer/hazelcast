@@ -58,6 +58,7 @@ import java.util.concurrent.CompletionStage;
  * @see IAtomicLong
  * @since 3.2
  */
+//FGTODO: 2019/11/22 下午3:55 zmyer
 public interface IAtomicReference<E> extends DistributedObject {
 
     /**

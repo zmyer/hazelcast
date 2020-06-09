@@ -44,6 +44,7 @@ import static com.hazelcast.internal.util.counters.SwCounter.newSwCounter;
  * <p>
  * The actual processing of an operation is forwarded to the {@link OperationRunner}.
  */
+//FGTODO: 2019/11/26 下午5:55 zmyer
 public abstract class OperationThread extends HazelcastManagedThread implements StaticMetricsProvider {
 
     final int threadId;

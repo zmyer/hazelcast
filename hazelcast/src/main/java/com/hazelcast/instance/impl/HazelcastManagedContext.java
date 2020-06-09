@@ -21,6 +21,7 @@ import com.hazelcast.core.ManagedContext;
 import com.hazelcast.internal.services.NodeAware;
 import com.hazelcast.internal.serialization.SerializationServiceAware;
 
+//FGTODO: 2019/11/22 下午3:54 zmyer
 public final class HazelcastManagedContext implements ManagedContext {
 
     private final HazelcastInstanceImpl instance;

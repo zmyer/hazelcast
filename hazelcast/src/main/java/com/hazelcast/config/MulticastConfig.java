@@ -31,6 +31,7 @@ import static com.hazelcast.internal.util.Preconditions.isNotNull;
  * It depends on your environment if multicast is possible or allowed; you need to have a look at the
  * TCP/IP cluster: {@link TcpIpConfig}.
  */
+//FGTODO: 2019/12/5 下午1:31 zmyer
 public class MulticastConfig {
 
     /**

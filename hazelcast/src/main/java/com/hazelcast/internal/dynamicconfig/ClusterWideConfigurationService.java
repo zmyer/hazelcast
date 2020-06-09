@@ -74,6 +74,7 @@ import static java.lang.Boolean.getBoolean;
 import static java.lang.String.format;
 import static java.util.Collections.singleton;
 
+//FGTODO: 2019/12/5 上午9:03 zmyer
 @SuppressWarnings({"checkstyle:cyclomaticcomplexity", "checkstyle:methodcount", "checkstyle:classfanoutcomplexity"})
 public class ClusterWideConfigurationService implements PreJoinAwareService,
         CoreService, ClusterVersionListener, ManagedService, ConfigurationService, SplitBrainHandlerService {
@@ -526,8 +527,7 @@ public class ClusterWideConfigurationService implements PreJoinAwareService,
     }
 
     private static Map<Class<? extends IdentifiedDataSerializable>, Version> initializeConfigToVersionMap() {
-        Map<Class<? extends IdentifiedDataSerializable>, Version> configToVersion =
-                new HashMap<>();
+        Map<Class<? extends IdentifiedDataSerializable>, Version> configToVersion = new HashMap<>();
 
         // Since 3.9
         configToVersion.put(MapConfig.class, V3_9);

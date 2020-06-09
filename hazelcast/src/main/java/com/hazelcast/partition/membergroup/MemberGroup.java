@@ -21,6 +21,7 @@ import com.hazelcast.cluster.Member;
 import java.util.Collection;
 import java.util.Iterator;
 
+//FGTODO: 2019/12/2 下午2:04 zmyer
 public interface MemberGroup {
 
     void addMember(Member member);

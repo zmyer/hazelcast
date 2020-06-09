@@ -31,6 +31,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 import static com.hazelcast.config.ConfigAccessor.getActiveMemberNetworkConfig;
 import static java.lang.Thread.currentThread;
 
+//FGTODO: 2019/12/2 下午7:29 zmyer
 public class MulticastJoiner extends AbstractJoiner {
 
     private static final long JOIN_RETRY_INTERVAL = 1000L;

@@ -27,18 +27,18 @@ import java.util.concurrent.TimeUnit;
 
 /**
  * {@link ExecutorService} can schedule a command to run after a given delay or execute periodically.
- *
+ * <p>
  * The {@link #scheduleWithRepetition(Runnable, long, long, TimeUnit)} has similar semantic
  * to {@link java.util.concurrent.ScheduledExecutorService#scheduleAtFixedRate(Runnable, long, long, TimeUnit)}. It
  * guarantees a task won't be executed by multiple threads concurrently. The difference is that this service will
  * skip a scheduled execution if another thread is still running the same task, instead of postponing its execution.
  * To emphasize this difference the method is called <code>scheduleWithRepetition</code>
  * instead of <code>scheduleAtFixedRate</code>
- *
+ * <p>
  * The other difference is this service does not offer an equivalent of
  * {@link java.util.concurrent.ScheduledExecutorService#scheduleWithFixedDelay(Runnable, long, long, TimeUnit)}
- *
  */
+//FGTODO: 2019/12/2 下午7:56 zmyer
 public interface TaskScheduler extends Executor {
 
     /**
@@ -46,14 +46,14 @@ public interface TaskScheduler extends Executor {
      * after the given delay.
      *
      * @param command the task to execute
-     * @param delay the time from now to delay execution
-     * @param unit the time unit of the delay parameter
+     * @param delay   the time from now to delay execution
+     * @param unit    the time unit of the delay parameter
      * @return a ScheduledFuture representing pending completion of
-     *         the task and whose {@code get()} method will return
-     *         {@code null} upon completion
+     * the task and whose {@code get()} method will return
+     * {@code null} upon completion
      * @throws RejectedExecutionException if the task cannot be
-     *         scheduled for execution
-     * @throws NullPointerException if command is null
+     *                                    scheduled for execution
+     * @throws NullPointerException       if command is null
      */
     ScheduledFuture<?> schedule(Runnable command, long delay, TimeUnit unit);
 
@@ -62,14 +62,14 @@ public interface TaskScheduler extends Executor {
      * after the given delay.
      *
      * @param command the task to execute
-     * @param delay the time from now to delay execution
-     * @param unit the time unit of the delay parameter
+     * @param delay   the time from now to delay execution
+     * @param unit    the time unit of the delay parameter
      * @return a ScheduledFuture representing pending completion of
-     *         the task and whose {@code get()} method will return
-     *         {@code <V>} upon completion
+     * the task and whose {@code get()} method will return
+     * {@code <V>} upon completion
      * @throws RejectedExecutionException if the task cannot be
-     *         scheduled for execution
-     * @throws NullPointerException if command is null
+     *                                    scheduled for execution
+     * @throws NullPointerException       if command is null
      */
     <V> ScheduledFuture<Future<V>> schedule(Callable<V> command, long delay, TimeUnit unit);
 
@@ -82,17 +82,17 @@ public interface TaskScheduler extends Executor {
      * If any execution of this task
      * takes longer than its period, then subsequent execution will be skipped.
      *
-     * @param command the task to execute
+     * @param command      the task to execute
      * @param initialDelay the time to delay first execution
-     * @param period the period between successive executions
-     * @param unit the time unit of the initialDelay and period parameters
+     * @param period       the period between successive executions
+     * @param unit         the time unit of the initialDelay and period parameters
      * @return a ScheduledFuture representing pending completion of
-     *         the task, and whose {@code get()} method will throw an
-     *         exception upon cancellation
+     * the task, and whose {@code get()} method will throw an
+     * exception upon cancellation
      * @throws RejectedExecutionException if the task cannot be
-     *         scheduled for execution
-     * @throws NullPointerException if command is null
-     * @throws IllegalArgumentException if period is less than or equal to zero
+     *                                    scheduled for execution
+     * @throws NullPointerException       if command is null
+     * @throws IllegalArgumentException   if period is less than or equal to zero
      */
     ScheduledFuture<?> scheduleWithRepetition(Runnable command, long initialDelay, long period, TimeUnit unit);
 

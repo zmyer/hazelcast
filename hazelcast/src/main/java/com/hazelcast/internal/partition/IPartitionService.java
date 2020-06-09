@@ -31,6 +31,7 @@ import java.util.UUID;
 /**
  * An SPI service for accessing partition related information.
  */
+//FGTODO: 2019/11/22 下午3:59 zmyer
 public interface IPartitionService extends CoreService {
 
     /**

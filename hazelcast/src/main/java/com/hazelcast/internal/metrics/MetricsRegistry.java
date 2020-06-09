@@ -69,6 +69,7 @@ import java.util.concurrent.TimeUnit;
  * during the collection cycle. It is therefore the responsibility of the
  * dynamic metric sources to keep allocation low.
  */
+//FGTODO: 2019/12/4 上午10:15 zmyer
 public interface MetricsRegistry {
 
     /**
@@ -78,7 +79,7 @@ public interface MetricsRegistry {
 
     /**
      * Creates a {@link LongGauge} for a given metric name.
-     *
+     * <p>
      * If no gauge exists for the name, it will be created but no probe is set.
      * The reason to do so is that you don't want to depend on the order of
      * registration. Perhaps you want to read out e.g. operations.count gauge,
@@ -87,7 +88,7 @@ public interface MetricsRegistry {
      * the metric is created. For example when experimenting with a new
      * implementation, e.g. a new OperationService implementation, that doesn't
      * provide the operation.count probe.
-     *
+     * <p>
      * Multiple calls with the same name return different Gauge instances; so
      * the Gauge instance is not cached. This is done to prevent memory leaks.
      *
@@ -109,7 +110,7 @@ public interface MetricsRegistry {
 
     /**
      * Gets a set of all current probe names.
-     *
+     * <p>
      * The returned set is immutable and is a snapshot of the names. So the
      * reader gets a stable view on the names.
      *
@@ -133,7 +134,7 @@ public interface MetricsRegistry {
      * @param namePrefix the name prefix.
      * @throws NullPointerException     if namePrefix or source is null.
      * @throws IllegalArgumentException if the source contains a Probe
-     *      annotation on a field/method of unsupported type.
+     *                                  annotation on a field/method of unsupported type.
      */
     <S> void registerStaticMetrics(S source, String namePrefix);
 
@@ -150,7 +151,7 @@ public interface MetricsRegistry {
      * If an object has no @Probe annotations, the call is ignored.
      *
      * @param descriptor the metric descriptor.
-     * @param source the object to scan.
+     * @param source     the object to scan.
      * @throws NullPointerException     if namePrefix or source is null.
      * @throws IllegalArgumentException if the source contains a Probe
      *                                  annotation on a field/method of unsupported type.
@@ -176,7 +177,7 @@ public interface MetricsRegistry {
 
     /**
      * Registers a probe.
-     *
+     * <p>
      * If a probe for the given name exists, it will be overwritten.
      *
      * @param source   the object that the probe function to be used with
@@ -191,7 +192,7 @@ public interface MetricsRegistry {
 
     /**
      * Registers a probe.
-     *
+     * <p>
      * If a probe for the given name exists, it will be overwritten.
      *
      * @param source   the object that the probe function to be used with
@@ -204,7 +205,7 @@ public interface MetricsRegistry {
 
     /**
      * Registers a probe.
-     *
+     * <p>
      * If a probe for the given name exists, it will be overwritten.
      *
      * @param source the object that the probe function to be used with
@@ -218,7 +219,7 @@ public interface MetricsRegistry {
 
     /**
      * Registers a probe.
-     *
+     * <p>
      * If a probe for the given name exists, it will be overwritten.
      *
      * @param source the object that the probe function to be used with
@@ -233,20 +234,20 @@ public interface MetricsRegistry {
 
     /**
      * Registers a probe.
-     *
+     * <p>
      * If a probe for the given name exists, it will be overwritten.
      *
-     * @param source   the object that the probe function to be used with
-     * @param name  the name of the probe
-     * @param level the ProbeLevel
-     * @param probe the probe
+     * @param source the object that the probe function to be used with
+     * @param name   the name of the probe
+     * @param level  the ProbeLevel
+     * @param probe  the probe
      * @throws NullPointerException if source, name, level or probe is null.
      */
     <S> void registerStaticProbe(S source, String name, ProbeLevel level, DoubleProbeFunction<S> probe);
 
     /**
      * Registers a probe.
-     *
+     * <p>
      * If a probe for the given name exists, it will be overwritten.
      *
      * @param source the object that the probe function to be used with
@@ -260,7 +261,7 @@ public interface MetricsRegistry {
 
     /**
      * Registers a probe.
-     *
+     * <p>
      * If a probe for the given name exists, it will be overwritten.
      *
      * @param source the object that the probe function to be used with
@@ -275,17 +276,17 @@ public interface MetricsRegistry {
 
     /**
      * Schedules a publisher to be executed at a fixed rate.
-     *
+     * <p>
      * Probably this method will be removed in the future, but we need a mechanism
      * for complex gauges that require some calculation to provide their values.
      *
-     * @param publisher the published task that needs to be executed
-     * @param period    the time between executions
-     * @param timeUnit  the time unit for period
+     * @param publisher  the published task that needs to be executed
+     * @param period     the time between executions
+     * @param timeUnit   the time unit for period
      * @param probeLevel the ProbeLevel publisher it publishing on. This is needed to prevent scheduling
      *                   publishers if their probe level isn't sufficient.
-     * @throws NullPointerException if publisher or timeUnit is null.
      * @return the ScheduledFuture that can be used to cancel the task, or null if nothing got scheduled.
+     * @throws NullPointerException if publisher or timeUnit is null.
      */
     ScheduledFuture<?> scheduleAtFixedRate(Runnable publisher, long period, TimeUnit timeUnit, ProbeLevel probeLevel);
 

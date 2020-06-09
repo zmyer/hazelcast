@@ -41,6 +41,7 @@ import java.util.Collection;
  * @see ServiceNamespaceAware
  * @since 3.9
  */
+//FGTODO: 2019/11/26 下午3:41 zmyer
 public interface FragmentedMigrationAwareService extends MigrationAwareService {
 
     /**
@@ -73,7 +74,7 @@ public interface FragmentedMigrationAwareService extends MigrationAwareService {
      * <p>
      * Returning null is allowed and means service does not have anything to replicate.
      *
-     * @param event replication event
+     * @param event      replication event
      * @param namespaces replica fragment namespaces to replicate
      * @return replication operation or null if nothing will be replicated
      * @see #prepareReplicationOperation(PartitionReplicationEvent)

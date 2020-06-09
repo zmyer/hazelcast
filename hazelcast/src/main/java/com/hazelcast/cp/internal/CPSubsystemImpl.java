@@ -50,6 +50,7 @@ import static com.hazelcast.internal.util.Preconditions.checkNotNull;
 /**
  * Provides access to CP Subsystem utilities
  */
+//FGTODO: 2019/11/22 下午3:55 zmyer
 public class CPSubsystemImpl implements CPSubsystem {
 
     private final HazelcastInstanceImpl instance;

@@ -31,6 +31,7 @@ import static java.util.concurrent.TimeUnit.MILLISECONDS;
  * Cluster failure detector based on 'The Phi Accrual Failure Detector' by Hayashibara et al.
  * For more info see {@link PhiAccrualFailureDetector}
  */
+//FGTODO: 2019/11/22 下午5:44 zmyer
 public class PhiAccrualClusterFailureDetector implements ClusterFailureDetector {
 
     /**

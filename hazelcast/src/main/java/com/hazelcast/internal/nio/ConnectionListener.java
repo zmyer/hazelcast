@@ -20,6 +20,7 @@ package com.hazelcast.internal.nio;
  * A listener for the {@link EndpointManager} to listen to connections
  * being added or removed.
  */
+//FGTODO: 2019/11/22 下午4:00 zmyer
 public interface ConnectionListener {
 
     void connectionAdded(Connection connection);

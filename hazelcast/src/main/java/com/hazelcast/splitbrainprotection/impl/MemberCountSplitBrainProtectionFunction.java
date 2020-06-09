@@ -21,6 +21,7 @@ import com.hazelcast.splitbrainprotection.SplitBrainProtectionFunction;
 
 import java.util.Collection;
 
+//FGTODO: 2019/11/25 下午4:58 zmyer
 class MemberCountSplitBrainProtectionFunction implements SplitBrainProtectionFunction {
 
     private final int splitBrainProtectionSize;

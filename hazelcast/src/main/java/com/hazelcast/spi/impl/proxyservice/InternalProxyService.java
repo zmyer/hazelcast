@@ -18,10 +18,11 @@ package com.hazelcast.spi.impl.proxyservice;
 
 /**
  * The API for the internal {@link ProxyService}.
- *
+ * <p>
  * The ProxyService is responsible for managing proxies and it part of the SPI. The InternalProxyService extends this
  * interface and additional methods we don't want to expose in the SPI, we can add here.
  */
+//FGTODO: 2019/11/25 下午2:15 zmyer
 public interface InternalProxyService extends ProxyService {
 
     void destroyLocalDistributedObject(String serviceName, String name, boolean fireEvent);

@@ -45,9 +45,8 @@ import static com.hazelcast.instance.EndpointQualifier.MEMBER;
 import static com.hazelcast.internal.util.Preconditions.isNotNull;
 import static java.util.Collections.singletonMap;
 
-public final class MemberImpl
-        extends AbstractMember
-        implements Member, HazelcastInstanceAware, IdentifiedDataSerializable {
+//FGTODO: 2019/11/22 下午5:20 zmyer
+public final class MemberImpl extends AbstractMember implements Member, HazelcastInstanceAware, IdentifiedDataSerializable {
 
     /**
      * Denotes that member list join version of a member is not known yet.

@@ -64,6 +64,7 @@ import com.hazelcast.spi.impl.AllowedDuringPassiveState;
  * @see NodeState
  * @since 3.6
  */
+//FGTODO: 2019/11/25 下午1:59 zmyer
 public enum ClusterState {
 
     /**
@@ -84,7 +85,7 @@ public enum ClusterState {
      * But missing backup replicas will not be created/replicated until cluster state changes to {@link ClusterState#ACTIVE}.
      * </li>
      * </ul>
-     *
+     * <p>
      * Cluster will continue to operate without any restriction. All operations are allowed.
      *
      * @since 3.9
@@ -183,6 +184,7 @@ public enum ClusterState {
 
     /**
      * Returns {@code true}, if joining of a new member is allowed in this state.
+     *
      * @return {@code true} if joining of a new member is allowed in this state.
      */
     public boolean isJoinAllowed() {
@@ -191,6 +193,7 @@ public enum ClusterState {
 
     /**
      * Returns {@code true}, if migrations and replications are allowed in this state.
+     *
      * @return {@code true} if migrations and replications are allowed in this state.
      */
     public boolean isMigrationAllowed() {
@@ -199,6 +202,7 @@ public enum ClusterState {
 
     /**
      * Returns {@code true}, if partition promotions are allowed in this state.
+     *
      * @return {@code true} if partition promotions are allowed in this state.
      */
     public boolean isPartitionPromotionAllowed() {

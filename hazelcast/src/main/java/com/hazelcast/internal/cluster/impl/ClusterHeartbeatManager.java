@@ -71,6 +71,7 @@ import static java.util.concurrent.TimeUnit.SECONDS;
  * <p>
  * If it detects a member is not live anymore, that member is kicked out of cluster.
  */
+//FGTODO: 2019/11/22 下午5:41 zmyer
 public class ClusterHeartbeatManager {
 
     private static final long CLOCK_JUMP_THRESHOLD = MINUTES.toMillis(2);
@@ -205,7 +206,6 @@ public class ClusterHeartbeatManager {
      */
     void init() {
         ExecutionService executionService = nodeEngine.getExecutionService();
-
         executionService.scheduleWithRepetition(CLUSTER_EXECUTOR_NAME, this::heartbeat,
                 heartbeatIntervalMillis, heartbeatIntervalMillis, TimeUnit.MILLISECONDS);
 
@@ -632,7 +632,9 @@ public class ClusterHeartbeatManager {
         }
     }
 
-    /** Reset all heartbeats to the current cluster time. Called when system clock jump is detected. */
+    /**
+     * Reset all heartbeats to the current cluster time. Called when system clock jump is detected.
+     */
     private void resetHeartbeats() {
         SplitBrainProtectionServiceImpl splitBrainProtectionService = nodeEngine.getSplitBrainProtectionService();
         long now = clusterClock.getClusterTime();
@@ -642,7 +644,9 @@ public class ClusterHeartbeatManager {
         }
     }
 
-    /** Remove the {@code member}'s heartbeat timestamps */
+    /**
+     * Remove the {@code member}'s heartbeat timestamps
+     */
     void removeMember(MemberImpl member) {
         heartbeatFailureDetector.remove(member);
         if (icmpParallelMode) {

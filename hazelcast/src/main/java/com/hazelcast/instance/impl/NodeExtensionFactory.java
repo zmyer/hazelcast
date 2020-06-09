@@ -24,6 +24,7 @@ import com.hazelcast.internal.util.ServiceLoader;
 import java.util.Iterator;
 import java.util.List;
 
+//FGTODO: 2019/12/5 上午9:52 zmyer
 public final class NodeExtensionFactory {
 
     private static final String NODE_EXTENSION_FACTORY_ID = "com.hazelcast.instance.impl.NodeExtension";
@@ -37,11 +38,11 @@ public final class NodeExtensionFactory {
      * the provided {@code node}'s extension. It chooses the class based on
      * the provided priority list of class names, these are the rules:
      * <ol><li>
-     *     A class's priority is its zero-based index in the list.
+     * A class's priority is its zero-based index in the list.
      * </li><li>
-     *     Lower number means higher priority.
+     * Lower number means higher priority.
      * </li><li>
-     *     A class that doesn't appear in the list doesn't qualify for selection.
+     * A class that doesn't appear in the list doesn't qualify for selection.
      * </li></ol>
      * <p>
      * The dynamic selection of the node extension allows Hazelcast
@@ -56,7 +57,7 @@ public final class NodeExtensionFactory {
      * but the one to choose depends on whether the user is requesting to
      * start an IMDG or a Jet instance.
      *
-     * @param node Hazelcast node whose extension this method must provide
+     * @param node                  Hazelcast node whose extension this method must provide
      * @param extensionPriorityList priority list of fully qualified extension class names
      * @return the selected node extension
      */
@@ -88,7 +89,7 @@ public final class NodeExtensionFactory {
         } catch (Exception e) {
             throw ExceptionUtil.rethrow(e);
         }
-   }
+    }
 
     private static void warnIfDuplicate(Class<NodeExtension> klass) {
         if (!klass.equals(DefaultNodeExtension.class) && klass.getName().equals(DefaultNodeExtension.class.getName())) {

@@ -62,9 +62,9 @@ import static com.hazelcast.internal.util.Preconditions.checkNotNull;
 import static java.util.logging.Level.FINEST;
 import static java.util.logging.Level.WARNING;
 
-public class ProxyServiceImpl
-        implements InternalProxyService, PostJoinAwareService,
-                   EventPublishingService<DistributedObjectEventPacket, Object>, StaticMetricsProvider {
+//FGTODO: 2019/11/22 下午4:01 zmyer
+public class ProxyServiceImpl implements InternalProxyService, PostJoinAwareService,
+        EventPublishingService<DistributedObjectEventPacket, Object>, StaticMetricsProvider {
 
     public static final String SERVICE_NAME = "hz:core:proxyService";
 
@@ -73,18 +73,12 @@ public class ProxyServiceImpl
 
     final NodeEngineImpl nodeEngine;
     final ILogger logger;
-    final ConcurrentMap<UUID, DistributedObjectListener> listeners =
-            new ConcurrentHashMap<UUID, DistributedObjectListener>();
+    final ConcurrentMap<UUID, DistributedObjectListener> listeners = new ConcurrentHashMap<UUID, DistributedObjectListener>();
 
     private final ConstructorFunction<String, ProxyRegistry> registryConstructor =
-            new ConstructorFunction<String, ProxyRegistry>() {
-                public ProxyRegistry createNew(String serviceName) {
-                    return new ProxyRegistry(ProxyServiceImpl.this, serviceName);
-                }
-            };
+            serviceName -> new ProxyRegistry(ProxyServiceImpl.this, serviceName);
 
-    private final ConcurrentMap<String, ProxyRegistry> registries =
-            new ConcurrentHashMap<String, ProxyRegistry>();
+    private final ConcurrentMap<String, ProxyRegistry> registries = new ConcurrentHashMap<String, ProxyRegistry>();
 
     @Probe(name = "createdCount", level = MANDATORY)
     private final MwCounter createdCounter = newMwCounter();

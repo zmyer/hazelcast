@@ -23,8 +23,8 @@ import com.hazelcast.internal.nio.tcp.TcpIpConnection;
 import java.util.Collection;
 import java.util.Map;
 
-public interface AggregateEndpointManager
-        extends ConnectionListenable {
+//FGTODO: 2019/11/25 下午4:41 zmyer
+public interface AggregateEndpointManager extends ConnectionListenable {
 
     /**
      * Returns all connections that have been successfully established by the underlying EndpointManagers.

@@ -113,6 +113,7 @@ import java.util.function.Supplier;
 import static com.hazelcast.config.ConfigAccessor.getActiveMemberNetworkConfig;
 import static com.hazelcast.map.impl.MapServiceConstructor.getDefaultMapServiceConstructor;
 
+//FGTODO: 2019/11/26 下午3:15 zmyer
 @SuppressWarnings({"checkstyle:methodcount", "checkstyle:classfanoutcomplexity", "checkstyle:classdataabstractioncoupling"})
 public class DefaultNodeExtension implements NodeExtension {
 
@@ -284,7 +285,7 @@ public class DefaultNodeExtension implements NodeExtension {
 
     @Override
     public InboundHandler[] createInboundHandlers(EndpointQualifier qualifier,
-            TcpIpConnection connection, IOService ioService) {
+                                                  TcpIpConnection connection, IOService ioService) {
         NodeEngineImpl nodeEngine = node.nodeEngine;
         PacketDecoder decoder = new PacketDecoder(connection, nodeEngine.getPacketDispatcher());
         return new InboundHandler[]{decoder};
@@ -292,7 +293,7 @@ public class DefaultNodeExtension implements NodeExtension {
 
     @Override
     public OutboundHandler[] createOutboundHandlers(EndpointQualifier qualifier,
-            TcpIpConnection connection, IOService ioService) {
+                                                    TcpIpConnection connection, IOService ioService) {
         return new OutboundHandler[]{new PacketEncoder()};
     }
 

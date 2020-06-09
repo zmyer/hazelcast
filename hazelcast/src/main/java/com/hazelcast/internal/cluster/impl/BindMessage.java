@@ -43,8 +43,8 @@ import static com.hazelcast.internal.serialization.impl.SerializationUtil.writeC
  *
  * @since 3.12
  */
-public class BindMessage
-        implements IdentifiedDataSerializable {
+//FGTODO: 2019/11/22 下午5:30 zmyer
+public class BindMessage implements IdentifiedDataSerializable {
 
     private byte schemaVersion;
     private Map<ProtocolType, Collection<Address>> localAddresses;

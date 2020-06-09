@@ -38,6 +38,7 @@ import java.util.concurrent.atomic.AtomicInteger;
  * All fields are exclusively written by {@link SlowOperationDetector.DetectorThread}. Only fields which are exposed via the
  * {@link #createDTO()} methods need synchronization. All other fields are final or used single threaded.
  */
+//FGTODO: 2019/11/26 下午6:08 zmyer
 final class SlowOperationLog {
 
     private static final int SHORT_STACKTRACE_LENGTH = 200;

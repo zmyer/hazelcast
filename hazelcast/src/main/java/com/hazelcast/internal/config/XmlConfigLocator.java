@@ -30,6 +30,7 @@ import static com.hazelcast.internal.config.DeclarativeConfigUtil.XML_ACCEPTED_S
  * <li>default</li>
  * </ol>
  */
+//FGTODO: 2019/11/22 下午3:47 zmyer
 public class XmlConfigLocator extends AbstractConfigLocator {
 
     @Override

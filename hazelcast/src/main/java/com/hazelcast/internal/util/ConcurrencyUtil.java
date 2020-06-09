@@ -25,6 +25,7 @@ import java.util.concurrent.atomic.AtomicLongFieldUpdater;
  * Utility methods to getOrPutSynchronized and getOrPutIfAbsent in a thread safe way
  * from a {@link ConcurrentMap} with a {@link ConstructorFunction}.
  */
+//FGTODO: 2019/11/25 下午2:21 zmyer
 public final class ConcurrencyUtil {
 
     /**
@@ -49,7 +50,7 @@ public final class ConcurrencyUtil {
 
     /**
      * Atomically sets the max value.
-     *
+     * <p>
      * If the current value is larger than the provided value, the call is ignored.
      * So it will not happen that a smaller value will overwrite a larger value.
      */

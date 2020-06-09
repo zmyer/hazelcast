@@ -36,6 +36,7 @@ import java.io.IOException;
  * @see com.hazelcast.nio.serialization.Portable
  * @see com.hazelcast.nio.serialization.VersionedPortable
  */
+//FGTODO: 2019/11/25 下午12:38 zmyer
 public interface DataSerializable {
 
     /**

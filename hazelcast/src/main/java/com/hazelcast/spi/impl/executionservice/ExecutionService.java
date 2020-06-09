@@ -30,9 +30,10 @@ import java.util.concurrent.TimeUnit;
 
 /**
  * A Service responsible for providing access to 'system' executors and customer executors.
- *
+ * <p>
  * It also has functionality for scheduling tasks.
  */
+//FGTODO: 2019/11/22 下午4:07 zmyer
 public interface ExecutionService {
 
     /**

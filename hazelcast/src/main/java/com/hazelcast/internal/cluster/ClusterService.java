@@ -31,6 +31,7 @@ import java.util.UUID;
  * <p>
  * This API is an internal API; the end user will use the {@link Cluster} interface.
  */
+//FGTODO: 2019/11/22 下午3:59 zmyer
 public interface ClusterService extends CoreService, Cluster {
 
     /**
@@ -53,7 +54,7 @@ public interface ClusterService extends CoreService, Cluster {
      * Gets the member with the given UUID and address.
      *
      * @param address the address of the member
-     * @param uuid the UUID of the member
+     * @param uuid    the UUID of the member
      * @return the found member, or {@code null} if not found
      * (if the UUID and/or address is {@code null}, {@code null} is returned)
      */
@@ -168,11 +169,10 @@ public interface ClusterService extends CoreService, Cluster {
      * When duplicate member list join version is assigned during network split, the returned value can
      * change to make it unique again. Therefore the caller should call this method repeatedly.
      *
-     * @throws IllegalStateException if the local instance is not joined or the cluster just upgraded to 3.10,
-     *      but local member has not yet learned its join version from the master node.
-     * @throws UnsupportedOperationException if the cluster version is below 3.10
-     *
      * @return the member list join version of the local member instance
+     * @throws IllegalStateException         if the local instance is not joined or the cluster just upgraded to 3.10,
+     *                                       but local member has not yet learned its join version from the master node.
+     * @throws UnsupportedOperationException if the cluster version is below 3.10
      */
     int getMemberListJoinVersion();
 }

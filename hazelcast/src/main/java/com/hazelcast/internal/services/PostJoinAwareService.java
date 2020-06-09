@@ -23,6 +23,7 @@ import com.hazelcast.spi.impl.operationservice.PartitionAwareOperation;
  * Marker interface for services that want to return operations to be executed on the cluster
  * members after a join has been finalized.
  */
+//FGTODO: 2019/11/25 下午2:16 zmyer
 public interface PostJoinAwareService {
 
     /**

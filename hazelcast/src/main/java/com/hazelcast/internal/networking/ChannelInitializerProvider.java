@@ -21,6 +21,7 @@ import com.hazelcast.instance.EndpointQualifier;
 /**
  * Initializes the Channel when the Channel is used for the first time.
  */
+//FGTODO: 2019/12/2 下午1:47 zmyer
 public interface ChannelInitializerProvider {
 
     ChannelInitializer provide(EndpointQualifier qualifier);

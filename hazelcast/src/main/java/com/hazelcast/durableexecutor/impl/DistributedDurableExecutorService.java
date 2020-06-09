@@ -39,6 +39,7 @@ import java.util.concurrent.ConcurrentMap;
 
 import static com.hazelcast.internal.util.ConcurrencyUtil.getOrPutSynchronized;
 
+//FGTODO: 2019/12/4 下午8:27 zmyer
 public class DistributedDurableExecutorService implements ManagedService, RemoteService, MigrationAwareService,
         SplitBrainProtectionAwareService {
 
@@ -56,13 +57,13 @@ public class DistributedDurableExecutorService implements ManagedService, Remote
     private final ContextMutexFactory splitBrainProtectionConfigCacheMutexFactory = new ContextMutexFactory();
     private final ConstructorFunction<String, Object> splitBrainProtectionConfigConstructor =
             new ConstructorFunction<String, Object>() {
-        @Override
-        public Object createNew(String name) {
-            DurableExecutorConfig executorConfig = nodeEngine.getConfig().findDurableExecutorConfig(name);
-            String splitBrainProtectionName = executorConfig.getSplitBrainProtectionName();
-            return splitBrainProtectionName == null ? NULL_OBJECT : splitBrainProtectionName;
-        }
-    };
+                @Override
+                public Object createNew(String name) {
+                    DurableExecutorConfig executorConfig = nodeEngine.getConfig().findDurableExecutorConfig(name);
+                    String splitBrainProtectionName = executorConfig.getSplitBrainProtectionName();
+                    return splitBrainProtectionName == null ? NULL_OBJECT : splitBrainProtectionName;
+                }
+            };
 
     public DistributedDurableExecutorService(NodeEngineImpl nodeEngine) {
         this.nodeEngine = nodeEngine;

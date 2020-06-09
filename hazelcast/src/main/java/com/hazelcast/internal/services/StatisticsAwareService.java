@@ -25,6 +25,7 @@ import java.util.Map;
  *
  * @param <T> type of returned
  */
+//FGTODO: 2019/11/25 下午5:37 zmyer
 public interface StatisticsAwareService<T extends LocalInstanceStats> {
     /**
      * Return the service statistics for the local instance.

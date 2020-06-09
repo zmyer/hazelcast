@@ -100,6 +100,7 @@ import static java.nio.charset.StandardCharsets.UTF_8;
 /**
  * ManagementCenterService is responsible for sending statistics data to the Management Center.
  */
+//FGTODO: 2019/12/2 下午1:56 zmyer
 public class ManagementCenterService {
     public static final String SERVICE_NAME = "hz:core:managementCenterService";
 
@@ -340,7 +341,7 @@ public class ManagementCenterService {
     /**
      * Returns ETag value of last applied MC config (client B/W list filtering).
      *
-     * @return  last or <code>null</code>
+     * @return last or <code>null</code>
      */
     public String getLastMCConfigETag() {
         return lastMCConfigETag;
@@ -349,8 +350,8 @@ public class ManagementCenterService {
     /**
      * Applies given MC config (client B/W list filtering).
      *
-     * @param eTag          ETag of new config
-     * @param bwListConfig  new config
+     * @param eTag         ETag of new config
+     * @param bwListConfig new config
      */
     public void applyMCConfig(String eTag, ClientBwListDTO bwListConfig) {
         if (eTag.equals(lastMCConfigETag)) {
@@ -846,8 +847,7 @@ public class ManagementCenterService {
             try {
                 Member member = membershipEvent.getMember();
                 if (member != null && instance.node.isMaster() && urlChanged) {
-                    UpdateManagementCenterUrlOperation operation
-                            = new UpdateManagementCenterUrlOperation(managementCenterUrl);
+                    UpdateManagementCenterUrlOperation operation = new UpdateManagementCenterUrlOperation(managementCenterUrl);
                     resolveFuture(callOnMember(member, operation));
                 }
             } catch (Exception e) {

@@ -60,6 +60,7 @@ import static com.hazelcast.spi.properties.GroupProperty.NETWORK_STATS_REFRESH_I
 import static java.util.Collections.singleton;
 import static java.util.concurrent.TimeUnit.SECONDS;
 
+//FGTODO: 2019/11/22 下午4:20 zmyer
 public final class TcpIpNetworkingService implements NetworkingService<TcpIpConnection> {
 
     private static final int SCHEDULER_POOL_SIZE = 4;
@@ -138,8 +139,8 @@ public final class TcpIpNetworkingService implements NetworkingService<TcpIpConn
         if (unifiedEndpointManager != null) {
             endpointManagers.put(MEMBER, new MemberViewUnifiedEndpointManager(unifiedEndpointManager));
             endpointManagers.put(CLIENT, new ClientViewUnifiedEndpointManager(unifiedEndpointManager));
-            endpointManagers.put(REST,  new TextViewUnifiedEndpointManager(unifiedEndpointManager, true));
-            endpointManagers.put(MEMCACHE,  new TextViewUnifiedEndpointManager(unifiedEndpointManager, false));
+            endpointManagers.put(REST, new TextViewUnifiedEndpointManager(unifiedEndpointManager, true));
+            endpointManagers.put(MEMCACHE, new TextViewUnifiedEndpointManager(unifiedEndpointManager, false));
         } else {
             for (EndpointConfig endpointConfig : config.getAdvancedNetworkConfig().getEndpointConfigs().values()) {
                 EndpointQualifier qualifier = endpointConfig.getQualifier();
@@ -191,8 +192,8 @@ public final class TcpIpNetworkingService implements NetworkingService<TcpIpConn
         startAcceptor();
 
         if (unifiedEndpointManager == null) {
-            refreshStatsFuture =
-                    metricsRegistry.scheduleAtFixedRate(refreshStatsTask, refreshStatsIntervalSeconds, SECONDS, ProbeLevel.INFO);
+            refreshStatsFuture = metricsRegistry.scheduleAtFixedRate(refreshStatsTask,
+                    refreshStatsIntervalSeconds, SECONDS, ProbeLevel.INFO);
         }
     }
 
@@ -241,7 +242,7 @@ public final class TcpIpNetworkingService implements NetworkingService<TcpIpConn
      * This is never null. In an environment with multiple endpoints, this is a super endpoint
      * that wraps them all and reports total connections or registers listeners to all separate endpoints.
      * Note: You can't create a connection through it, you will have to access the respective endpoint for that.
-     *
+     * <p>
      * In an environment with a unified endpoint, this will also act as a wrapper on the views of the unified endpoint
      * (see {@link MemberViewUnifiedEndpointManager} and the others).
      *

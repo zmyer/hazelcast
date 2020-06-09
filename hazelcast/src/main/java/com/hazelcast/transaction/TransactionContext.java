@@ -24,6 +24,7 @@ import java.util.UUID;
  * Any method accessed through TransactionContext interface can throw TransactionException if transaction is
  * no longer valid and rolled back.
  */
+//FGTODO: 2019/11/25 下午2:32 zmyer
 public interface TransactionContext extends TransactionalTaskContext {
 
     /**

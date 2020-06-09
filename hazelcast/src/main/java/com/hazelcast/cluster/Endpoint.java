@@ -28,6 +28,7 @@ import java.util.UUID;
  * @see Member
  * @see Client
  */
+//FGTODO: 2019/11/22 下午5:20 zmyer
 public interface Endpoint {
 
     /**

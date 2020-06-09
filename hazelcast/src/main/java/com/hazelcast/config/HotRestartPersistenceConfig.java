@@ -33,8 +33,11 @@ import static com.hazelcast.internal.util.Preconditions.checkPositive;
  * where disk data will be stored, should data be persisted
  * sync or async etc.
  */
+//FGTODO: 2019/12/4 下午8:20 zmyer
 public class HotRestartPersistenceConfig {
-    /** Default directory name for the Hot Restart store's home */
+    /**
+     * Default directory name for the Hot Restart store's home
+     */
     public static final String HOT_RESTART_BASE_DIR_DEFAULT = "hot-restart";
 
     /**
@@ -97,7 +100,6 @@ public class HotRestartPersistenceConfig {
      * Sets the policy to be used when the cluster is started
      *
      * @param clusterDataRecoveryPolicy the policy to be used when the cluster is started
-     *
      * @return HotRestartPersistenceConfig
      */
     public HotRestartPersistenceConfig setClusterDataRecoveryPolicy(HotRestartClusterDataRecoveryPolicy
@@ -234,6 +236,7 @@ public class HotRestartPersistenceConfig {
 
     /**
      * Sets the Hot Restart Encryption at Rest configuration.
+     *
      * @param encryptionAtRestConfig the Encryption at Rest configuration
      * @return HotRestartPersistenceConfig§
      */
@@ -245,6 +248,7 @@ public class HotRestartPersistenceConfig {
 
     /**
      * Returns the Hot Restart Encryption at Rest configuration.
+     *
      * @return the Encryption at Rest configuration
      */
     public EncryptionAtRestConfig getEncryptionAtRestConfig() {

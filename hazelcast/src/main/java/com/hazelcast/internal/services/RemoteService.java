@@ -24,6 +24,7 @@ import com.hazelcast.core.DistributedObject;
  *
  * @author mdogan 10/31/12
  */
+//FGTODO: 2019/11/25 下午2:20 zmyer
 public interface RemoteService {
 
     /**

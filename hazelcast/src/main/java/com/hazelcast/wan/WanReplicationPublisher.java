@@ -37,6 +37,7 @@ import java.util.Set;
  * @param <T> WAN event container type (used for replication and migration inside the
  *            cluster)
  */
+//FGTODO: 2019/11/26 上午8:56 zmyer
 public interface WanReplicationPublisher<T> {
     /**
      * Initializes the publisher.

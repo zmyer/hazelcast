@@ -22,6 +22,7 @@ import com.hazelcast.splitbrainprotection.SplitBrainProtectionListener;
 /**
  * Configuration class for {@link SplitBrainProtectionListener}
  */
+//FGTODO: 2019/11/25 下午5:00 zmyer
 public class SplitBrainProtectionListenerConfig extends ListenerConfig {
 
     public SplitBrainProtectionListenerConfig() {

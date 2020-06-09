@@ -25,6 +25,7 @@ import com.hazelcast.spi.impl.SpiDataSerializerHook;
 
 import java.io.IOException;
 
+//FGTODO: 2019/12/5 上午9:16 zmyer
 public class InitializeDistributedObjectOperation extends Operation implements IdentifiedDataSerializable {
 
     private String serviceName;
