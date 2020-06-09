@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2008-2019, Hazelcast, Inc. All Rights Reserved.
+ * Copyright (c) 2008-2020, Hazelcast, Inc. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -57,7 +57,7 @@ public class ClientTimeoutTest {
         ClientNetworkConfig networkConfig = clientConfig.getNetworkConfig();
         networkConfig.addAddress("8.8.8.8:5701");
         // Do only one connection-attempt
-        clientConfig.getConnectionStrategyConfig().getConnectionRetryConfig().setMaxBackoffMillis(2000);
+        clientConfig.getConnectionStrategyConfig().getConnectionRetryConfig().setClusterConnectTimeoutMillis(1000);
         // Timeout connection-attempt after 1000 millis
         networkConfig.setConnectionTimeout(1000);
 

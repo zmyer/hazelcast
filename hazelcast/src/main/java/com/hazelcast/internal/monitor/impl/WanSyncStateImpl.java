@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2008-2019, Hazelcast, Inc. All Rights Reserved.
+ * Copyright (c) 2008-2020, Hazelcast, Inc. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,11 +16,11 @@
 
 package com.hazelcast.internal.monitor.impl;
 
-import com.hazelcast.internal.json.JsonObject;
 import com.hazelcast.internal.monitor.WanSyncState;
 import com.hazelcast.internal.util.Clock;
 import com.hazelcast.wan.impl.WanSyncStatus;
 
+@SuppressWarnings("unused")
 public class WanSyncStateImpl implements WanSyncState {
 
     private long creationTime;
@@ -63,31 +63,6 @@ public class WanSyncStateImpl implements WanSyncState {
     @Override
     public String getActivePublisherName() {
         return activePublisherName;
-    }
-
-    @Override
-    public JsonObject toJson() {
-        JsonObject root = new JsonObject();
-        root.add("creationTime", creationTime);
-        root.add("status", status.getStatus());
-        root.add("syncedPartitionCount", syncedPartitionCount);
-        if (activeWanConfigName != null) {
-            root.add("activeWanConfigName", activeWanConfigName);
-        }
-        if (activePublisherName != null) {
-            root.add("activePublisherName", activePublisherName);
-        }
-        return root;
-    }
-
-    @Override
-    public void fromJson(JsonObject json) {
-        this.creationTime = json.getLong("creationTime", -1L);
-        int status = json.getInt("status", WanSyncStatus.READY.getStatus());
-        this.status = WanSyncStatus.getByStatus(status);
-        this.syncedPartitionCount = json.getInt("syncedPartitionCount", 0);
-        this.activeWanConfigName = json.getString("activeWanConfigName", null);
-        this.activePublisherName = json.getString("activePublisherName", null);
     }
 
     @Override

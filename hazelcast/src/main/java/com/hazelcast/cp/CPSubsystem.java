@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2008-2019, Hazelcast, Inc. All Rights Reserved.
+ * Copyright (c) 2008-2020, Hazelcast, Inc. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -88,7 +88,7 @@ import java.util.UUID;
  * configuration does not have to be same with the CP member count. Namely,
  * number of CP members in CP Subsystem can be larger than the configured
  * CP group size. CP groups usually consist of an odd number of CP members
- * between 3 and 7. Operations are committed & executed only after they are
+ * between 3 and 7. Operations are committed &amp; executed only after they are
  * successfully replicated to the majority of CP members in a CP group.
  * An odd number of CP members is more advantageous to an even number because
  * of the quorum or majority calculations. For a CP group of N members,
@@ -409,6 +409,7 @@ public interface CPSubsystem {
      * group. Hence, callers should cache the returned proxy.</strong>
      *
      * @param name name of the {@link IAtomicReference} proxy
+     * @param <E> the type of object referred to by the reference
      * @return {@link IAtomicReference} proxy for the given name
      * @throws HazelcastException if CP Subsystem is not enabled
      */

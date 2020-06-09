@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2008-2019, Hazelcast, Inc. All Rights Reserved.
+ * Copyright (c) 2008-2020, Hazelcast, Inc. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -19,8 +19,7 @@ package com.hazelcast.internal.nio;
 /**
  * Provides connection listen capabilities.
  */
-//FGTODO: 2019/11/22 下午5:11 zmyer
-public interface ConnectionListenable {
+public interface ConnectionListenable<C extends Connection> {
 
     /**
      * Registers a ConnectionListener.
@@ -30,5 +29,5 @@ public interface ConnectionListenable {
      * @param listener the ConnectionListener to add.
      * @throws NullPointerException if listener is null.
      */
-    void addConnectionListener(ConnectionListener listener);
+    void addConnectionListener(ConnectionListener<C> listener);
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2008-2019, Hazelcast, Inc. All Rights Reserved.
+ * Copyright (c) 2008-2020, Hazelcast, Inc. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -60,6 +60,7 @@ import java.util.Collection;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
 
+import static com.hazelcast.cp.internal.RaftService.CP_SUBSYSTEM_EXECUTOR;
 import static com.hazelcast.cp.internal.raft.impl.RaftNodeStatus.STEPPED_DOWN;
 import static com.hazelcast.cp.internal.raft.impl.RaftNodeStatus.TERMINATED;
 
@@ -153,8 +154,16 @@ final class NodeEngineRaftIntegration implements RaftIntegration {
 
     @Override
     public boolean isReachable(RaftEndpoint target) {
+        if (!isStartCompleted()) {
+            return true;
+        }
+
         CPMember targetMember = getCPMember(target);
         return targetMember != null && nodeEngine.getClusterService().getMember(targetMember.getAddress()) != null;
+    }
+
+    private boolean isStartCompleted() {
+        return nodeEngine.getNode().getNodeExtension().isStartCompleted();
     }
 
     @Override
@@ -209,6 +218,7 @@ final class NodeEngineRaftIntegration implements RaftIntegration {
         try {
             return operation.run(groupId, commitIndex);
         } catch (Throwable t) {
+            operation.logFailure(t);
             return t;
         }
     }
@@ -275,6 +285,20 @@ final class NodeEngineRaftIntegration implements RaftIntegration {
             for (RaftNodeLifecycleAwareService service : services) {
                 service.onRaftNodeSteppedDown(groupId);
             }
+        }
+    }
+
+    @Override
+    public void onGroupDestroyed(CPGroupId groupId) {
+        RaftService raftService = nodeEngine.getService(RaftService.SERVICE_NAME);
+        nodeEngine.getExecutionService().execute(CP_SUBSYSTEM_EXECUTOR, () -> raftService.terminateRaftNode(groupId, true));
+
+        Collection<RaftNodeLifecycleAwareService> services = nodeEngine.getServices(RaftNodeLifecycleAwareService.class);
+        for (RaftNodeLifecycleAwareService service : services) {
+            if (service == raftService) {
+                continue;
+            }
+            service.onRaftNodeTerminated(groupId);
         }
     }
 }

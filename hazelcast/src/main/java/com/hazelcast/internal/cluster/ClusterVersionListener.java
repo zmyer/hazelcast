@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2008-2019, Hazelcast, Inc. All Rights Reserved.
+ * Copyright (c) 2008-2020, Hazelcast, Inc. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -18,6 +18,7 @@ package com.hazelcast.internal.cluster;
 
 import com.hazelcast.cluster.Cluster;
 import com.hazelcast.instance.impl.NodeExtension;
+import com.hazelcast.spi.properties.ClusterProperty;
 import com.hazelcast.version.Version;
 
 /**
@@ -44,7 +45,7 @@ public interface ClusterVersionListener {
      * the cluster version. Unhandled exceptions from listeners implementation will break the new version commit and a slow
      * implementation will stall the system and may cause a transaction timeout.
      * If new cluster version is {@code null} and property
-     * {@link com.hazelcast.spi.properties.GroupProperty#INIT_CLUSTER_VERSION} is set, the version set by this property
+     * {@link ClusterProperty#INIT_CLUSTER_VERSION} is set, the version set by this property
      * will be provided as argument to the listener. If neither are set, running node's codebase version will be used.
      *
      * @param newVersion the new version

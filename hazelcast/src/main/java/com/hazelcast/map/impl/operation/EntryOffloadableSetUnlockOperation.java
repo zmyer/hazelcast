@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2008-2019, Hazelcast, Inc. All Rights Reserved.
+ * Copyright (c) 2008-2020, Hazelcast, Inc. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -18,13 +18,14 @@ package com.hazelcast.map.impl.operation;
 
 import com.hazelcast.core.EntryEventType;
 import com.hazelcast.internal.locksupport.LockWaitNotifyKey;
+import com.hazelcast.internal.nio.IOUtil;
 import com.hazelcast.internal.util.UUIDSerializationUtil;
 import com.hazelcast.map.EntryProcessor;
 import com.hazelcast.map.impl.MapDataSerializerHook;
 import com.hazelcast.map.impl.MapService;
 import com.hazelcast.nio.ObjectDataInput;
 import com.hazelcast.nio.ObjectDataOutput;
-import com.hazelcast.nio.serialization.Data;
+import com.hazelcast.internal.serialization.Data;
 import com.hazelcast.spi.impl.operationservice.BackupAwareOperation;
 import com.hazelcast.spi.impl.operationservice.Notifier;
 import com.hazelcast.spi.impl.operationservice.Operation;
@@ -70,7 +71,7 @@ public class EntryOffloadableSetUnlockOperation extends KeyBasedMapOperation
     protected void runInternal() {
         verifyLock();
         try {
-            operator(this).init(dataKey, oldValue, newValue, null, modificationType)
+            operator(this).init(dataKey, oldValue, newValue, null, modificationType, null)
                     .doPostOperateOps();
         } finally {
             unlockKey();
@@ -145,8 +146,8 @@ public class EntryOffloadableSetUnlockOperation extends KeyBasedMapOperation
     protected void writeInternal(ObjectDataOutput out) throws IOException {
         super.writeInternal(out);
         out.writeUTF(modificationType != null ? modificationType.name() : "");
-        out.writeData(oldValue);
-        out.writeData(newValue);
+        IOUtil.writeData(out, oldValue);
+        IOUtil.writeData(out, newValue);
         UUIDSerializationUtil.writeUUID(out, caller);
         out.writeLong(begin);
         out.writeObject(entryBackupProcessor);
@@ -157,8 +158,8 @@ public class EntryOffloadableSetUnlockOperation extends KeyBasedMapOperation
         super.readInternal(in);
         String modificationTypeName = in.readUTF();
         modificationType = modificationTypeName.equals("") ? null : EntryEventType.valueOf(modificationTypeName);
-        oldValue = in.readData();
-        newValue = in.readData();
+        oldValue = IOUtil.readData(in);
+        newValue = IOUtil.readData(in);
         caller = UUIDSerializationUtil.readUUID(in);
         begin = in.readLong();
         entryBackupProcessor = in.readObject();

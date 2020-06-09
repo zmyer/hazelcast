@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2008-2019, Hazelcast, Inc. All Rights Reserved.
+ * Copyright (c) 2008-2020, Hazelcast, Inc. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,7 +16,6 @@
 
 package com.hazelcast.internal.monitor.impl;
 
-import com.hazelcast.internal.json.JsonObject;
 import com.hazelcast.replicatedmap.LocalReplicatedMapStats;
 import com.hazelcast.test.HazelcastParallelClassRunner;
 import com.hazelcast.test.annotation.ParallelJVMTest;
@@ -64,50 +63,6 @@ public class EmptyLocalReplicatedMapStatsTest {
         assertEquals(0, localReplicatedMapStats.getHeapCost());
         assertEquals(0, localReplicatedMapStats.getMerkleTreesCost());
         assertNotNull(localReplicatedMapStats.toString());
-    }
-
-    @Test
-    public void testSerialization() {
-        JsonObject serialized = localReplicatedMapStats.toJson();
-        EmptyLocalReplicatedMapStats deserialized = new EmptyLocalReplicatedMapStats();
-        deserialized.fromJson(serialized);
-
-        assertEquals(0, deserialized.getCreationTime());
-        assertEquals(0, deserialized.getOwnedEntryCount());
-        assertEquals(0, deserialized.getBackupEntryCount());
-        assertEquals(0, deserialized.getBackupCount());
-        assertEquals(0, deserialized.getOwnedEntryMemoryCost());
-        assertEquals(0, deserialized.getBackupEntryMemoryCost());
-        assertEquals(0, deserialized.getLastAccessTime());
-        assertEquals(0, deserialized.getLastUpdateTime());
-        assertEquals(0, deserialized.getHits());
-        assertEquals(0, deserialized.getLockedEntryCount());
-        assertEquals(0, deserialized.getDirtyEntryCount());
-
-        assertEquals(0, deserialized.total());
-        assertEquals(0, deserialized.getPutOperationCount());
-        assertEquals(0, deserialized.getGetOperationCount());
-        assertEquals(0, deserialized.getRemoveOperationCount());
-        assertEquals(0, deserialized.getTotalPutLatency());
-        assertEquals(0, deserialized.getTotalGetLatency());
-        assertEquals(0, deserialized.getTotalRemoveLatency());
-        assertEquals(0, deserialized.getMaxPutLatency());
-        assertEquals(0, deserialized.getMaxGetLatency());
-        assertEquals(0, deserialized.getMaxRemoveLatency());
-        assertEquals(0, deserialized.getOtherOperationCount());
-        assertEquals(0, deserialized.getEventOperationCount());
-
-        assertEquals(0, deserialized.getHeapCost());
-        assertEquals(0, deserialized.getMerkleTreesCost());
-        assertNotNull(deserialized.toString());
-    }
-
-    @Test
-    public void testToJsonReturnSameKeysAsRegularEmptyStats() {
-        JsonObject jsonOfRegularEmptyStats = new LocalReplicatedMapStatsImpl().toJson();
-        JsonObject actual = localReplicatedMapStats.toJson();
-        assertEquals(jsonOfRegularEmptyStats.size(), actual.size());
-        assertEquals(jsonOfRegularEmptyStats.names(), actual.names());
     }
 
     @Test(expected = UnsupportedOperationException.class)

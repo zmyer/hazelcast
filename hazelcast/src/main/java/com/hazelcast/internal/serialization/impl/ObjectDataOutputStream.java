@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2008-2019, Hazelcast, Inc. All Rights Reserved.
+ * Copyright (c) 2008-2020, Hazelcast, Inc. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,22 +16,25 @@
 
 package com.hazelcast.internal.serialization.impl;
 
+import com.hazelcast.internal.nio.DataWriter;
 import com.hazelcast.internal.serialization.InternalSerializationService;
 import com.hazelcast.nio.ObjectDataOutput;
-import com.hazelcast.nio.serialization.Data;
+import com.hazelcast.internal.serialization.Data;
 import com.hazelcast.internal.serialization.SerializationService;
+import com.hazelcast.spi.impl.SerializationServiceSupport;
 
 import java.io.Closeable;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.nio.ByteOrder;
+import java.nio.charset.StandardCharsets;
 
 import static com.hazelcast.internal.nio.Bits.NULL_ARRAY_LENGTH;
-import static com.hazelcast.internal.nio.Bits.UTF_8;
 
 @SuppressWarnings("checkstyle:methodcount")
-public class ObjectDataOutputStream extends VersionedObjectDataOutput implements ObjectDataOutput, Closeable {
+public class ObjectDataOutputStream extends VersionedObjectDataOutput
+        implements ObjectDataOutput, Closeable, SerializationServiceSupport, DataWriter {
 
     private final InternalSerializationService serializationService;
     private final DataOutputStream dataOut;
@@ -236,7 +239,7 @@ public class ObjectDataOutputStream extends VersionedObjectDataOutput implements
             return;
         }
 
-        byte[] utf8Bytes = str.getBytes(UTF_8);
+        byte[] utf8Bytes = str.getBytes(StandardCharsets.UTF_8);
         writeInt(utf8Bytes.length);
         write(utf8Bytes);
     }

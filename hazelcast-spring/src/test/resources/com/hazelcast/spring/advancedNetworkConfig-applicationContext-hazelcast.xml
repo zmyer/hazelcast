@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!--
-  ~ Copyright (c) 2008-2019, Hazelcast, Inc. All Rights Reserved.
+  ~ Copyright (c) 2008-2020, Hazelcast, Inc. All Rights Reserved.
   ~
   ~ Licensed under the Apache License, Version 2.0 (the "License");
   ~ you may not use this file except in compliance with the License.
@@ -21,7 +21,7 @@
        xsi:schemaLocation="http://www.springframework.org/schema/beans
         http://www.springframework.org/schema/beans/spring-beans.xsd
         http://www.hazelcast.com/schema/spring
-        http://www.hazelcast.com/schema/spring/hazelcast-spring-4.0.xsd">
+        http://www.hazelcast.com/schema/spring/hazelcast-spring-4.1.xsd">
 
     <bean class="org.springframework.beans.factory.config.PropertyPlaceholderConfigurer"
           p:systemPropertiesModeName="SYSTEM_PROPERTIES_MODE_OVERRIDE">
@@ -69,12 +69,14 @@
                     <hz:gcp enabled="false"
                             zones="us-east1-b,us-east1-c"/>
                     <hz:azure enabled="false"
+                              instance-metadata-available="false"
                               client-id="CLIENT_ID"
                               client-secret="CLIENT_SECRET"
                               tenant-id="TENANT_ID"
                               subscription-id="SUB_ID"
-                              cluster-id="HZLCAST001"
-                              group-name="RESOURCE-GROUP-NAME"/>
+                              resource-group="RESOURCE-GROUP-NAME"
+                              scale-set="SCALE-SET"
+                              tag="TAG-NAME=HZLCAST001"/>
                     <hz:kubernetes enabled="false"
                                    namespace="MY-KUBERNETES-NAMESPACE"
                                    service-name="MY-SERVICE-NAME"
@@ -119,9 +121,9 @@
             <hz:wan-replication name="testWan2">
                 <hz:batch-publisher>
                     <hz:cluster-name>tokyo</hz:cluster-name>
-                    <hz:wan-sync>
+                    <hz:sync>
                         <hz:consistency-check-strategy>MERKLE_TREES</hz:consistency-check-strategy>
-                    </hz:wan-sync>
+                    </hz:sync>
                 </hz:batch-publisher>
                 <hz:consumer class-name="WanConsumer" persist-wan-replicated-data="true"/>
             </hz:wan-replication>
@@ -154,12 +156,14 @@
                     <hz:gcp enabled="false"
                             zones="us-east1-b,us-east1-c"/>
                     <hz:azure enabled="false"
+                              instance-metadata-available="false"
                               client-id="CLIENT_ID"
                               client-secret="CLIENT_SECRET"
                               tenant-id="TENANT_ID"
                               subscription-id="SUB_ID"
-                              cluster-id="HZLCAST001"
-                              group-name="RESOURCE-GROUP-NAME"/>
+                              resource-group="RESOURCE-GROUP-NAME"
+                              scale-set="SCALE-SET"
+                              tag="TAG-NAME=HZLCAST001"/>
                     <hz:kubernetes enabled="false"
                                    namespace="MY-KUBERNETES-NAMESPACE"
                                    service-name="MY-SERVICE-NAME"

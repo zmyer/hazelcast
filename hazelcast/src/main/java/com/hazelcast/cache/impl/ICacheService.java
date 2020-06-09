@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2008-2019, Hazelcast, Inc. All Rights Reserved.
+ * Copyright (c) 2008-2020, Hazelcast, Inc. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -21,25 +21,27 @@ import com.hazelcast.cache.impl.journal.CacheEventJournal;
 import com.hazelcast.config.CacheConfig;
 import com.hazelcast.config.InMemoryFormat;
 import com.hazelcast.internal.eviction.ExpirationManager;
-import com.hazelcast.internal.services.StatisticsAwareService;
+import com.hazelcast.internal.metrics.DynamicMetricsProvider;
 import com.hazelcast.internal.monitor.LocalCacheStats;
-import com.hazelcast.nio.serialization.Data;
 import com.hazelcast.internal.partition.FragmentedMigrationAwareService;
+import com.hazelcast.internal.services.ManagedService;
+import com.hazelcast.internal.services.RemoteService;
+import com.hazelcast.internal.services.StatisticsAwareService;
+import com.hazelcast.internal.serialization.Data;
+import com.hazelcast.spi.impl.NodeEngine;
 import com.hazelcast.spi.impl.eventservice.EventFilter;
 import com.hazelcast.spi.impl.eventservice.EventPublishingService;
-import com.hazelcast.internal.services.ManagedService;
-import com.hazelcast.spi.impl.NodeEngine;
-import com.hazelcast.internal.services.RemoteService;
 
 import java.util.Collection;
 import java.util.UUID;
+import java.util.concurrent.CompletableFuture;
 
 //FGTODO: 2019/11/26 下午3:16 zmyer
 @SuppressWarnings({"checkstyle:methodcount"})
 public interface ICacheService
         extends ManagedService, RemoteService, FragmentedMigrationAwareService,
-        EventPublishingService<Object, CacheEventListener>,
-        StatisticsAwareService<LocalCacheStats> {
+                EventPublishingService<Object, CacheEventListener>,
+                StatisticsAwareService<LocalCacheStats>, DynamicMetricsProvider {
 
     String CACHE_SUPPORT_NOT_AVAILABLE_ERROR_MESSAGE =
             "There is no valid JCache API library at classpath. "
@@ -105,11 +107,22 @@ public interface ICacheService
 
     NodeEngine getNodeEngine();
 
-    UUID registerListener(String cacheNameWithPrefix, CacheEventListener listener, boolean isLocal);
+    UUID registerLocalListener(String cacheNameWithPrefix, CacheEventListener listener);
 
-    UUID registerListener(String cacheNameWithPrefix, CacheEventListener listener, EventFilter eventFilter, boolean isLocal);
+    UUID registerLocalListener(String cacheNameWithPrefix, CacheEventListener listener, EventFilter eventFilter);
+
+    UUID registerListener(String cacheNameWithPrefix, CacheEventListener listener);
+
+    UUID registerListener(String cacheNameWithPrefix, CacheEventListener listener, EventFilter eventFilter);
+
+    CompletableFuture<UUID> registerListenerAsync(String cacheNameWithPrefix, CacheEventListener listener);
+
+    CompletableFuture<UUID> registerListenerAsync(String cacheNameWithPrefix, CacheEventListener listener,
+                                                  EventFilter eventFilter);
 
     boolean deregisterListener(String cacheNameWithPrefix, UUID registrationId);
+
+    CompletableFuture<Boolean> deregisterListenerAsync(String cacheNameWithPrefix, UUID registrationId);
 
     void deregisterAllListener(String cacheNameWithPrefix);
 
@@ -119,8 +132,6 @@ public interface ICacheService
      * Creates cache operations according to the storage-type of the cache
      */
     CacheOperationProvider getCacheOperationProvider(String cacheNameWithPrefix, InMemoryFormat storageType);
-
-    UUID addInvalidationListener(String cacheNameWithPrefix, CacheEventListener listener, boolean localOnly);
 
     void sendInvalidationEvent(String cacheNameWithPrefix, Data key, UUID sourceUuid);
 

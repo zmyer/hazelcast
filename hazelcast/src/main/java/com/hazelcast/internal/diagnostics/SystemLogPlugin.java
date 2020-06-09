@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2008-2019, Hazelcast, Inc. All Rights Reserved.
+ * Copyright (c) 2008-2020, Hazelcast, Inc. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,6 +16,7 @@
 
 package com.hazelcast.internal.diagnostics;
 
+import com.hazelcast.cluster.Address;
 import com.hazelcast.cluster.Member;
 import com.hazelcast.cluster.MembershipAdapter;
 import com.hazelcast.cluster.MembershipEvent;
@@ -24,13 +25,13 @@ import com.hazelcast.core.LifecycleEvent;
 import com.hazelcast.core.LifecycleListener;
 import com.hazelcast.instance.impl.NodeExtension;
 import com.hazelcast.internal.cluster.ClusterVersionListener;
-import com.hazelcast.logging.ILogger;
-import com.hazelcast.cluster.Address;
 import com.hazelcast.internal.nio.Connection;
 import com.hazelcast.internal.nio.ConnectionListenable;
 import com.hazelcast.internal.nio.ConnectionListener;
-import com.hazelcast.partition.MigrationState;
+import com.hazelcast.internal.server.ServerConnection;
+import com.hazelcast.logging.ILogger;
 import com.hazelcast.partition.MigrationListener;
+import com.hazelcast.partition.MigrationState;
 import com.hazelcast.partition.ReplicaMigrationEvent;
 import com.hazelcast.spi.impl.NodeEngineImpl;
 import com.hazelcast.spi.properties.HazelcastProperties;
@@ -88,7 +89,7 @@ public class SystemLogPlugin extends DiagnosticsPlugin {
 
     public SystemLogPlugin(NodeEngineImpl nodeEngine) {
         this(nodeEngine.getProperties(),
-                nodeEngine.getNode().networkingService.getAggregateEndpointManager(),
+                nodeEngine.getNode().getServer(),
                 nodeEngine.getHazelcastInstance(),
                 nodeEngine.getLogger(SystemLogPlugin.class),
                 nodeEngine.getNode().getNodeExtension());
@@ -240,7 +241,7 @@ public class SystemLogPlugin extends DiagnosticsPlugin {
         writer.writeKeyValueEntry("replicaIndex", event.getReplicaIndex());
         writer.writeKeyValueEntry("elapsedTime(ms)", event.getReplicaIndex());
 
-        render(writer,  event.getMigrationState());
+        render(writer, event.getMigrationState());
         writer.endSection();
     }
 
@@ -255,7 +256,9 @@ public class SystemLogPlugin extends DiagnosticsPlugin {
         Connection connection = event.connection;
         writer.writeEntry(connection.toString());
 
-        writer.writeKeyValueEntry("type", connection.getType().name());
+        if (connection instanceof ServerConnection) {
+            writer.writeKeyValueEntry("type", ((ServerConnection) connection).getConnectionType());
+        }
         writer.writeKeyValueEntry("isAlive", connection.isAlive());
 
         if (!event.added) {

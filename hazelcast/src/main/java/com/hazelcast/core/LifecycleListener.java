@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2008-2019, Hazelcast, Inc. All Rights Reserved.
+ * Copyright (c) 2008-2020, Hazelcast, Inc. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -23,12 +23,12 @@ import java.util.EventListener;
  *
  * @see com.hazelcast.core.LifecycleEvent
  * @see HazelcastInstance#getLifecycleService()
+ *
  */
-//FGTODO: 2019/11/22 下午3:52 zmyer
+@FunctionalInterface
 public interface LifecycleListener extends EventListener {
     /**
      * Called when instance's state changes. No blocking calls should be made in this method.
-     *
      * @param event the Lifecycle event
      */
     void stateChanged(LifecycleEvent event);

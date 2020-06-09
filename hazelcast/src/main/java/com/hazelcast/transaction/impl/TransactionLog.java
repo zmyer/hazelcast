@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2008-2019, Hazelcast, Inc. All Rights Reserved.
+ * Copyright (c) 2008-2020, Hazelcast, Inc. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -33,17 +33,16 @@ import java.util.function.BiConsumer;
 /**
  * The transaction log contains all {@link
  * TransactionLogRecord} for a given transaction.
- * <p>
+ *
  * If within a transaction 3 map.puts would be done on different
  * keys and 1 queue.take would be done, than the TransactionLog
  * will contains 4 {@link TransactionLogRecord} instances.
- * <p>
+ *
  * Planned optimization:
  * Most transaction will be small, but an HashMap is created.
  * Instead use an array and do a linear search in that array.
  * When there are too many items added, then enable the hashmap.
  */
-//FGTODO: 2019/11/25 下午2:35 zmyer
 public class TransactionLog {
 
     private final Map<Object, TransactionLogRecord> recordMap = new HashMap<>();
@@ -87,7 +86,7 @@ public class TransactionLog {
     }
 
     public List<Future> commit(NodeEngine nodeEngine) {
-        List<Future> futures = new ArrayList<Future>(size());
+        List<Future> futures = new ArrayList<>(size());
         for (TransactionLogRecord record : recordMap.values()) {
             Future future = invoke(nodeEngine, record, record.newCommitOperation());
             futures.add(future);
@@ -95,8 +94,20 @@ public class TransactionLog {
         return futures;
     }
 
+    public void onCommitSuccess() {
+        for (TransactionLogRecord record : recordMap.values()) {
+            record.onCommitSuccess();
+        }
+    }
+
+    public void onCommitFailure() {
+        for (TransactionLogRecord record : recordMap.values()) {
+            record.onCommitFailure();
+        }
+    }
+
     public List<Future> prepare(NodeEngine nodeEngine) {
-        List<Future> futures = new ArrayList<Future>(size());
+        List<Future> futures = new ArrayList<>(size());
         for (TransactionLogRecord record : recordMap.values()) {
             Future future = invoke(nodeEngine, record, record.newPrepareOperation());
             futures.add(future);
@@ -105,7 +116,7 @@ public class TransactionLog {
     }
 
     public List<Future> rollback(NodeEngine nodeEngine) {
-        List<Future> futures = new ArrayList<Future>(size());
+        List<Future> futures = new ArrayList<>(size());
         for (TransactionLogRecord record : recordMap.values()) {
             Future future = invoke(nodeEngine, record, record.newRollbackOperation());
             futures.add(future);
@@ -143,7 +154,8 @@ public class TransactionLog {
             Address target = ((TargetAwareTransactionLogRecord) record).getTarget();
             operationService.invokeOnTarget(op.getServiceName(), op, target);
         } else {
-            operationService.invokeOnPartitionAsync(op.getServiceName(), op, op.getPartitionId()).whenCompleteAsync(callback);
+            operationService.invokeOnPartitionAsync(op.getServiceName(), op, op.getPartitionId())
+                    .whenCompleteAsync(callback);
         }
     }
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2008-2019, Hazelcast, Inc. All Rights Reserved.
+ * Copyright (c) 2008-2020, Hazelcast, Inc. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -21,7 +21,7 @@ import com.hazelcast.internal.services.ObjectNamespace;
 import com.hazelcast.map.impl.MapContainer;
 import com.hazelcast.map.impl.journal.MapEventJournal;
 import com.hazelcast.map.impl.record.Record;
-import com.hazelcast.nio.serialization.Data;
+import com.hazelcast.internal.serialization.Data;
 
 import javax.annotation.Nonnull;
 
@@ -44,7 +44,7 @@ public class EventJournalWriterMutationObserver implements MutationObserver {
     @Override
     public void onPutRecord(@Nonnull Data key, Record record, Object oldValue, boolean backup) {
         eventJournal.writeAddEvent(eventJournalConfig, objectNamespace,
-                partitionId, record.getKey(), record.getValue());
+                partitionId, key, record.getValue());
     }
 
 
@@ -52,25 +52,25 @@ public class EventJournalWriterMutationObserver implements MutationObserver {
     public void onUpdateRecord(@Nonnull Data key, @Nonnull Record record,
                                Object oldValue, Object newValue, boolean backup) {
         eventJournal.writeUpdateEvent(eventJournalConfig, objectNamespace,
-                partitionId, record.getKey(), oldValue, newValue);
+                partitionId, key, oldValue, newValue);
     }
 
     @Override
     public void onRemoveRecord(Data key, Record record) {
         eventJournal.writeRemoveEvent(eventJournalConfig, objectNamespace,
-                partitionId, record.getKey(), record.getValue());
+                partitionId, key, record.getValue());
     }
 
     @Override
     public void onEvictRecord(Data key, Record record) {
         eventJournal.writeEvictEvent(eventJournalConfig, objectNamespace,
-                partitionId, record.getKey(), record.getValue());
+                partitionId, key, record.getValue());
     }
 
     @Override
     public void onLoadRecord(@Nonnull Data key, @Nonnull Record record, boolean backup) {
         eventJournal.writeLoadEvent(eventJournalConfig, objectNamespace,
-                partitionId, record.getKey(), record.getValue());
+                partitionId, key, record.getValue());
     }
 
     @Override

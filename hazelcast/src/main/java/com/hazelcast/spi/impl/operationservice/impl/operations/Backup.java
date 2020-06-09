@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2008-2019, Hazelcast, Inc. All Rights Reserved.
+ * Copyright (c) 2008-2020, Hazelcast, Inc. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -18,6 +18,7 @@ package com.hazelcast.spi.impl.operationservice.impl.operations;
 
 import com.hazelcast.client.impl.ClientEngine;
 import com.hazelcast.cluster.Address;
+import com.hazelcast.internal.nio.IOUtil;
 import com.hazelcast.internal.partition.InternalPartition;
 import com.hazelcast.internal.partition.InternalPartitionService;
 import com.hazelcast.internal.partition.PartitionReplica;
@@ -28,7 +29,7 @@ import com.hazelcast.internal.util.Clock;
 import com.hazelcast.logging.ILogger;
 import com.hazelcast.nio.ObjectDataInput;
 import com.hazelcast.nio.ObjectDataOutput;
-import com.hazelcast.nio.serialization.Data;
+import com.hazelcast.internal.serialization.Data;
 import com.hazelcast.nio.serialization.IdentifiedDataSerializable;
 import com.hazelcast.spi.impl.AllowedDuringPassiveState;
 import com.hazelcast.spi.impl.NodeEngineImpl;
@@ -43,6 +44,7 @@ import java.io.IOException;
 import java.util.Arrays;
 import java.util.UUID;
 
+import static com.hazelcast.internal.nio.IOUtil.readDataAsObject;
 import static com.hazelcast.spi.impl.operationexecutor.OperationRunner.runDirect;
 import static com.hazelcast.spi.impl.operationservice.OperationResponseHandlerFactory.createEmptyResponseHandler;
 import static com.hazelcast.internal.partition.IPartition.MAX_BACKUP_COUNT;
@@ -194,7 +196,7 @@ public final class Backup extends Operation implements BackupOperation, AllowedD
             operationService.getBackupHandler().notifyBackupComplete(callId);
         } else {
             operationService.getOutboundResponseHandler()
-                    .sendBackupAck(getConnection().getEndpointManager(),
+                    .sendBackupAck(getConnection().getConnectionManager(),
                             originalCaller, callId, backupOp.isUrgent());
         }
     }
@@ -258,7 +260,7 @@ public final class Backup extends Operation implements BackupOperation, AllowedD
             out.writeObject(backupOp);
         } else {
             out.writeBoolean(true);
-            out.writeData(backupOpData);
+            IOUtil.writeData(out, backupOpData);
         }
 
         if (originalCaller == null) {
@@ -287,7 +289,7 @@ public final class Backup extends Operation implements BackupOperation, AllowedD
     @Override
     protected void readInternal(ObjectDataInput in) throws IOException {
         if (in.readBoolean()) {
-            backupOp = in.readDataAsObject();
+            backupOp = readDataAsObject(in);
         } else {
             backupOp = in.readObject();
         }

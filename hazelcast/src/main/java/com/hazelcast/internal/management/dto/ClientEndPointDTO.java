@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2008-2019, Hazelcast, Inc. All Rights Reserved.
+ * Copyright (c) 2008-2020, Hazelcast, Inc. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -21,7 +21,7 @@ import com.hazelcast.internal.json.Json;
 import com.hazelcast.internal.json.JsonArray;
 import com.hazelcast.internal.json.JsonObject;
 import com.hazelcast.internal.json.JsonValue;
-import com.hazelcast.json.JsonSerializable;
+import com.hazelcast.json.internal.JsonSerializable;
 
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
@@ -62,7 +62,7 @@ public class ClientEndPointDTO implements JsonSerializable {
 
     public ClientEndPointDTO(Client client) {
         this.uuid = client.getUuid();
-        this.clientType = client.getClientType().toString();
+        this.clientType = client.getClientType();
         this.name = client.getName();
         this.labels = client.getLabels();
 

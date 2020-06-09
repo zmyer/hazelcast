@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2008-2019, Hazelcast, Inc. All Rights Reserved.
+ * Copyright (c) 2008-2020, Hazelcast, Inc. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -38,14 +38,14 @@ import static com.hazelcast.client.impl.protocol.codec.builtin.FixedSizeTypesCod
  * Each item is a Map.Entry<String, byte[]> in the list.
  * key of entry is full class name, and byte[] is the class definition.
  */
-@Generated("e531e1548f92f856c665ff373cff57e4")
+@Generated("f8c8ce291fb75fb37a8f859816f7a1e8")
 public final class ClientDeployClassesCodec {
-    //hex: 0x000F00
-    public static final int REQUEST_MESSAGE_TYPE = 3840;
-    //hex: 0x000F01
-    public static final int RESPONSE_MESSAGE_TYPE = 3841;
+    //hex: 0x000D00
+    public static final int REQUEST_MESSAGE_TYPE = 3328;
+    //hex: 0x000D01
+    public static final int RESPONSE_MESSAGE_TYPE = 3329;
     private static final int REQUEST_INITIAL_FRAME_SIZE = PARTITION_ID_FIELD_OFFSET + INT_SIZE_IN_BYTES;
-    private static final int RESPONSE_INITIAL_FRAME_SIZE = RESPONSE_BACKUP_ACKS_FIELD_OFFSET + INT_SIZE_IN_BYTES;
+    private static final int RESPONSE_INITIAL_FRAME_SIZE = RESPONSE_BACKUP_ACKS_FIELD_OFFSET + BYTE_SIZE_IN_BYTES;
 
     private ClientDeployClassesCodec() {
     }
@@ -62,10 +62,10 @@ public final class ClientDeployClassesCodec {
     public static ClientMessage encodeRequest(java.util.Collection<java.util.Map.Entry<java.lang.String, byte[]>> classDefinitions) {
         ClientMessage clientMessage = ClientMessage.createForEncode();
         clientMessage.setRetryable(false);
-        clientMessage.setAcquiresResource(false);
         clientMessage.setOperationName("Client.DeployClasses");
         ClientMessage.Frame initialFrame = new ClientMessage.Frame(new byte[REQUEST_INITIAL_FRAME_SIZE], UNFRAGMENTED_MESSAGE);
         encodeInt(initialFrame.content, TYPE_FIELD_OFFSET, REQUEST_MESSAGE_TYPE);
+        encodeInt(initialFrame.content, PARTITION_ID_FIELD_OFFSET, -1);
         clientMessage.add(initialFrame);
         EntryListCodec.encode(clientMessage, classDefinitions, StringCodec::encode, ByteArrayCodec::encode);
         return clientMessage;

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2008-2019, Hazelcast, Inc. All Rights Reserved.
+ * Copyright (c) 2008-2020, Hazelcast, Inc. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -22,7 +22,7 @@ import com.hazelcast.cluster.Address;
 import com.hazelcast.spi.discovery.DiscoveryNode;
 import com.hazelcast.spi.discovery.SimpleDiscoveryNode;
 import com.hazelcast.spi.discovery.integration.DiscoveryService;
-import com.hazelcast.spi.properties.GroupProperty;
+import com.hazelcast.spi.properties.ClusterProperty;
 import com.hazelcast.spi.properties.HazelcastProperties;
 import com.hazelcast.test.HazelcastSerialClassRunner;
 import com.hazelcast.test.TestHazelcastInstanceFactory;
@@ -109,7 +109,7 @@ public class DiscoveryJoinerTest {
         String hostAddress = node.getThisAddress().getInetAddress().getHostAddress();
         node.config.getNetworkConfig().getJoin().getTcpIpConfig().setRequiredMember(hostAddress);
 
-        List<DiscoveryNode> nodes = new ArrayList<DiscoveryNode>();
+        List<DiscoveryNode> nodes = new ArrayList<>();
         nodes.add(new SimpleDiscoveryNode(node.getThisAddress(), node.getThisAddress()));
 
         DiscoveryJoiner joiner = new DiscoveryJoiner(node, service, true);
@@ -125,7 +125,7 @@ public class DiscoveryJoinerTest {
         HazelcastProperties properties = mock(HazelcastProperties.class);
 
         when(node.getProperties()).thenReturn(properties);
-        when(properties.getInteger(GroupProperty.TCP_JOIN_PORT_TRY_COUNT)).thenReturn(0);
+        when(properties.getInteger(ClusterProperty.TCP_JOIN_PORT_TRY_COUNT)).thenReturn(0);
 
         new DiscoveryJoiner(node, service, false);
     }

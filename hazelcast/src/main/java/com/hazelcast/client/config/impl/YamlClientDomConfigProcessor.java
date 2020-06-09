@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2008-2019, Hazelcast, Inc. All Rights Reserved.
+ * Copyright (c) 2008-2020, Hazelcast, Inc. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -26,6 +26,8 @@ import com.hazelcast.config.GlobalSerializerConfig;
 import com.hazelcast.config.ListenerConfig;
 import com.hazelcast.config.SerializationConfig;
 import com.hazelcast.config.SerializerConfig;
+import com.hazelcast.config.security.JaasAuthenticationConfig;
+import com.hazelcast.config.security.RealmConfig;
 import com.hazelcast.config.security.TokenIdentityConfig;
 import com.hazelcast.internal.yaml.YamlMapping;
 import com.hazelcast.internal.yaml.YamlNode;
@@ -290,5 +292,21 @@ public class YamlClientDomConfigProcessor extends ClientDomConfigProcessor {
     protected void handleTokenIdentity(ClientSecurityConfig clientSecurityConfig, Node node) {
         clientSecurityConfig.setTokenIdentityConfig(new TokenIdentityConfig(
                 getTokenEncoding(getAttribute(node, "encoding")), getAttribute(node, "value")));
+    }
+
+    @Override
+    protected void handleRealms(Node node, ClientSecurityConfig clientSecurityConfig) {
+        for (Node child : childElements(node)) {
+            handleRealm(child, clientSecurityConfig);
+        }
+    }
+
+    @Override
+    protected void handleJaasAuthentication(RealmConfig realmConfig, Node node) {
+        JaasAuthenticationConfig jaasAuthenticationConfig = new JaasAuthenticationConfig();
+        for (Node child : childElements(node)) {
+            jaasAuthenticationConfig.addLoginModuleConfig(handleLoginModule(child));
+        }
+        realmConfig.setJaasAuthenticationConfig(jaasAuthenticationConfig);
     }
 }

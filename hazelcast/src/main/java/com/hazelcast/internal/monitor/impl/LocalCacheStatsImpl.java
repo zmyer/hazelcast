@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2008-2019, Hazelcast, Inc. All Rights Reserved.
+ * Copyright (c) 2008-2020, Hazelcast, Inc. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -17,14 +17,26 @@
 package com.hazelcast.internal.monitor.impl;
 
 import com.hazelcast.cache.CacheStatistics;
-import com.hazelcast.internal.json.JsonObject;
 import com.hazelcast.internal.metrics.Probe;
 import com.hazelcast.internal.monitor.LocalCacheStats;
 
+import static com.hazelcast.internal.metrics.MetricDescriptorConstants.CACHE_METRIC_AVERAGE_GET_TIME;
+import static com.hazelcast.internal.metrics.MetricDescriptorConstants.CACHE_METRIC_AVERAGE_PUT_TIME;
+import static com.hazelcast.internal.metrics.MetricDescriptorConstants.CACHE_METRIC_AVERAGE_REMOVAL_TIME;
+import static com.hazelcast.internal.metrics.MetricDescriptorConstants.CACHE_METRIC_CACHE_EVICTIONS;
+import static com.hazelcast.internal.metrics.MetricDescriptorConstants.CACHE_METRIC_CACHE_GETS;
+import static com.hazelcast.internal.metrics.MetricDescriptorConstants.CACHE_METRIC_CACHE_HITS;
+import static com.hazelcast.internal.metrics.MetricDescriptorConstants.CACHE_METRIC_CACHE_HIT_PERCENTAGE;
+import static com.hazelcast.internal.metrics.MetricDescriptorConstants.CACHE_METRIC_CACHE_MISSES;
+import static com.hazelcast.internal.metrics.MetricDescriptorConstants.CACHE_METRIC_CACHE_MISS_PERCENTAGE;
+import static com.hazelcast.internal.metrics.MetricDescriptorConstants.CACHE_METRIC_CACHE_PUTS;
+import static com.hazelcast.internal.metrics.MetricDescriptorConstants.CACHE_METRIC_CACHE_REMOVALS;
+import static com.hazelcast.internal.metrics.MetricDescriptorConstants.CACHE_METRIC_CREATION_TIME;
+import static com.hazelcast.internal.metrics.MetricDescriptorConstants.CACHE_METRIC_LAST_ACCESS_TIME;
+import static com.hazelcast.internal.metrics.MetricDescriptorConstants.CACHE_METRIC_LAST_UPDATE_TIME;
+import static com.hazelcast.internal.metrics.MetricDescriptorConstants.CACHE_METRIC_OWNED_ENTRY_COUNT;
 import static com.hazelcast.internal.metrics.ProbeUnit.MS;
 import static com.hazelcast.internal.metrics.ProbeUnit.PERCENT;
-import static com.hazelcast.internal.util.JsonUtil.getFloat;
-import static com.hazelcast.internal.util.JsonUtil.getLong;
 
 /**
  * Default implementation of {@link com.hazelcast.internal.monitor.LocalCacheStats}
@@ -36,43 +48,42 @@ import static com.hazelcast.internal.util.JsonUtil.getLong;
  * There are no calculations are done in this class, all statistics gathered from
  * {@link com.hazelcast.cache.CacheStatistics}
  * <p>
- * No setter methods are provided, all class fields supposed to be populated either
- * by a {@link com.hazelcast.cache.CacheStatistics} or while deserialization process
- * ({@link #fromJson(com.hazelcast.internal.json.JsonObject)}.
+ * No setter methods are provided, all class fields supposed to be populated by
+ * a {@link com.hazelcast.cache.CacheStatistics}.
  *
  * @see com.hazelcast.cache.CacheStatistics
  */
 public class LocalCacheStatsImpl implements LocalCacheStats {
 
-    @Probe(unit = MS)
+    @Probe(name = CACHE_METRIC_CREATION_TIME, unit = MS)
     private long creationTime;
-    @Probe(unit = MS)
+    @Probe(name = CACHE_METRIC_LAST_ACCESS_TIME, unit = MS)
     private long lastAccessTime;
-    @Probe(unit = MS)
+    @Probe(name = CACHE_METRIC_LAST_UPDATE_TIME, unit = MS)
     private long lastUpdateTime;
-    @Probe
+    @Probe(name = CACHE_METRIC_OWNED_ENTRY_COUNT)
     private long ownedEntryCount;
-    @Probe
+    @Probe(name = CACHE_METRIC_CACHE_HITS)
     private long cacheHits;
-    @Probe(unit = PERCENT)
+    @Probe(name = CACHE_METRIC_CACHE_HIT_PERCENTAGE, unit = PERCENT)
     private float cacheHitPercentage;
-    @Probe
+    @Probe(name = CACHE_METRIC_CACHE_MISSES)
     private long cacheMisses;
-    @Probe(unit = PERCENT)
+    @Probe(name = CACHE_METRIC_CACHE_MISS_PERCENTAGE, unit = PERCENT)
     private float cacheMissPercentage;
-    @Probe
+    @Probe(name = CACHE_METRIC_CACHE_GETS)
     private long cacheGets;
-    @Probe
+    @Probe(name = CACHE_METRIC_CACHE_PUTS)
     private long cachePuts;
-    @Probe
+    @Probe(name = CACHE_METRIC_CACHE_REMOVALS)
     private long cacheRemovals;
-    @Probe
+    @Probe(name = CACHE_METRIC_CACHE_EVICTIONS)
     private long cacheEvictions;
-    @Probe(unit = MS)
+    @Probe(name = CACHE_METRIC_AVERAGE_GET_TIME, unit = MS)
     private float averageGetTime;
-    @Probe(unit = MS)
+    @Probe(name = CACHE_METRIC_AVERAGE_PUT_TIME, unit = MS)
     private float averagePutTime;
-    @Probe(unit = MS)
+    @Probe(name = CACHE_METRIC_AVERAGE_REMOVAL_TIME, unit = MS)
     private float averageRemoveTime;
 
     public LocalCacheStatsImpl() {
@@ -169,46 +180,6 @@ public class LocalCacheStatsImpl implements LocalCacheStats {
     @Override
     public long getCreationTime() {
         return creationTime;
-    }
-
-    @Override
-    public JsonObject toJson() {
-        JsonObject root = new JsonObject();
-        root.add("creationTime", creationTime);
-        root.add("lastAccessTime", lastAccessTime);
-        root.add("lastUpdateTime", lastUpdateTime);
-        root.add("ownedEntryCount", ownedEntryCount);
-        root.add("cacheHits", cacheHits);
-        root.add("cacheHitPercentage", cacheHitPercentage);
-        root.add("cacheMisses", cacheMisses);
-        root.add("cacheMissPercentage", cacheMissPercentage);
-        root.add("cacheGets", cacheGets);
-        root.add("cachePuts", cachePuts);
-        root.add("cacheRemovals", cacheRemovals);
-        root.add("cacheEvictions", cacheEvictions);
-        root.add("averageGetTime", averageGetTime);
-        root.add("averagePutTime", averagePutTime);
-        root.add("averageRemoveTime", averageRemoveTime);
-        return root;
-    }
-
-    @Override
-    public void fromJson(JsonObject json) {
-        creationTime = getLong(json, "creationTime", -1L);
-        lastAccessTime = getLong(json, "lastAccessTime", -1L);
-        lastUpdateTime = getLong(json, "lastUpdateTime", -1L);
-        ownedEntryCount = getLong(json, "ownedEntryCount", -1L);
-        cacheHits = getLong(json, "cacheHits", -1L);
-        cacheHitPercentage = getFloat(json, "cacheHitPercentage", -1f);
-        cacheMisses = getLong(json, "cacheMisses", -1L);
-        cacheMissPercentage = getFloat(json, "cacheMissPercentage", -1f);
-        cacheGets = getLong(json, "cacheGets", -1L);
-        cachePuts = getLong(json, "cachePuts", -1L);
-        cacheRemovals = getLong(json, "cacheRemovals", -1L);
-        cacheEvictions = getLong(json, "cacheEvictions", -1L);
-        averageGetTime = getFloat(json, "averageGetTime", -1f);
-        averagePutTime = getFloat(json, "averagePutTime", -1f);
-        averageRemoveTime = getFloat(json, "averageRemoveTime", -1f);
     }
 
     @Override

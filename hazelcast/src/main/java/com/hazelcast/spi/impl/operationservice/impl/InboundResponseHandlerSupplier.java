@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2008-2019, Hazelcast, Inc. All Rights Reserved.
+ * Copyright (c) 2008-2020, Hazelcast, Inc. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,40 +16,51 @@
 
 package com.hazelcast.spi.impl.operationservice.impl;
 
-import com.hazelcast.internal.metrics.StaticMetricsProvider;
 import com.hazelcast.internal.metrics.MetricsRegistry;
 import com.hazelcast.internal.metrics.Probe;
-import com.hazelcast.internal.util.concurrent.MPSCQueue;
-import com.hazelcast.logging.ILogger;
+import com.hazelcast.internal.metrics.StaticMetricsProvider;
 import com.hazelcast.internal.nio.Packet;
-import com.hazelcast.spi.impl.NodeEngine;
-import com.hazelcast.spi.impl.operationexecutor.OperationHostileThread;
-import com.hazelcast.spi.properties.HazelcastProperties;
-import com.hazelcast.spi.properties.HazelcastProperty;
+import com.hazelcast.internal.util.ThreadAffinity;
 import com.hazelcast.internal.util.MutableInteger;
 import com.hazelcast.internal.util.concurrent.BackoffIdleStrategy;
 import com.hazelcast.internal.util.concurrent.BusySpinIdleStrategy;
 import com.hazelcast.internal.util.concurrent.IdleStrategy;
+import com.hazelcast.internal.util.concurrent.MPSCQueue;
+import com.hazelcast.internal.util.executor.HazelcastManagedThread;
+import com.hazelcast.logging.ILogger;
+import com.hazelcast.spi.impl.NodeEngine;
+import com.hazelcast.spi.impl.operationexecutor.OperationHostileThread;
+import com.hazelcast.spi.properties.ClusterProperty;
+import com.hazelcast.spi.properties.HazelcastProperties;
+import com.hazelcast.spi.properties.HazelcastProperty;
 
 import java.util.concurrent.BlockingQueue;
 import java.util.function.Consumer;
 import java.util.function.Supplier;
 
 import static com.hazelcast.instance.impl.OutOfMemoryErrorDispatcher.inspectOutOfMemoryError;
+import static com.hazelcast.internal.metrics.MetricDescriptorConstants.OPERATION_METRIC_INBOUND_RESPONSE_HANDLER_RESPONSES_BACKUP_COUNT;
+import static com.hazelcast.internal.metrics.MetricDescriptorConstants.OPERATION_METRIC_INBOUND_RESPONSE_HANDLER_RESPONSES_ERROR_COUNT;
+import static com.hazelcast.internal.metrics.MetricDescriptorConstants.OPERATION_METRIC_INBOUND_RESPONSE_HANDLER_RESPONSES_MISSING_COUNT;
+import static com.hazelcast.internal.metrics.MetricDescriptorConstants.OPERATION_METRIC_INBOUND_RESPONSE_HANDLER_RESPONSES_NORMAL_COUNT;
+import static com.hazelcast.internal.metrics.MetricDescriptorConstants.OPERATION_METRIC_INBOUND_RESPONSE_HANDLER_RESPONSES_TIMEOUT_COUNT;
+import static com.hazelcast.internal.metrics.MetricDescriptorConstants.OPERATION_METRIC_INBOUND_RESPONSE_HANDLER_RESPONSE_QUEUE_SIZE;
+import static com.hazelcast.internal.metrics.MetricDescriptorConstants.OPERATION_PREFIX;
 import static com.hazelcast.internal.metrics.ProbeLevel.MANDATORY;
-import static com.hazelcast.spi.properties.GroupProperty.RESPONSE_THREAD_COUNT;
+import static com.hazelcast.internal.util.ThreadAffinity.newSystemThreadAffinity;
 import static com.hazelcast.internal.util.EmptyStatement.ignore;
 import static com.hazelcast.internal.util.HashUtil.hashToIndex;
 import static com.hazelcast.internal.util.ThreadUtil.createThreadName;
 import static com.hazelcast.internal.util.concurrent.BackoffIdleStrategy.createBackoffIdleStrategy;
+import static com.hazelcast.spi.properties.ClusterProperty.RESPONSE_THREAD_COUNT;
 import static java.util.concurrent.TimeUnit.MICROSECONDS;
 import static java.util.concurrent.TimeUnit.NANOSECONDS;
 
 /**
  * A {@link Supplier} responsible for providing a {@link Consumer} that
  * processes inbound responses.
- * <p>
- * Depending on the {@link com.hazelcast.spi.properties.GroupProperty#RESPONSE_THREAD_COUNT}
+ *
+ * Depending on the {@link ClusterProperty#RESPONSE_THREAD_COUNT}
  * it will return the appropriate response handler:
  * <ol>
  * <li>a 'sync' response handler that doesn't offload to a different thread and
@@ -61,16 +72,15 @@ import static java.util.concurrent.TimeUnit.NANOSECONDS;
  * </ol>
  * Having multiple threads processing responses improves performance and
  * stability of the throughput.
- * <p>
+ *
  * In case of asynchronous response processing, the response is put in the
  * responseQueue of the ResponseThread. Then the ResponseThread takes it from
  * this responseQueue and calls a {@link Consumer} for the actual processing.
- * <p>
+ *
  * The reason that the IO thread doesn't immediately deal with the response is that
  * dealing with the response and especially notifying the invocation future can be
  * very expensive.
  */
-//FGTODO: 2019/11/26 下午6:04 zmyer
 public class InboundResponseHandlerSupplier implements StaticMetricsProvider, Supplier<Consumer<Packet>> {
 
     public static final HazelcastProperty IDLE_STRATEGY
@@ -91,7 +101,9 @@ public class InboundResponseHandlerSupplier implements StaticMetricsProvider, Su
     private final NodeEngine nodeEngine;
     private final InvocationRegistry invocationRegistry;
     private final HazelcastProperties properties;
+    private final ThreadAffinity threadAffinity = newSystemThreadAffinity("hazelcast.operation.response.thread.affinity");
 
+    @SuppressWarnings("checkstyle:executablestatementcount")
     InboundResponseHandlerSupplier(ClassLoader classLoader,
                                    InvocationRegistry invocationRegistry,
                                    String hzName,
@@ -101,6 +113,9 @@ public class InboundResponseHandlerSupplier implements StaticMetricsProvider, Su
         this.logger = nodeEngine.getLogger(InboundResponseHandlerSupplier.class);
         this.properties = nodeEngine.getProperties();
         int responseThreadCount = properties.getInteger(RESPONSE_THREAD_COUNT);
+        if (threadAffinity.isEnabled()) {
+            responseThreadCount = threadAffinity.getThreadCount();
+        }
         if (responseThreadCount < 0) {
             throw new IllegalArgumentException(RESPONSE_THREAD_COUNT.getName() + " can't be smaller than 0");
         }
@@ -133,7 +148,7 @@ public class InboundResponseHandlerSupplier implements StaticMetricsProvider, Su
         return inboundResponseHandlers[0];
     }
 
-    @Probe(level = MANDATORY)
+    @Probe(name = OPERATION_METRIC_INBOUND_RESPONSE_HANDLER_RESPONSE_QUEUE_SIZE, level = MANDATORY)
     public int responseQueueSize() {
         int result = 0;
         for (ResponseThread responseThread : responseThreads) {
@@ -142,7 +157,7 @@ public class InboundResponseHandlerSupplier implements StaticMetricsProvider, Su
         return result;
     }
 
-    @Probe(name = "responses.normalCount", level = MANDATORY)
+    @Probe(name = OPERATION_METRIC_INBOUND_RESPONSE_HANDLER_RESPONSES_NORMAL_COUNT, level = MANDATORY)
     long responsesNormal() {
         long result = 0;
         for (InboundResponseHandler handler : inboundResponseHandlers) {
@@ -151,7 +166,7 @@ public class InboundResponseHandlerSupplier implements StaticMetricsProvider, Su
         return result;
     }
 
-    @Probe(name = "responses.timeoutCount", level = MANDATORY)
+    @Probe(name = OPERATION_METRIC_INBOUND_RESPONSE_HANDLER_RESPONSES_TIMEOUT_COUNT, level = MANDATORY)
     long responsesTimeout() {
         long result = 0;
         for (InboundResponseHandler handler : inboundResponseHandlers) {
@@ -160,7 +175,7 @@ public class InboundResponseHandlerSupplier implements StaticMetricsProvider, Su
         return result;
     }
 
-    @Probe(name = "responses.backupCount", level = MANDATORY)
+    @Probe(name = OPERATION_METRIC_INBOUND_RESPONSE_HANDLER_RESPONSES_BACKUP_COUNT, level = MANDATORY)
     long responsesBackup() {
         long result = 0;
         for (InboundResponseHandler handler : inboundResponseHandlers) {
@@ -169,7 +184,7 @@ public class InboundResponseHandlerSupplier implements StaticMetricsProvider, Su
         return result;
     }
 
-    @Probe(name = "responses.errorCount", level = MANDATORY)
+    @Probe(name = OPERATION_METRIC_INBOUND_RESPONSE_HANDLER_RESPONSES_ERROR_COUNT, level = MANDATORY)
     long responsesError() {
         long result = 0;
         for (InboundResponseHandler handler : inboundResponseHandlers) {
@@ -178,7 +193,7 @@ public class InboundResponseHandlerSupplier implements StaticMetricsProvider, Su
         return result;
     }
 
-    @Probe(name = "responses.missingCount", level = MANDATORY)
+    @Probe(name = OPERATION_METRIC_INBOUND_RESPONSE_HANDLER_RESPONSES_MISSING_COUNT, level = MANDATORY)
     long responsesMissing() {
         long result = 0;
         for (InboundResponseHandler handler : inboundResponseHandlers) {
@@ -189,7 +204,7 @@ public class InboundResponseHandlerSupplier implements StaticMetricsProvider, Su
 
     @Override
     public void provideStaticMetrics(MetricsRegistry registry) {
-        registry.registerStaticMetrics(this, "operation");
+        registry.registerStaticMetrics(this, OPERATION_PREFIX);
     }
 
     @Override
@@ -250,7 +265,7 @@ public class InboundResponseHandlerSupplier implements StaticMetricsProvider, Su
      * The ResponseThread needs to implement the OperationHostileThread interface to make sure that the OperationExecutor
      * is not going to schedule any operations on this task due to retry.
      */
-    private final class ResponseThread extends Thread implements OperationHostileThread {
+    private final class ResponseThread extends HazelcastManagedThread implements OperationHostileThread {
 
         private final BlockingQueue<Packet> responseQueue;
         private final InboundResponseHandler inboundResponseHandler;
@@ -260,10 +275,11 @@ public class InboundResponseHandlerSupplier implements StaticMetricsProvider, Su
             super(createThreadName(hzName, "response-" + threadIndex));
             this.inboundResponseHandler = new InboundResponseHandler(invocationRegistry, nodeEngine);
             this.responseQueue = new MPSCQueue<>(this, getIdleStrategy(properties, IDLE_STRATEGY));
+            this.setThreadAffinity(threadAffinity);
         }
 
         @Override
-        public void run() {
+        public void executeRun() {
             try {
                 doRun();
             } catch (InterruptedException e) {

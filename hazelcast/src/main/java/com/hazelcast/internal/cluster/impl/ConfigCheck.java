@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2008-2019, Hazelcast, Inc. All Rights Reserved.
+ * Copyright (c) 2008-2020, Hazelcast, Inc. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -26,7 +26,7 @@ import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map;
 
-import static com.hazelcast.spi.properties.GroupProperty.PARTITION_COUNT;
+import static com.hazelcast.spi.properties.ClusterProperty.PARTITION_COUNT;
 import static com.hazelcast.internal.util.EmptyStatement.ignore;
 import static com.hazelcast.internal.util.MapUtil.createHashMap;
 
@@ -81,12 +81,12 @@ public final class ConfigCheck implements IdentifiedDataSerializable {
      * Checks if two Hazelcast configurations are compatible.
      *
      * @param found the {@link ConfigCheck} to compare this to
-     * @return true if compatible. False if part of another group.
+     * @return true if compatible. False if part of another cluster.
      * @throws ConfigMismatchException if the configuration is not compatible.
      *                                 An exception is thrown so we can pass a nice message.
      */
     public boolean isCompatible(ConfigCheck found) {
-        // check group-properties.
+        // check cluster properties.
         if (!equals(clusterName, found.clusterName)) {
             return false;
         }

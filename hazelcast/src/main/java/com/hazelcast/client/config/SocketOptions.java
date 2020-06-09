@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2008-2019, Hazelcast, Inc. All Rights Reserved.
+ * Copyright (c) 2008-2020, Hazelcast, Inc. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -70,8 +70,8 @@ public class SocketOptions {
     /**
      * Enable/disable TCP_NODELAY socket option.
      *
-     * @param tcpNoDelay
-     * @return
+     * @param tcpNoDelay the TCP_NODELAY socket option
+     * @return SocketOptions configured
      */
     public SocketOptions setTcpNoDelay(boolean tcpNoDelay) {
         this.tcpNoDelay = tcpNoDelay;

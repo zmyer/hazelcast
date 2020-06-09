@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2008-2019, Hazelcast, Inc. All Rights Reserved.
+ * Copyright (c) 2008-2020, Hazelcast, Inc. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -20,13 +20,15 @@ import com.hazelcast.config.Config;
 import com.hazelcast.core.HazelcastInstance;
 import com.hazelcast.cp.internal.HazelcastRaftTestSupport;
 import com.hazelcast.cp.internal.RaftGroupId;
-import com.hazelcast.spi.properties.GroupProperty;
+import com.hazelcast.spi.properties.ClusterProperty;
 import com.hazelcast.test.HazelcastParallelClassRunner;
 import com.hazelcast.test.annotation.ParallelJVMTest;
 import com.hazelcast.test.annotation.QuickTest;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
+
+import static com.hazelcast.test.Accessors.getNodeEngineImpl;
 
 @RunWith(HazelcastParallelClassRunner.class)
 @Category({QuickTest.class, ParallelJVMTest.class})
@@ -35,7 +37,7 @@ public class UnsafeSessionMigrationTest extends HazelcastRaftTestSupport {
     @Test
     public void whenPartitionIsMigrated_thenSessionInformationShouldMigrate() {
         Config config = new Config();
-        config.setProperty(GroupProperty.PARTITION_COUNT.getName(), "2");
+        config.setProperty(ClusterProperty.PARTITION_COUNT.getName(), "2");
 
         HazelcastInstance hz1 = factory.newHazelcastInstance(config);
         RaftGroupId group1 = getRaftService(hz1).createRaftGroupForProxy(generateName(hz1, 0));

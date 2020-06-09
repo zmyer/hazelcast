@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2008-2019, Hazelcast, Inc. All Rights Reserved.
+ * Copyright (c) 2008-2020, Hazelcast, Inc. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -18,8 +18,8 @@ package com.hazelcast.client.io;
 
 import com.hazelcast.client.HazelcastClient;
 import com.hazelcast.client.config.ClientConfig;
+import com.hazelcast.cluster.Address;
 import com.hazelcast.cluster.Member;
-import com.hazelcast.cluster.MemberAttributeEvent;
 import com.hazelcast.cluster.MembershipEvent;
 import com.hazelcast.cluster.MembershipListener;
 import com.hazelcast.config.Config;
@@ -27,8 +27,8 @@ import com.hazelcast.config.ServerSocketEndpointConfig;
 import com.hazelcast.core.Hazelcast;
 import com.hazelcast.core.HazelcastInstance;
 import com.hazelcast.core.HazelcastInstanceAware;
+import com.hazelcast.instance.EndpointQualifier;
 import com.hazelcast.map.IMap;
-import com.hazelcast.cluster.Address;
 import com.hazelcast.partition.Partition;
 import com.hazelcast.scheduledexecutor.IScheduledExecutorService;
 import com.hazelcast.scheduledexecutor.IScheduledFuture;
@@ -57,6 +57,7 @@ import static com.hazelcast.test.HazelcastTestSupport.assertTrueEventually;
 import static com.hazelcast.test.HazelcastTestSupport.smallInstanceConfig;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertTrue;
 
 @RunWith(HazelcastSerialClassRunner.class)
 @Category(QuickTest.class)
@@ -111,6 +112,16 @@ public class AdvancedNetworkClientIntegrationTest {
     }
 
     @Test
+    public void testClientViewOfAddressMap() {
+        client = HazelcastClient.newHazelcastClient(getClientConfig());
+        for (Member member: client.getCluster().getMembers()) {
+            assertEquals(member.getAddress(), member.getAddressMap().get(CLIENT));
+            int memberPort = member.getAddressMap().get(EndpointQualifier.MEMBER).getPort();
+            assertTrue("member address port is between 5700 and 6000", 5700  <= memberPort && memberPort <= 6000);
+        }
+    }
+
+    @Test
     public void testClientMembershipEvent() {
         client = HazelcastClient.newHazelcastClient(getClientConfig());
         AtomicReference<Member> memberAdded = new AtomicReference<>();
@@ -128,10 +139,6 @@ public class AdvancedNetworkClientIntegrationTest {
                 memberRemoved.set(membershipEvent.getMember());
             }
 
-            @Override
-            public void memberAttributeChanged(MemberAttributeEvent memberAttributeEvent) {
-
-            }
         });
 
         instances[2].shutdown();
@@ -155,8 +162,11 @@ public class AdvancedNetworkClientIntegrationTest {
         for (Partition partition : partitions) {
             Partition memberPartition = memberPartitions.next();
             assertEquals(memberPartition.getPartitionId(), partition.getPartitionId());
-            assertEquals(memberPartition.getOwner().getAddressMap().get(CLIENT),
-                        partition.getOwner().getAddress());
+            assertTrueEventually(() -> {
+                Member owner = partition.getOwner();
+                assertNotNull(owner);
+                assertEquals(memberPartition.getOwner().getAddressMap().get(CLIENT), owner.getAddress());
+            });
         }
     }
 
@@ -185,7 +195,7 @@ public class AdvancedNetworkClientIntegrationTest {
         IScheduledFuture<Address> future = executorService.scheduleOnMember(new ReportExecutionMember(),
                 targetMember, 3, TimeUnit.SECONDS);
 
-        assertEquals(targetMember.getAddress(), future.getHandler().getAddress());
+        assertEquals(targetMember.getUuid(), future.getHandler().getUuid());
 
         Address clusterMemberAddress = null;
         for (HazelcastInstance instance : instances) {

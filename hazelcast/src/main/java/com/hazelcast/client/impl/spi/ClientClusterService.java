@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2008-2019, Hazelcast, Inc. All Rights Reserved.
+ * Copyright (c) 2008-2020, Hazelcast, Inc. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -17,10 +17,10 @@
 package com.hazelcast.client.impl.spi;
 
 import com.hazelcast.client.Client;
+import com.hazelcast.cluster.Address;
 import com.hazelcast.cluster.Member;
 import com.hazelcast.cluster.MemberSelector;
 import com.hazelcast.cluster.MembershipListener;
-import com.hazelcast.cluster.Address;
 
 import javax.annotation.Nonnull;
 import java.util.Collection;
@@ -37,14 +37,6 @@ public interface ClientClusterService {
      * @return The client interface representing the local client.
      */
     Client getLocalClient();
-
-    /**
-     * Gets the member for the given address.
-     *
-     * @param address The address of the member to look up.
-     * @return The member that was found, or null if not found. If address is null, null is returned.
-     */
-    Member getMember(Address address);
 
     /**
      * Gets the member with the given UUID.
@@ -74,7 +66,7 @@ public interface ClientClusterService {
      *
      * @return The address of the master member. Could be null if the master is not yet known.
      */
-    Address getMasterAddress();
+    Member getMasterMember();
 
     /**
      * Gets the current number of members.
@@ -82,14 +74,6 @@ public interface ClientClusterService {
      * @return The current number of members.
      */
     int getSize();
-
-    /**
-     * Gets the number of members that satisfy the given {@link MemberSelector} instance.
-     *
-     * @param selector {@link MemberSelector} instance that filters members to be counted.
-     * @return the number of members that satisfy the given {@link MemberSelector} instance.
-     */
-    int getSize(@Nonnull MemberSelector selector);
 
     /**
      * Returns the cluster-time.
@@ -110,6 +94,4 @@ public interface ClientClusterService {
      * @return true if successfully removed, false otherwise.
      */
     boolean removeMembershipListener(@Nonnull UUID registrationId);
-
-    void reset();
 }

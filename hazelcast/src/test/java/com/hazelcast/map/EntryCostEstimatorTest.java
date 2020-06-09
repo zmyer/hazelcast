@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2008-2019, Hazelcast, Inc. All Rights Reserved.
+ * Copyright (c) 2008-2020, Hazelcast, Inc. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -43,7 +43,7 @@ public class EntryCostEstimatorTest
     // (without taking into account 8 references to key, record and value objects)
     private static final int JVM_INDEPENDENT_ENTRY_COST_IN_BYTES = 100;
     // JVM-dependent total cost of entry
-    private static final int ENTRY_COST_IN_BYTES = JVM_INDEPENDENT_ENTRY_COST_IN_BYTES + 9 * REFERENCE_COST_IN_BYTES;
+    private static final int ENTRY_COST_IN_BYTES = JVM_INDEPENDENT_ENTRY_COST_IN_BYTES + 8 * REFERENCE_COST_IN_BYTES;
 
     @Test
     public void smoke() {

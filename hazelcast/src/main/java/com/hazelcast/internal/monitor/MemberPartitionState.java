@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2008-2019, Hazelcast, Inc. All Rights Reserved.
+ * Copyright (c) 2008-2020, Hazelcast, Inc. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,7 +16,7 @@
 
 package com.hazelcast.internal.monitor;
 
-import com.hazelcast.json.JsonSerializable;
+import com.hazelcast.json.internal.JsonSerializable;
 
 import java.util.List;
 
@@ -39,11 +39,4 @@ public interface MemberPartitionState extends JsonSerializable {
      * @return {@code true} if member is safe for shutdown, {@code false} otherwise
      */
     boolean isMemberStateSafe();
-
-    /**
-     * Returns the migration queue size (this statistic is valid only for master).
-     *
-     * @return migration queue size
-     */
-    long getMigrationQueueSize();
 }

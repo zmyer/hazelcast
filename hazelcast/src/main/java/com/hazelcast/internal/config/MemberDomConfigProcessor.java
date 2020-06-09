@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2008-2019, Hazelcast, Inc. All Rights Reserved.
+ * Copyright (c) 2008-2020, Hazelcast, Inc. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -28,7 +28,6 @@ import com.hazelcast.config.CardinalityEstimatorConfig;
 import com.hazelcast.config.Config;
 import com.hazelcast.config.ConsistencyCheckStrategy;
 import com.hazelcast.config.CredentialsFactoryConfig;
-import com.hazelcast.config.CustomWanPublisherConfig;
 import com.hazelcast.config.DiscoveryConfig;
 import com.hazelcast.config.DiscoveryStrategyConfig;
 import com.hazelcast.config.DurableExecutorConfig;
@@ -53,8 +52,6 @@ import com.hazelcast.config.JavaKeyStoreSecureStoreConfig;
 import com.hazelcast.config.JoinConfig;
 import com.hazelcast.config.ListConfig;
 import com.hazelcast.config.ListenerConfig;
-import com.hazelcast.config.LoginModuleConfig;
-import com.hazelcast.config.MCMutualAuthConfig;
 import com.hazelcast.config.ManagementCenterConfig;
 import com.hazelcast.config.MapConfig;
 import com.hazelcast.config.MapPartitionLostListenerConfig;
@@ -67,6 +64,8 @@ import com.hazelcast.config.MergePolicyConfig;
 import com.hazelcast.config.MerkleTreeConfig;
 import com.hazelcast.config.MetadataPolicy;
 import com.hazelcast.config.MetricsConfig;
+import com.hazelcast.config.MetricsJmxConfig;
+import com.hazelcast.config.MetricsManagementCenterConfig;
 import com.hazelcast.config.MultiMapConfig;
 import com.hazelcast.config.MulticastConfig;
 import com.hazelcast.config.NearCacheConfig;
@@ -99,8 +98,6 @@ import com.hazelcast.config.SecurityConfig;
 import com.hazelcast.config.SecurityInterceptorConfig;
 import com.hazelcast.config.SerializationConfig;
 import com.hazelcast.config.ServerSocketEndpointConfig;
-import com.hazelcast.config.ServiceConfig;
-import com.hazelcast.config.ServicesConfig;
 import com.hazelcast.config.SetConfig;
 import com.hazelcast.config.SocketInterceptorConfig;
 import com.hazelcast.config.SplitBrainProtectionConfig;
@@ -109,11 +106,13 @@ import com.hazelcast.config.SplitBrainProtectionListenerConfig;
 import com.hazelcast.config.SymmetricEncryptionConfig;
 import com.hazelcast.config.TcpIpConfig;
 import com.hazelcast.config.TopicConfig;
+import com.hazelcast.config.TrustedInterfacesConfigurable;
 import com.hazelcast.config.UserCodeDeploymentConfig;
 import com.hazelcast.config.VaultSecureStoreConfig;
 import com.hazelcast.config.WanAcknowledgeType;
-import com.hazelcast.config.WanBatchReplicationPublisherConfig;
+import com.hazelcast.config.WanBatchPublisherConfig;
 import com.hazelcast.config.WanConsumerConfig;
+import com.hazelcast.config.WanCustomPublisherConfig;
 import com.hazelcast.config.WanQueueFullBehavior;
 import com.hazelcast.config.WanReplicationConfig;
 import com.hazelcast.config.WanReplicationRef;
@@ -122,7 +121,9 @@ import com.hazelcast.config.cp.CPSubsystemConfig;
 import com.hazelcast.config.cp.FencedLockConfig;
 import com.hazelcast.config.cp.RaftAlgorithmConfig;
 import com.hazelcast.config.cp.SemaphoreConfig;
-import com.hazelcast.config.security.JaasAuthenticationConfig;
+import com.hazelcast.config.security.AbstractClusterLoginConfig;
+import com.hazelcast.config.security.KerberosAuthenticationConfig;
+import com.hazelcast.config.security.KerberosIdentityConfig;
 import com.hazelcast.config.security.LdapAuthenticationConfig;
 import com.hazelcast.config.security.RealmConfig;
 import com.hazelcast.config.security.TlsAuthenticationConfig;
@@ -130,10 +131,7 @@ import com.hazelcast.config.security.TokenEncoding;
 import com.hazelcast.config.security.TokenIdentityConfig;
 import com.hazelcast.core.HazelcastException;
 import com.hazelcast.instance.ProtocolType;
-import com.hazelcast.internal.metrics.ProbeLevel;
-import com.hazelcast.internal.nio.ClassLoaderUtil;
-import com.hazelcast.internal.services.ServiceConfigurationParser;
-import com.hazelcast.internal.util.ExceptionUtil;
+import com.hazelcast.internal.util.StringUtil;
 import com.hazelcast.logging.ILogger;
 import com.hazelcast.logging.Logger;
 import com.hazelcast.query.impl.IndexUtils;
@@ -149,7 +147,6 @@ import java.lang.reflect.Method;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.HashSet;
-import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
@@ -195,7 +192,6 @@ import static com.hazelcast.internal.config.ConfigSections.RINGBUFFER;
 import static com.hazelcast.internal.config.ConfigSections.SCHEDULED_EXECUTOR_SERVICE;
 import static com.hazelcast.internal.config.ConfigSections.SECURITY;
 import static com.hazelcast.internal.config.ConfigSections.SERIALIZATION;
-import static com.hazelcast.internal.config.ConfigSections.SERVICES;
 import static com.hazelcast.internal.config.ConfigSections.SET;
 import static com.hazelcast.internal.config.ConfigSections.SPLIT_BRAIN_PROTECTION;
 import static com.hazelcast.internal.config.ConfigSections.TOPIC;
@@ -281,8 +277,6 @@ public class MemberDomConfigProcessor extends AbstractDomConfigProcessor {
             handleDurableExecutor(node);
         } else if (SCHEDULED_EXECUTOR_SERVICE.isEqual(nodeName)) {
             handleScheduledExecutor(node);
-        } else if (SERVICES.isEqual(nodeName)) {
-            handleServices(node);
         } else if (QUEUE.isEqual(nodeName)) {
             handleQueue(node);
         } else if (MAP.isEqual(nodeName)) {
@@ -637,58 +631,6 @@ public class MemberDomConfigProcessor extends AbstractDomConfigProcessor {
         return splitBrainProtectionConfigBuilder;
     }
 
-    private void handleServices(Node node) {
-        Node attDefaults = node.getAttributes().getNamedItem("enable-defaults");
-        boolean enableDefaults = attDefaults == null || getBooleanValue(getTextContent(attDefaults));
-        ServicesConfig servicesConfig = config.getServicesConfig();
-        servicesConfig.setEnableDefaults(enableDefaults);
-
-        handleServiceNodes(node, servicesConfig);
-    }
-
-    protected void handleServiceNodes(Node node, ServicesConfig servicesConfig) {
-        for (Node child : childElements(node)) {
-            String nodeName = cleanNodeName(child);
-            if ("service".equals(nodeName)) {
-                ServiceConfig serviceConfig = new ServiceConfig();
-                String enabledValue = getAttribute(child, "enabled");
-                boolean enabled = getBooleanValue(enabledValue);
-                serviceConfig.setEnabled(enabled);
-
-                for (Node n : childElements(child)) {
-                    handleServiceNode(n, serviceConfig);
-                }
-                servicesConfig.addServiceConfig(serviceConfig);
-            }
-        }
-    }
-
-    protected void handleServiceNode(Node n, ServiceConfig serviceConfig) {
-        String value = cleanNodeName(n);
-        if ("name".equals(value)) {
-            String name = getTextContent(n);
-            serviceConfig.setName(name);
-        } else if ("class-name".equals(value)) {
-            String className = getTextContent(n);
-            serviceConfig.setClassName(className);
-        } else if ("properties".equals(value)) {
-            fillProperties(n, serviceConfig.getProperties());
-        } else if ("configuration".equals(value)) {
-            Node parserNode = n.getAttributes().getNamedItem("parser");
-            String parserClass = getTextContent(parserNode);
-            if (parserNode == null || parserClass == null) {
-                throw new InvalidConfigurationException("Parser is required!");
-            }
-            try {
-                ServiceConfigurationParser parser = ClassLoaderUtil.newInstance(config.getClassLoader(), parserClass);
-                Object obj = parser.parse((Element) n);
-                serviceConfig.setConfigObject(obj);
-            } catch (Exception e) {
-                ExceptionUtil.sneakyThrow(e);
-            }
-        }
-    }
-
     protected void handleWanReplication(Node node) {
         Node attName = node.getAttributes().getNamedItem("name");
         String name = getTextContent(attName);
@@ -712,10 +654,10 @@ public class MemberDomConfigProcessor extends AbstractDomConfigProcessor {
                                              Node nodeTarget,
                                              String nodeName) {
         if ("batch-publisher".equals(nodeName)) {
-            WanBatchReplicationPublisherConfig config = new WanBatchReplicationPublisherConfig();
+            WanBatchPublisherConfig config = new WanBatchPublisherConfig();
             handleBatchWanPublisherNode(wanReplicationConfig, nodeTarget, config);
         } else if ("custom-publisher".equals(nodeName)) {
-            CustomWanPublisherConfig config = new CustomWanPublisherConfig();
+            WanCustomPublisherConfig config = new WanCustomPublisherConfig();
             handleCustomWanPublisherNode(wanReplicationConfig, nodeTarget, config);
         } else if ("consumer".equals(nodeName)) {
             handleWanConsumerNode(wanReplicationConfig, nodeTarget);
@@ -724,7 +666,7 @@ public class MemberDomConfigProcessor extends AbstractDomConfigProcessor {
 
     void handleCustomWanPublisherNode(WanReplicationConfig wanReplicationConfig,
                                       Node nodeTarget,
-                                      CustomWanPublisherConfig config) {
+                                      WanCustomPublisherConfig config) {
         for (Node targetChild : childElements(nodeTarget)) {
             String targetChildName = cleanNodeName(targetChild);
             if ("properties".equals(targetChildName)) {
@@ -739,7 +681,7 @@ public class MemberDomConfigProcessor extends AbstractDomConfigProcessor {
     }
 
     void handleBatchWanPublisherNode(WanReplicationConfig wanReplicationConfig, Node nodeTarget,
-                                     WanBatchReplicationPublisherConfig config) {
+                                     WanBatchPublisherConfig config) {
         for (Node targetChild : childElements(nodeTarget)) {
             String targetChildName = cleanNodeName(targetChild);
             if ("cluster-name".equals(targetChildName)) {
@@ -782,13 +724,13 @@ public class MemberDomConfigProcessor extends AbstractDomConfigProcessor {
                 handleAliasedDiscoveryStrategy(config, targetChild, targetChildName);
             } else if ("discovery-strategies".equals(targetChildName)) {
                 handleDiscoveryStrategies(config.getDiscoveryConfig(), targetChild);
-            } else if ("wan-sync".equals(targetChildName)) {
-                handleWanSync(config.getWanSyncConfig(), targetChild);
+            } else if ("sync".equals(targetChildName)) {
+                handleWanSync(config.getSyncConfig(), targetChild);
             } else if ("endpoint".equals(targetChildName)) {
                 config.setEndpoint(getTextContent(targetChild));
             }
         }
-        wanReplicationConfig.addWanBatchReplicationPublisherConfig(config);
+        wanReplicationConfig.addBatchReplicationPublisherConfig(config);
     }
 
     void handleWanConsumerNode(WanReplicationConfig wanReplicationConfig, Node nodeTarget) {
@@ -796,7 +738,7 @@ public class MemberDomConfigProcessor extends AbstractDomConfigProcessor {
         for (Node targetChild : childElements(nodeTarget)) {
             handleWanConsumerConfig(consumerConfig, targetChild);
         }
-        wanReplicationConfig.setWanConsumerConfig(consumerConfig);
+        wanReplicationConfig.setConsumerConfig(consumerConfig);
     }
 
     private void handleWanSync(WanSyncConfig wanSyncConfig, Node node) {
@@ -1074,6 +1016,8 @@ public class MemberDomConfigProcessor extends AbstractDomConfigProcessor {
                 scheduledExecutorConfig.setMergePolicyConfig(createMergePolicyConfig(child));
             } else if ("capacity".equals(nodeName)) {
                 scheduledExecutorConfig.setCapacity(parseInt(getTextContent(child)));
+            } else if ("capacity-policy".equals(nodeName)) {
+                scheduledExecutorConfig.setCapacityPolicy(ScheduledExecutorConfig.CapacityPolicy.valueOf(getTextContent(child)));
             } else if ("durability".equals(nodeName)) {
                 scheduledExecutorConfig.setDurability(parseInt(getTextContent(child)));
             } else if ("pool-size".equals(nodeName)) {
@@ -1130,10 +1074,16 @@ public class MemberDomConfigProcessor extends AbstractDomConfigProcessor {
                 generatorConfig.setPrefetchCount(Integer.parseInt(value));
             } else if ("prefetch-validity-millis".equalsIgnoreCase(nodeName)) {
                 generatorConfig.setPrefetchValidityMillis(Long.parseLong(value));
-            } else if ("id-offset".equalsIgnoreCase(nodeName)) {
-                generatorConfig.setIdOffset(Long.parseLong(value));
+            } else if ("epoch-start".equalsIgnoreCase(nodeName)) {
+                generatorConfig.setEpochStart(Long.parseLong(value));
             } else if ("node-id-offset".equalsIgnoreCase(nodeName)) {
                 generatorConfig.setNodeIdOffset(Long.parseLong(value));
+            } else if ("bits-sequence".equalsIgnoreCase(nodeName)) {
+                generatorConfig.setBitsSequence(Integer.parseInt(value));
+            } else if ("bits-node-id".equalsIgnoreCase(nodeName)) {
+                generatorConfig.setBitsNodeId(Integer.parseInt(value));
+            } else if ("allowed-future-millis".equalsIgnoreCase(nodeName)) {
+                generatorConfig.setAllowedFutureMillis(Long.parseLong(value));
             } else if ("statistics-enabled".equals(nodeName)) {
                 generatorConfig.setStatisticsEnabled(getBooleanValue(value));
             }
@@ -1374,7 +1324,7 @@ public class MemberDomConfigProcessor extends AbstractDomConfigProcessor {
         updateConfig(aliasedDiscoveryConfig, node);
     }
 
-    private void handleAliasedDiscoveryStrategy(WanBatchReplicationPublisherConfig publisherConfig,
+    private void handleAliasedDiscoveryStrategy(WanBatchPublisherConfig publisherConfig,
                                                 Node node,
                                                 String tag) {
         AliasedDiscoveryConfig aliasedDiscoveryConfig = getConfigByTag(publisherConfig, tag);
@@ -1393,7 +1343,7 @@ public class MemberDomConfigProcessor extends AbstractDomConfigProcessor {
             }
         }
         for (Node n : childElements(node)) {
-            String key = cleanNodeName(n);
+            String key = cleanNodeName(n, !"eureka".equals(n.getParentNode().getLocalName()));
             String value = getTextContent(n).trim();
             config.setProperty(key, value);
         }
@@ -1433,10 +1383,10 @@ public class MemberDomConfigProcessor extends AbstractDomConfigProcessor {
         }
     }
 
-    protected void handleTrustedInterfaces(MulticastConfig multicastConfig, Node n) {
+    protected void handleTrustedInterfaces(TrustedInterfacesConfigurable<?> tiConfig, Node n) {
         for (Node child : childElements(n)) {
             if ("interface".equals(lowerCaseInternal(cleanNodeName(child)))) {
-                multicastConfig.addTrustedInterface(getTextContent(child).trim());
+                tiConfig.addTrustedInterface(getTextContent(child).trim());
             }
         }
     }
@@ -1732,7 +1682,6 @@ public class MemberDomConfigProcessor extends AbstractDomConfigProcessor {
         }
     }
 
-    @SuppressWarnings("deprecation")
     protected void handleReplicatedMap(Node node) {
         Node attName = node.getAttributes().getNamedItem("name");
         String name = getTextContent(attName);
@@ -1766,7 +1715,6 @@ public class MemberDomConfigProcessor extends AbstractDomConfigProcessor {
         config.addReplicatedMapConfig(replicatedMapConfig);
     }
 
-    @SuppressWarnings("deprecation")
     protected void handleMap(Node parentNode) throws Exception {
         String name = getAttribute(parentNode, "name");
         MapConfig mapConfig = new MapConfig();
@@ -2045,7 +1993,10 @@ public class MemberDomConfigProcessor extends AbstractDomConfigProcessor {
             evictionConfig.setEvictionPolicy(EvictionPolicy.valueOf(upperCaseInternal(getTextContent(evictionPolicy))));
         }
         if (comparatorClassName != null) {
-            evictionConfig.setComparatorClassName(getTextContent(comparatorClassName));
+            String className = getTextContent(comparatorClassName);
+            if (!StringUtil.isNullOrEmptyAfterTrim(className)) {
+                evictionConfig.setComparatorClassName(className);
+            }
         }
 
         try {
@@ -2080,8 +2031,8 @@ public class MemberDomConfigProcessor extends AbstractDomConfigProcessor {
         for (Node wanChild : childElements(n)) {
             String wanChildName = cleanNodeName(wanChild);
             String wanChildValue = getTextContent(wanChild);
-            if ("merge-policy".equals(wanChildName)) {
-                wanReplicationRef.setMergePolicy(wanChildValue);
+            if ("merge-policy-class-name".equals(wanChildName)) {
+                wanReplicationRef.setMergePolicyClassName(wanChildValue);
             } else if ("filters".equals(wanChildName)) {
                 handleWanFilters(wanChild, wanReplicationRef);
             } else if ("republishing-enabled".equals(wanChildName)) {
@@ -2144,8 +2095,8 @@ public class MemberDomConfigProcessor extends AbstractDomConfigProcessor {
         for (Node wanChild : childElements(n)) {
             String wanChildName = cleanNodeName(wanChild);
             String wanChildValue = getTextContent(wanChild);
-            if ("merge-policy".equals(wanChildName)) {
-                wanReplicationRef.setMergePolicy(wanChildValue);
+            if ("merge-policy-class-name".equals(wanChildName)) {
+                wanReplicationRef.setMergePolicyClassName(wanChildValue);
             } else if ("republishing-enabled".equals(wanChildName)) {
                 wanReplicationRef.setRepublishingEnabled(getBooleanValue(wanChildValue));
             } else if ("filters".equals(wanChildName)) {
@@ -2371,25 +2322,6 @@ public class MemberDomConfigProcessor extends AbstractDomConfigProcessor {
     private void handleSSLConfig(Node node, EndpointConfig endpointConfig) {
         SSLConfig sslConfig = parseSslConfig(node);
         endpointConfig.setSSLConfig(sslConfig);
-    }
-
-    private void handleMcMutualAuthConfig(Node node) {
-        MCMutualAuthConfig mcMutualAuthConfig = new MCMutualAuthConfig();
-        NamedNodeMap attributes = node.getAttributes();
-        Node enabledNode = attributes.getNamedItem("enabled");
-        boolean enabled = enabledNode != null && getBooleanValue(getTextContent(enabledNode).trim());
-        mcMutualAuthConfig.setEnabled(enabled);
-
-        for (Node n : childElements(node)) {
-            String nodeName = cleanNodeName(n);
-            if ("factory-class-name".equals(nodeName)) {
-                mcMutualAuthConfig.setFactoryClassName(getTextContent(n).trim());
-            } else if ("properties".equals(nodeName)) {
-                fillProperties(n, mcMutualAuthConfig.getProperties());
-            }
-        }
-
-        config.getManagementCenterConfig().setMutualAuthConfig(mcMutualAuthConfig);
     }
 
     private void handleMemberAddressProvider(Node node, boolean advancedNetworkConfig) {
@@ -2625,51 +2557,20 @@ public class MemberDomConfigProcessor extends AbstractDomConfigProcessor {
     }
 
     private void handleManagementCenterConfig(Node node) {
-        NamedNodeMap attrs = node.getAttributes();
-
-        Node enabledNode = attrs.getNamedItem("enabled");
-        boolean enabled = enabledNode != null && getBooleanValue(getTextContent(enabledNode));
-
-        Node intervalNode = attrs.getNamedItem("update-interval");
-        int interval = intervalNode != null ? getIntegerValue("update-interval",
-                getTextContent(intervalNode)) : ManagementCenterConfig.UPDATE_INTERVAL;
-
         ManagementCenterConfig managementCenterConfig = config.getManagementCenterConfig();
-        managementCenterConfig.setEnabled(enabled);
-        managementCenterConfig.setUpdateInterval(interval);
 
-        Node scriptingEnabledNode = attrs.getNamedItem("scripting-enabled");
+        Node scriptingEnabledNode = node.getAttributes().getNamedItem("scripting-enabled");
         if (scriptingEnabledNode != null) {
             managementCenterConfig.setScriptingEnabled(getBooleanValue(getTextContent(scriptingEnabledNode)));
         }
 
-        handleManagementCenterChildElements(node, managementCenterConfig);
-    }
-
-    private void handleManagementCenterChildElements(Node node, ManagementCenterConfig managementCenterConfig) {
-        // < 3.9 - Backwards compatibility
-        boolean isComplexType = false;
-        List<String> complexTypeElements = Arrays.asList("url", "mutual-auth");
-        for (Node c : childElements(node)) {
-            if (complexTypeElements.contains(c.getNodeName())) {
-                isComplexType = true;
-                break;
+        for (Node n : childElements(node)) {
+            String value = getTextContent(n).trim();
+            if ("trusted-interfaces".equals(cleanNodeName(n))) {
+                handleTrustedInterfaces(managementCenterConfig, n);
             }
         }
 
-        if (!isComplexType) {
-            String url = getTextContent(node);
-            managementCenterConfig.setUrl("".equals(url) ? null : url);
-        } else {
-            for (Node child : childElements(node)) {
-                if ("url".equals(cleanNodeName(child))) {
-                    String url = getTextContent(child);
-                    managementCenterConfig.setUrl(url);
-                } else if ("mutual-auth".equals(cleanNodeName(child))) {
-                    handleMcMutualAuthConfig(child);
-                }
-            }
-        }
     }
 
     private void handleSecurity(Node node) {
@@ -2738,25 +2639,6 @@ public class MemberDomConfigProcessor extends AbstractDomConfigProcessor {
         config.getMemberAttributeConfig().setAttribute(attributeName, value);
     }
 
-    LoginModuleConfig handleLoginModule(Node node) {
-        NamedNodeMap attrs = node.getAttributes();
-        Node classNameNode = attrs.getNamedItem("class-name");
-        String className = getTextContent(classNameNode);
-        Node usageNode = attrs.getNamedItem("usage");
-        LoginModuleConfig.LoginModuleUsage usage =
-                usageNode != null ? LoginModuleConfig.LoginModuleUsage.get(getTextContent(usageNode))
-                        : LoginModuleConfig.LoginModuleUsage.REQUIRED;
-        LoginModuleConfig moduleConfig = new LoginModuleConfig(className, usage);
-        for (Node child : childElements(node)) {
-            String nodeName = cleanNodeName(child);
-            if ("properties".equals(nodeName)) {
-                fillProperties(child, moduleConfig.getProperties());
-                break;
-            }
-        }
-        return moduleConfig;
-    }
-
     private void handlePermissionPolicy(Node node) {
         NamedNodeMap attrs = node.getAttributes();
         Node classNameNode = attrs.getNamedItem("class-name");
@@ -2782,53 +2664,9 @@ public class MemberDomConfigProcessor extends AbstractDomConfigProcessor {
         }
         for (Node child : childElements(node)) {
             String nodeName = cleanNodeName(child);
-            PermissionType type;
-            if ("map-permission".equals(nodeName)) {
-                type = PermissionConfig.PermissionType.MAP;
-            } else if ("queue-permission".equals(nodeName)) {
-                type = PermissionConfig.PermissionType.QUEUE;
-            } else if ("multimap-permission".equals(nodeName)) {
-                type = PermissionConfig.PermissionType.MULTIMAP;
-            } else if ("topic-permission".equals(nodeName)) {
-                type = PermissionConfig.PermissionType.TOPIC;
-            } else if ("list-permission".equals(nodeName)) {
-                type = PermissionConfig.PermissionType.LIST;
-            } else if ("set-permission".equals(nodeName)) {
-                type = PermissionConfig.PermissionType.SET;
-            } else if ("lock-permission".equals(nodeName)) {
-                type = PermissionConfig.PermissionType.LOCK;
-            } else if ("atomic-long-permission".equals(nodeName)) {
-                type = PermissionConfig.PermissionType.ATOMIC_LONG;
-            } else if ("atomic-reference-permission".equals(nodeName)) {
-                type = PermissionConfig.PermissionType.ATOMIC_REFERENCE;
-            } else if ("countdown-latch-permission".equals(nodeName)) {
-                type = PermissionConfig.PermissionType.COUNTDOWN_LATCH;
-            } else if ("semaphore-permission".equals(nodeName)) {
-                type = PermissionConfig.PermissionType.SEMAPHORE;
-            } else if ("flake-id-generator-permission".equals(nodeName)) {
-                type = PermissionConfig.PermissionType.FLAKE_ID_GENERATOR;
-            } else if ("executor-service-permission".equals(nodeName)) {
-                type = PermissionConfig.PermissionType.EXECUTOR_SERVICE;
-            } else if ("transaction-permission".equals(nodeName)) {
-                type = PermissionConfig.PermissionType.TRANSACTION;
-            } else if ("all-permissions".equals(nodeName)) {
-                type = PermissionConfig.PermissionType.ALL;
-            } else if ("durable-executor-service-permission".equals(nodeName)) {
-                type = PermissionConfig.PermissionType.DURABLE_EXECUTOR_SERVICE;
-            } else if ("cardinality-estimator-permission".equals(nodeName)) {
-                type = PermissionConfig.PermissionType.CARDINALITY_ESTIMATOR;
-            } else if ("scheduled-executor-permission".equals(nodeName)) {
-                type = PermissionConfig.PermissionType.SCHEDULED_EXECUTOR;
-            } else if ("pn-counter-permission".equals(nodeName)) {
-                type = PermissionConfig.PermissionType.PN_COUNTER;
-            } else if ("cache-permission".equals(nodeName)) {
-                type = PermissionConfig.PermissionType.CACHE;
-            } else if ("user-code-deployment-permission".equals(nodeName)) {
-                type = PermissionConfig.PermissionType.USER_CODE_DEPLOYMENT;
-            } else if (PermissionConfig.PermissionType.CONFIG.getNodeName().equals(nodeName)) {
-                type = PermissionConfig.PermissionType.CONFIG;
-            } else {
-                continue;
+            PermissionType type = PermissionConfig.PermissionType.getType(nodeName);
+            if (type == null) {
+                throw new InvalidConfigurationException("Security permission type is not valid " + nodeName);
             }
             handleSecurityPermission(child, type);
         }
@@ -3035,26 +2873,52 @@ public class MemberDomConfigProcessor extends AbstractDomConfigProcessor {
             if ("enabled".equals(att.getNodeName())) {
                 boolean enabled = getBooleanValue(getAttribute(node, "enabled"));
                 metricsConfig.setEnabled(enabled);
-            } else if ("mc-enabled".equals(att.getNodeName())) {
-                boolean enabled = getBooleanValue(getAttribute(node, "mc-enabled"));
-                metricsConfig.setMcEnabled(enabled);
-            } else if ("jmx-enabled".equals(att.getNodeName())) {
-                boolean enabled = getBooleanValue(getAttribute(node, "jmx-enabled"));
-                metricsConfig.setJmxEnabled(enabled);
             }
         }
 
         for (Node child : childElements(node)) {
             String nodeName = cleanNodeName(child);
             String value = getTextContent(child).trim();
-            if ("collection-interval-seconds".equals(nodeName)) {
-                metricsConfig.setCollectionIntervalSeconds(Integer.parseInt(value));
-            } else if ("retention-seconds".equals(nodeName)) {
-                metricsConfig.setRetentionSeconds(Integer.parseInt(value));
-            } else if ("metrics-for-data-structures".equals(nodeName)) {
-                metricsConfig.setMetricsForDataStructuresEnabled(Boolean.parseBoolean(value));
-            } else if ("minimum-level".equals(nodeName)) {
-                metricsConfig.setMinimumLevel(ProbeLevel.valueOf(value));
+            if ("management-center".equals(nodeName)) {
+                handleMetricsManagementCenter(child);
+            } else if ("jmx".equals(nodeName)) {
+                handleMetricsJmx(child);
+            } else if ("collection-frequency-seconds".equals(nodeName)) {
+                metricsConfig.setCollectionFrequencySeconds(Integer.parseInt(value));
+            }
+        }
+    }
+
+    private void handleMetricsManagementCenter(Node node) {
+        MetricsManagementCenterConfig managementCenterConfig = config.getMetricsConfig().getManagementCenterConfig();
+
+        NamedNodeMap attributes = node.getAttributes();
+        for (int a = 0; a < attributes.getLength(); a++) {
+            Node att = attributes.item(a);
+            if ("enabled".equals(att.getNodeName())) {
+                boolean enabled = getBooleanValue(getAttribute(node, "enabled"));
+                managementCenterConfig.setEnabled(enabled);
+            }
+
+            for (Node child : childElements(node)) {
+                String nodeName = cleanNodeName(child);
+                String value = getTextContent(child).trim();
+                if ("retention-seconds".equals(nodeName)) {
+                    managementCenterConfig.setRetentionSeconds(Integer.parseInt(value));
+                }
+            }
+        }
+    }
+
+    private void handleMetricsJmx(Node node) {
+        MetricsJmxConfig jmxConfig = config.getMetricsConfig().getJmxConfig();
+
+        NamedNodeMap attributes = node.getAttributes();
+        for (int a = 0; a < attributes.getLength(); a++) {
+            Node att = attributes.item(a);
+            if ("enabled".equals(att.getNodeName())) {
+                boolean enabled = getBooleanValue(getAttribute(node, "enabled"));
+                jmxConfig.setEnabled(enabled);
             }
         }
     }
@@ -3081,7 +2945,9 @@ public class MemberDomConfigProcessor extends AbstractDomConfigProcessor {
             } else if ("tls".contentEquals(nodeName)) {
                 handleTlsAuthentication(realmConfig, child);
             } else if ("ldap".contentEquals(nodeName)) {
-                handleLdapAuthentication(realmConfig, child);
+                realmConfig.setLdapAuthenticationConfig(createLdapAuthentication(child));
+            } else if ("kerberos".contentEquals(nodeName)) {
+                handleKerberosAuthentication(realmConfig, child);
             }
         }
     }
@@ -3095,6 +2961,8 @@ public class MemberDomConfigProcessor extends AbstractDomConfigProcessor {
                 handleCredentialsFactory(realmConfig, child);
             } else if ("token".contentEquals(nodeName)) {
                 handleToken(realmConfig, child);
+            } else if ("kerberos".contentEquals(nodeName)) {
+                handleKerberosIdentity(realmConfig, child);
             }
         }
     }
@@ -3105,9 +2973,27 @@ public class MemberDomConfigProcessor extends AbstractDomConfigProcessor {
         realmConfig.setTokenIdentityConfig(tic);
     }
 
+    protected void handleKerberosIdentity(RealmConfig realmConfig, Node node) {
+        KerberosIdentityConfig kerbIdentity = new KerberosIdentityConfig();
+        for (Node child : childElements(node)) {
+            String nodeName = cleanNodeName(child);
+            if ("realm".equals(nodeName)) {
+                kerbIdentity.setRealm(getTextContent(child));
+            } else if ("security-realm".equals(nodeName)) {
+                kerbIdentity.setSecurityRealm(getTextContent(child));
+            } else if ("service-name-prefix".equals(nodeName)) {
+                kerbIdentity.setServiceNamePrefix(getTextContent(child));
+            } else if ("spn".equals(nodeName)) {
+                kerbIdentity.setSpn(getTextContent(child));
+            }
+        }
+        realmConfig.setKerberosIdentityConfig(kerbIdentity);
+    }
+
     protected void handleTlsAuthentication(RealmConfig realmConfig, Node node) {
         String roleAttribute = getAttribute(node, "roleAttribute");
         TlsAuthenticationConfig tlsCfg = new TlsAuthenticationConfig();
+        fillClusterLoginConfig(tlsCfg, node);
 
         if (roleAttribute != null) {
             tlsCfg.setRoleAttribute(roleAttribute);
@@ -3115,8 +3001,9 @@ public class MemberDomConfigProcessor extends AbstractDomConfigProcessor {
         realmConfig.setTlsAuthenticationConfig(tlsCfg);
     }
 
-    protected void handleLdapAuthentication(RealmConfig realmConfig, Node node) {
+    protected LdapAuthenticationConfig createLdapAuthentication(Node node) {
         LdapAuthenticationConfig ldapCfg = new LdapAuthenticationConfig();
+        fillClusterLoginConfig(ldapCfg, node);
         for (Node child : childElements(node)) {
             String nodeName = cleanNodeName(child);
             if ("url".equals(nodeName)) {
@@ -3145,6 +3032,10 @@ public class MemberDomConfigProcessor extends AbstractDomConfigProcessor {
                 ldapCfg.setSystemUserDn(getTextContent(child));
             } else if ("system-user-password".contentEquals(nodeName)) {
                 ldapCfg.setSystemUserPassword(getTextContent(child));
+            } else if ("system-authentication".contentEquals(nodeName)) {
+                ldapCfg.setSystemAuthentication(getTextContent(child));
+            } else if ("security-realm".contentEquals(nodeName)) {
+                ldapCfg.setSecurityRealm(getTextContent(child));
             } else if ("password-attribute".contentEquals(nodeName)) {
                 ldapCfg.setPasswordAttribute(getTextContent(child));
             } else if ("user-context".contentEquals(nodeName)) {
@@ -3153,20 +3044,27 @@ public class MemberDomConfigProcessor extends AbstractDomConfigProcessor {
                 ldapCfg.setUserFilter(getTextContent(child));
             } else if ("user-search-scope".contentEquals(nodeName)) {
                 ldapCfg.setUserSearchScope(getSearchScope(getTextContent(child)));
+            } else if ("skip-authentication".contentEquals(nodeName)) {
+                ldapCfg.setSkipAuthentication(getBooleanValue(getTextContent(child)));
             }
         }
-        realmConfig.setLdapAuthenticationConfig(ldapCfg);
+        return ldapCfg;
     }
 
-    protected void handleJaasAuthentication(RealmConfig realmConfig, Node node) {
-        JaasAuthenticationConfig jaasAuthenticationConfig = new JaasAuthenticationConfig();
+    protected void handleKerberosAuthentication(RealmConfig realmConfig, Node node) {
+        KerberosAuthenticationConfig krbCfg = new KerberosAuthenticationConfig();
+        fillClusterLoginConfig(krbCfg, node);
         for (Node child : childElements(node)) {
             String nodeName = cleanNodeName(child);
-            if ("login-module".equals(nodeName)) {
-                jaasAuthenticationConfig.addLoginModuleConfig(handleLoginModule(child));
+            if ("relax-flags-check".equals(nodeName)) {
+                krbCfg.setRelaxFlagsCheck(getBooleanValue(getTextContent(child)));
+            } else if ("security-realm".contentEquals(nodeName)) {
+                krbCfg.setSecurityRealm(getTextContent(child));
+            } else if ("ldap".contentEquals(nodeName)) {
+                krbCfg.setLdapAuthenticationConfig(createLdapAuthentication(child));
             }
         }
-        realmConfig.setJaasAuthenticationConfig(jaasAuthenticationConfig);
+        realmConfig.setKerberosAuthenticationConfig(krbCfg);
     }
 
     private void handleCredentialsFactory(RealmConfig realmConfig, Node node) {
@@ -3180,4 +3078,18 @@ public class MemberDomConfigProcessor extends AbstractDomConfigProcessor {
             }
         }
     }
+
+    private void fillClusterLoginConfig(AbstractClusterLoginConfig<?> config, Node node) {
+        for (Node child : childElements(node)) {
+            String nodeName = cleanNodeName(child);
+            if ("skip-identity".equals(nodeName)) {
+                config.setSkipIdentity(getBooleanValue(getTextContent(child)));
+            } else if ("skip-endpoint".equals(nodeName)) {
+                config.setSkipEndpoint(getBooleanValue(getTextContent(child)));
+            } else if ("skip-role".equals(nodeName)) {
+                config.setSkipRole(getBooleanValue(getTextContent(child)));
+            }
+        }
+    }
+
 }

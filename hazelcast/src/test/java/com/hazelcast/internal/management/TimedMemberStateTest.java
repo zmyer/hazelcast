@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2008-2019, Hazelcast, Inc. All Rights Reserved.
+ * Copyright (c) 2008-2020, Hazelcast, Inc. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -20,7 +20,6 @@ import com.hazelcast.cache.ICache;
 import com.hazelcast.cache.impl.CacheService;
 import com.hazelcast.config.CacheSimpleConfig;
 import com.hazelcast.config.Config;
-import com.hazelcast.core.DistributedObject;
 import com.hazelcast.core.HazelcastInstance;
 import com.hazelcast.internal.json.JsonObject;
 import com.hazelcast.internal.monitor.impl.MemberStateImpl;
@@ -36,13 +35,12 @@ import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
 
-import java.util.Collection;
-
 import static com.hazelcast.cache.CacheUtil.getDistributedObjectName;
+import static com.hazelcast.test.Accessors.getHazelcastInstanceImpl;
+import static com.hazelcast.test.Accessors.getNodeEngineImpl;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
-import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 
 @RunWith(HazelcastParallelClassRunner.class)
@@ -73,10 +71,7 @@ public class TimedMemberStateTest extends HazelcastTestSupport {
     public void tearDown() {
         // explicit cleanup is required because the MBean server is static so registrations
         // will be left over when test's HazelcastInstance shuts down
-        Collection<DistributedObject> distributedObjects = hz.getDistributedObjects();
-        for (DistributedObject object : distributedObjects) {
-            object.destroy();
-        }
+        destroyAllDistributedObjects(hz);
     }
 
     @Test
@@ -141,8 +136,8 @@ public class TimedMemberStateTest extends HazelcastTestSupport {
 
         MemberStateImpl memberState = createState().getMemberState();
         for (int i = 0; i < 100; i++) {
-            assertNotNull(memberState.getLocalCacheStats(getDistributedObjectName(CACHE_WITH_STATS_PREFIX + i)));
-            assertNull(memberState.getLocalCacheStats(getDistributedObjectName(CACHE_WITHOUT_STATS_PREFIX + i)));
+            assertContains(memberState.getCachesWithStats(), getDistributedObjectName(CACHE_WITH_STATS_PREFIX + i));
+            assertNotContains(memberState.getCachesWithStats(), getDistributedObjectName(CACHE_WITHOUT_STATS_PREFIX + i));
         }
     }
 

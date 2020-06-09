@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2008-2019, Hazelcast, Inc. All Rights Reserved.
+ * Copyright (c) 2008-2020, Hazelcast, Inc. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -21,6 +21,7 @@ import com.hazelcast.config.CRDTReplicationConfig;
 import com.hazelcast.config.CacheSimpleConfig;
 import com.hazelcast.config.CardinalityEstimatorConfig;
 import com.hazelcast.config.Config;
+import com.hazelcast.config.ConfigAccessor;
 import com.hazelcast.config.ConfigPatternMatcher;
 import com.hazelcast.config.DurableExecutorConfig;
 import com.hazelcast.config.ExecutorConfig;
@@ -45,12 +46,12 @@ import com.hazelcast.config.RingbufferConfig;
 import com.hazelcast.config.ScheduledExecutorConfig;
 import com.hazelcast.config.SecurityConfig;
 import com.hazelcast.config.SerializationConfig;
-import com.hazelcast.config.ServicesConfig;
+import com.hazelcast.config.WanReplicationConfig;
+import com.hazelcast.internal.config.ServicesConfig;
 import com.hazelcast.config.SetConfig;
 import com.hazelcast.config.SplitBrainProtectionConfig;
 import com.hazelcast.config.TopicConfig;
 import com.hazelcast.config.UserCodeDeploymentConfig;
-import com.hazelcast.config.WanReplicationConfig;
 import com.hazelcast.config.cp.CPSubsystemConfig;
 import com.hazelcast.core.ManagedContext;
 import com.hazelcast.internal.config.CacheSimpleConfigReadOnly;
@@ -81,7 +82,7 @@ import java.util.concurrent.ConcurrentMap;
 
 import static com.hazelcast.internal.dynamicconfig.AggregatingMap.aggregate;
 import static com.hazelcast.internal.dynamicconfig.search.ConfigSearch.supplierFor;
-import static com.hazelcast.spi.properties.GroupProperty.SEARCH_DYNAMIC_CONFIG_FIRST;
+import static com.hazelcast.spi.properties.ClusterProperty.SEARCH_DYNAMIC_CONFIG_FIRST;
 
 //FGTODO: 2019/12/5 上午9:45 zmyer
 @SuppressWarnings({"unchecked",
@@ -253,13 +254,17 @@ public class DynamicConfigurationAwareConfig extends Config {
         return this;
     }
 
-    private <T> boolean checkStaticConfigDoesNotExist(Map<String, T> staticConfigurations, String configName, T newConfig) {
+    public <T> boolean checkStaticConfigDoesNotExist(Map<String, T> staticConfigurations, String configName, T newConfig) {
         Object existingConfiguration = staticConfigurations.get(configName);
         if (existingConfiguration != null && !existingConfiguration.equals(newConfig)) {
             throw new InvalidConfigurationException("Cannot add a new dynamic configuration " + newConfig
                     + " as static configuration already contains " + existingConfiguration);
         }
         return existingConfiguration == null;
+    }
+
+    public Config getStaticConfig() {
+        return staticConfig;
     }
 
     @Override
@@ -895,13 +900,8 @@ public class DynamicConfigurationAwareConfig extends Config {
     }
 
     @Override
-    public ServicesConfig getServicesConfig() {
-        return staticConfig.getServicesConfig();
-    }
-
-    @Override
-    public Config setServicesConfig(ServicesConfig servicesConfig) {
-        throw new UnsupportedOperationException("Unsupported operation");
+    protected ServicesConfig getServicesConfig() {
+        return ConfigAccessor.getServicesConfig(staticConfig);
     }
 
     @Override

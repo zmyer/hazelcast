@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2008-2019, Hazelcast, Inc. All Rights Reserved.
+ * Copyright (c) 2008-2020, Hazelcast, Inc. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -24,14 +24,15 @@ import com.hazelcast.client.impl.protocol.task.MessageTask;
 import com.hazelcast.client.impl.protocol.task.NoSuchMessageTask;
 import com.hazelcast.instance.impl.Node;
 import com.hazelcast.internal.nio.Connection;
-import com.hazelcast.spi.impl.NodeEngine;
-import com.hazelcast.spi.impl.NodeEngineImpl;
 import com.hazelcast.internal.util.ExceptionUtil;
 import com.hazelcast.internal.util.ServiceLoader;
 import com.hazelcast.internal.util.collection.Int2ObjectHashMap;
+import com.hazelcast.spi.impl.NodeEngine;
+import com.hazelcast.spi.impl.NodeEngineImpl;
 
 import java.lang.reflect.Constructor;
 import java.util.Iterator;
+import java.util.Map;
 
 //FGTODO: 2019/12/5 上午9:21 zmyer
 public class CompositeMessageTaskFactory implements MessageTaskFactory {
@@ -39,7 +40,7 @@ public class CompositeMessageTaskFactory implements MessageTaskFactory {
 
     private final Node node;
     private final NodeEngine nodeEngine;
-    private final Int2ObjectHashMap<MessageTaskFactory> factories;
+    private final Map<Integer, MessageTaskFactory> factories;
 
     public CompositeMessageTaskFactory(NodeEngine nodeEngine) {
         this.nodeEngine = nodeEngine;
@@ -83,7 +84,6 @@ public class CompositeMessageTaskFactory implements MessageTaskFactory {
         } catch (Exception e) {
             ExceptionUtil.rethrow(e);
         }
-
         return new NoSuchMessageTask(clientMessage, this.node, connection);
     }
 }

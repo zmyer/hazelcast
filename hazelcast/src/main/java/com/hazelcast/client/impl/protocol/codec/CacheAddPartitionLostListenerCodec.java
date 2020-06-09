@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2008-2019, Hazelcast, Inc. All Rights Reserved.
+ * Copyright (c) 2008-2020, Hazelcast, Inc. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -40,21 +40,21 @@ import static com.hazelcast.client.impl.protocol.codec.builtin.FixedSizeTypesCod
  * registrations, so if you register the listener twice, it will get events twice.Listeners registered from
  * HazelcastClient may miss some of the cache partition lost events due to design limitations.
  */
-@Generated("e18d90f725c558746995f19b1287aaf7")
+@Generated("b06b697a6212a1e93182badf746f9ead")
 public final class CacheAddPartitionLostListenerCodec {
-    //hex: 0x131A00
-    public static final int REQUEST_MESSAGE_TYPE = 1251840;
-    //hex: 0x131A01
-    public static final int RESPONSE_MESSAGE_TYPE = 1251841;
+    //hex: 0x131900
+    public static final int REQUEST_MESSAGE_TYPE = 1251584;
+    //hex: 0x131901
+    public static final int RESPONSE_MESSAGE_TYPE = 1251585;
     private static final int REQUEST_LOCAL_ONLY_FIELD_OFFSET = PARTITION_ID_FIELD_OFFSET + INT_SIZE_IN_BYTES;
     private static final int REQUEST_INITIAL_FRAME_SIZE = REQUEST_LOCAL_ONLY_FIELD_OFFSET + BOOLEAN_SIZE_IN_BYTES;
-    private static final int RESPONSE_RESPONSE_FIELD_OFFSET = RESPONSE_BACKUP_ACKS_FIELD_OFFSET + INT_SIZE_IN_BYTES;
+    private static final int RESPONSE_RESPONSE_FIELD_OFFSET = RESPONSE_BACKUP_ACKS_FIELD_OFFSET + BYTE_SIZE_IN_BYTES;
     private static final int RESPONSE_INITIAL_FRAME_SIZE = RESPONSE_RESPONSE_FIELD_OFFSET + UUID_SIZE_IN_BYTES;
     private static final int EVENT_CACHE_PARTITION_LOST_PARTITION_ID_FIELD_OFFSET = PARTITION_ID_FIELD_OFFSET + INT_SIZE_IN_BYTES;
     private static final int EVENT_CACHE_PARTITION_LOST_UUID_FIELD_OFFSET = EVENT_CACHE_PARTITION_LOST_PARTITION_ID_FIELD_OFFSET + INT_SIZE_IN_BYTES;
     private static final int EVENT_CACHE_PARTITION_LOST_INITIAL_FRAME_SIZE = EVENT_CACHE_PARTITION_LOST_UUID_FIELD_OFFSET + UUID_SIZE_IN_BYTES;
-    //hex: 0x131A02
-    private static final int EVENT_CACHE_PARTITION_LOST_MESSAGE_TYPE = 1251842;
+    //hex: 0x131902
+    private static final int EVENT_CACHE_PARTITION_LOST_MESSAGE_TYPE = 1251586;
 
     private CacheAddPartitionLostListenerCodec() {
     }
@@ -77,10 +77,10 @@ public final class CacheAddPartitionLostListenerCodec {
     public static ClientMessage encodeRequest(java.lang.String name, boolean localOnly) {
         ClientMessage clientMessage = ClientMessage.createForEncode();
         clientMessage.setRetryable(false);
-        clientMessage.setAcquiresResource(false);
         clientMessage.setOperationName("Cache.AddPartitionLostListener");
         ClientMessage.Frame initialFrame = new ClientMessage.Frame(new byte[REQUEST_INITIAL_FRAME_SIZE], UNFRAGMENTED_MESSAGE);
         encodeInt(initialFrame.content, TYPE_FIELD_OFFSET, REQUEST_MESSAGE_TYPE);
+        encodeInt(initialFrame.content, PARTITION_ID_FIELD_OFFSET, -1);
         encodeBoolean(initialFrame.content, REQUEST_LOCAL_ONLY_FIELD_OFFSET, localOnly);
         clientMessage.add(initialFrame);
         StringCodec.encode(clientMessage, name);
@@ -128,6 +128,7 @@ public final class CacheAddPartitionLostListenerCodec {
         ClientMessage.Frame initialFrame = new ClientMessage.Frame(new byte[EVENT_CACHE_PARTITION_LOST_INITIAL_FRAME_SIZE], UNFRAGMENTED_MESSAGE);
         initialFrame.flags |= ClientMessage.IS_EVENT_FLAG;
         encodeInt(initialFrame.content, TYPE_FIELD_OFFSET, EVENT_CACHE_PARTITION_LOST_MESSAGE_TYPE);
+        encodeInt(initialFrame.content, PARTITION_ID_FIELD_OFFSET, -1);
         encodeInt(initialFrame.content, EVENT_CACHE_PARTITION_LOST_PARTITION_ID_FIELD_OFFSET, partitionId);
         encodeUUID(initialFrame.content, EVENT_CACHE_PARTITION_LOST_UUID_FIELD_OFFSET, uuid);
         clientMessage.add(initialFrame);
@@ -149,6 +150,11 @@ public final class CacheAddPartitionLostListenerCodec {
             }
             Logger.getLogger(super.getClass()).finest("Unknown message type received on event handler :" + messageType);
         }
+
+        /**
+         * @param partitionId Id of the lost partition.
+         * @param uuid UUID of the member that owns the lost partition.
+        */
         public abstract void handleCachePartitionLostEvent(int partitionId, java.util.UUID uuid);
     }
 }

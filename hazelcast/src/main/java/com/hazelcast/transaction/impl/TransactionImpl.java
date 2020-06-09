@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2008-2019, Hazelcast, Inc. All Rights Reserved.
+ * Copyright (c) 2008-2020, Hazelcast, Inc. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,15 +16,16 @@
 
 package com.hazelcast.transaction.impl;
 
+import com.hazelcast.cluster.Address;
 import com.hazelcast.core.HazelcastInstanceNotActiveException;
 import com.hazelcast.core.MemberLeftException;
 import com.hazelcast.internal.cluster.ClusterService;
+import com.hazelcast.internal.util.FutureUtil.ExceptionHandler;
 import com.hazelcast.logging.ILogger;
-import com.hazelcast.cluster.Address;
+import com.hazelcast.spi.exception.TargetNotMemberException;
 import com.hazelcast.spi.impl.NodeEngine;
 import com.hazelcast.spi.impl.operationservice.Operation;
 import com.hazelcast.spi.impl.operationservice.OperationService;
-import com.hazelcast.spi.exception.TargetNotMemberException;
 import com.hazelcast.transaction.TransactionException;
 import com.hazelcast.transaction.TransactionNotActiveException;
 import com.hazelcast.transaction.TransactionOptions;
@@ -33,7 +34,6 @@ import com.hazelcast.transaction.impl.operations.CreateTxBackupLogOperation;
 import com.hazelcast.transaction.impl.operations.PurgeTxBackupLogOperation;
 import com.hazelcast.transaction.impl.operations.ReplicateTxBackupLogOperation;
 import com.hazelcast.transaction.impl.operations.RollbackTxBackupLogOperation;
-import com.hazelcast.internal.util.ExceptionUtil;
 
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
@@ -45,6 +45,13 @@ import java.util.concurrent.Future;
 import java.util.concurrent.TimeoutException;
 import java.util.logging.Level;
 
+import static com.hazelcast.internal.util.Clock.currentTimeMillis;
+import static com.hazelcast.internal.util.ExceptionUtil.rethrow;
+import static com.hazelcast.internal.util.FutureUtil.RETHROW_TRANSACTION_EXCEPTION;
+import static com.hazelcast.internal.util.FutureUtil.logAllExceptions;
+import static com.hazelcast.internal.util.FutureUtil.waitUntilAllRespondedWithDeadline;
+import static com.hazelcast.internal.util.FutureUtil.waitWithDeadline;
+import static com.hazelcast.internal.util.UuidUtil.newUnsecureUUID;
 import static com.hazelcast.transaction.TransactionOptions.TransactionType;
 import static com.hazelcast.transaction.TransactionOptions.TransactionType.ONE_PHASE;
 import static com.hazelcast.transaction.TransactionOptions.TransactionType.TWO_PHASE;
@@ -58,14 +65,7 @@ import static com.hazelcast.transaction.impl.Transaction.State.PREPARING;
 import static com.hazelcast.transaction.impl.Transaction.State.ROLLED_BACK;
 import static com.hazelcast.transaction.impl.Transaction.State.ROLLING_BACK;
 import static com.hazelcast.transaction.impl.TransactionManagerServiceImpl.SERVICE_NAME;
-import static com.hazelcast.internal.util.Clock.currentTimeMillis;
-import static com.hazelcast.internal.util.ExceptionUtil.rethrow;
-import static com.hazelcast.internal.util.FutureUtil.ExceptionHandler;
-import static com.hazelcast.internal.util.FutureUtil.RETHROW_TRANSACTION_EXCEPTION;
-import static com.hazelcast.internal.util.FutureUtil.logAllExceptions;
-import static com.hazelcast.internal.util.FutureUtil.waitUntilAllRespondedWithDeadline;
-import static com.hazelcast.internal.util.FutureUtil.waitWithDeadline;
-import static com.hazelcast.internal.util.UuidUtil.newUnsecureUUID;
+import static java.lang.Boolean.TRUE;
 import static java.util.concurrent.TimeUnit.MILLISECONDS;
 
 //FGTODO: 2019/11/25 下午2:34 zmyer
@@ -73,7 +73,7 @@ import static java.util.concurrent.TimeUnit.MILLISECONDS;
 public class TransactionImpl implements Transaction {
 
     private static final Address[] EMPTY_ADDRESSES = new Address[0];
-    private static final ThreadLocal<TransactionImpl> ACTIVE_THREAD_TRANSACTION = new ThreadLocal<TransactionImpl>();
+    private static final ThreadLocal<Boolean> TRANSACTION_EXISTS = new ThreadLocal<Boolean>();
 
     private final ExceptionHandler rollbackExceptionHandler;
     private final ExceptionHandler rollbackTxExceptionHandler;
@@ -198,20 +198,8 @@ public class TransactionImpl implements Transaction {
     }
 
     private void checkThread() {
-        if (!checkThreadAccess) {
-            return;
-        }
-        if (threadId != null && threadId.longValue() != Thread.currentThread().getId()) {
+        if (checkThreadAccess && threadId != null && threadId.longValue() != Thread.currentThread().getId()) {
             throw new IllegalStateException("Transaction cannot span multiple threads!");
-        }
-        if (state == ACTIVE && ACTIVE_THREAD_TRANSACTION.get() != this) {
-            throw new IllegalStateException("Transaction is not active on current thread!");
-        }
-    }
-
-    private void checkActiveThreadBoundTransaction() {
-        if (hasThreadBoundTransactions()) {
-            throw new IllegalStateException("Current thread already bound with transaction!");
         }
     }
 
@@ -220,35 +208,25 @@ public class TransactionImpl implements Transaction {
         if (state == ACTIVE) {
             throw new IllegalStateException("Transaction is already active");
         }
-        checkActiveThreadBoundTransaction();
+        if (TRANSACTION_EXISTS.get() != null) {
+            throw new IllegalStateException("Nested transactions are not allowed!");
+        }
         startTime = currentTimeMillis();
         backupAddresses = transactionManagerService.pickBackupLogAddresses(durability);
 
         //init caller thread
         if (threadId == null) {
             threadId = Thread.currentThread().getId();
-            bindThread();
+            setThreadFlag(TRUE);
         }
         state = ACTIVE;
         transactionManagerService.startCount.inc();
     }
 
-    private boolean hasThreadBoundTransactions() {
-        return ACTIVE_THREAD_TRANSACTION.get() != null;
-    }
-
-    private void setThreadFlag(TransactionImpl transaction) {
+    private void setThreadFlag(Boolean flag) {
         if (checkThreadAccess) {
-            ACTIVE_THREAD_TRANSACTION.set(transaction);
+            TRANSACTION_EXISTS.set(flag);
         }
-    }
-
-    private void bindThread() {
-        setThreadFlag(this);
-    }
-
-    private void clearThread() {
-        setThreadFlag(null);
     }
 
     @Override
@@ -318,14 +296,16 @@ public class TransactionImpl implements Transaction {
                 waitWithDeadline(futures, Long.MAX_VALUE, MILLISECONDS, RETHROW_TRANSACTION_EXCEPTION);
                 state = COMMITTED;
                 transactionManagerService.commitCount.inc();
+                transactionLog.onCommitSuccess();
             } catch (Throwable e) {
                 state = COMMIT_FAILED;
+                transactionLog.onCommitFailure();
                 throw rethrow(e, TransactionException.class);
             } finally {
                 purgeBackupLogs();
             }
         } finally {
-            clearThread();
+            setThreadFlag(null);
         }
     }
 
@@ -356,7 +336,7 @@ public class TransactionImpl implements Transaction {
                 transactionManagerService.rollbackCount.inc();
             }
         } finally {
-            clearThread();
+            setThreadFlag(null);
         }
     }
 
@@ -510,36 +490,8 @@ public class TransactionImpl implements Transaction {
                         return;
                     }
                 }
-                throw ExceptionUtil.rethrow(throwable);
+                throw rethrow(throwable);
             }
         };
     }
-
-    final class SuspendedTransactionImpl extends SuspendedTransaction {
-
-        SuspendedTransactionImpl() {
-            super(TransactionImpl.this);
-        }
-
-        @Override
-        protected void suspend(Transaction transaction) {
-            checkThread();
-            clearThread();
-            getTransaction().state = NO_TXN;
-        }
-
-        @Override
-        public void resume() {
-            checkActiveThreadBoundTransaction();
-            bindThread();
-            getTransaction().state = ACTIVE;
-        }
-
-        @Override
-        protected TransactionImpl getTransaction() {
-            return (TransactionImpl) super.getTransaction();
-        }
-
-    }
-
 }

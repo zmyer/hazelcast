@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2008-2019, Hazelcast, Inc. All Rights Reserved.
+ * Copyright (c) 2008-2020, Hazelcast, Inc. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -23,9 +23,9 @@ import com.hazelcast.config.IndexType;
 import com.hazelcast.config.MapConfig;
 import com.hazelcast.core.HazelcastInstance;
 import com.hazelcast.map.IMap;
-import com.hazelcast.nio.serialization.PortableTest.ChildPortableObject;
-import com.hazelcast.nio.serialization.PortableTest.GrandParentPortableObject;
-import com.hazelcast.nio.serialization.PortableTest.ParentPortableObject;
+import com.hazelcast.internal.serialization.impl.portable.PortableTest.ChildPortableObject;
+import com.hazelcast.internal.serialization.impl.portable.PortableTest.GrandParentPortableObject;
+import com.hazelcast.internal.serialization.impl.portable.PortableTest.ParentPortableObject;
 import com.hazelcast.query.Predicate;
 import com.hazelcast.query.PredicateBuilder.EntryObject;
 import com.hazelcast.query.Predicates;
@@ -36,7 +36,7 @@ import com.hazelcast.query.SampleTestObjects.ObjectWithOptional;
 import com.hazelcast.query.SampleTestObjects.State;
 import com.hazelcast.query.SampleTestObjects.Value;
 import com.hazelcast.query.SampleTestObjects.ValueType;
-import com.hazelcast.spi.properties.GroupProperty;
+import com.hazelcast.spi.properties.ClusterProperty;
 import com.hazelcast.spi.properties.HazelcastProperties;
 import com.hazelcast.test.HazelcastParallelClassRunner;
 import com.hazelcast.test.HazelcastTestSupport;
@@ -75,7 +75,7 @@ public class QueryBasicTest extends HazelcastTestSupport {
     public void testPredicatedEvaluatedSingleThreadedByDefault() {
         Config config = getConfig();
         HazelcastProperties properties = new HazelcastProperties(config);
-        boolean parallelEvaluation = properties.getBoolean(GroupProperty.QUERY_PREDICATE_PARALLEL_EVALUATION);
+        boolean parallelEvaluation = properties.getBoolean(ClusterProperty.QUERY_PREDICATE_PARALLEL_EVALUATION);
         assertFalse(parallelEvaluation);
     }
 
@@ -853,7 +853,7 @@ public class QueryBasicTest extends HazelcastTestSupport {
     @Test
     public void testQueryPortableObject_parallel() {
         Config config = getConfig();
-        config.setProperty(GroupProperty.QUERY_PREDICATE_PARALLEL_EVALUATION.getName(), "true");
+        config.setProperty(ClusterProperty.QUERY_PREDICATE_PARALLEL_EVALUATION.getName(), "true");
         testQueryUsingPortableObject(config, randomMapName());
     }
 

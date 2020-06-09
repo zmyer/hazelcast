@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2008-2019, Hazelcast, Inc. All Rights Reserved.
+ * Copyright (c) 2008-2020, Hazelcast, Inc. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -25,6 +25,7 @@ import com.hazelcast.config.Config;
 import com.hazelcast.core.ExecutionCallback;
 import com.hazelcast.core.Hazelcast;
 import com.hazelcast.core.HazelcastInstance;
+import com.hazelcast.core.HazelcastOverloadException;
 import com.hazelcast.core.IExecutorService;
 import com.hazelcast.core.OperationTimeoutException;
 import com.hazelcast.executor.ExecutorServiceTestSupport;
@@ -66,7 +67,7 @@ public class ClientCacheCreationTest extends CacheCreationTest {
         HazelcastInstance hazelcastInstance = Hazelcast.newHazelcastInstance();
 
         ClientConfig clientConfig = new ClientConfig();
-        clientConfig.getConnectionStrategyConfig().getConnectionRetryConfig().setFailOnMaxBackoff(false);
+        clientConfig.getConnectionStrategyConfig().getConnectionRetryConfig().setClusterConnectTimeoutMillis(Long.MAX_VALUE);
         clientConfig.setProperty(ClientProperty.INVOCATION_TIMEOUT_SECONDS.getName(), "2");
         HazelcastInstance client = HazelcastClient.newHazelcastClient(clientConfig);
         HazelcastClientCachingProvider cachingProvider = createClientCachingProvider(client);
@@ -82,7 +83,7 @@ public class ClientCacheCreationTest extends CacheCreationTest {
         HazelcastInstance hazelcastInstance = Hazelcast.newHazelcastInstance();
 
         ClientConfig clientConfig = new ClientConfig();
-        clientConfig.getConnectionStrategyConfig().getConnectionRetryConfig().setFailOnMaxBackoff(false);
+        clientConfig.getConnectionStrategyConfig().getConnectionRetryConfig().setClusterConnectTimeoutMillis(Long.MAX_VALUE);
         HazelcastInstance client = HazelcastClient.newHazelcastClient(clientConfig);
         HazelcastClientCachingProvider cachingProvider = createClientCachingProvider(client);
         final CacheManager cacheManager = cachingProvider.getCacheManager();
@@ -110,13 +111,25 @@ public class ClientCacheCreationTest extends CacheCreationTest {
         HazelcastInstance hazelcastInstance = Hazelcast.newHazelcastInstance();
 
         ClientConfig clientConfig = new ClientConfig();
-        clientConfig.getConnectionStrategyConfig().getConnectionRetryConfig().setFailOnMaxBackoff(false);
+        clientConfig.getConnectionStrategyConfig().getConnectionRetryConfig().setClusterConnectTimeoutMillis(Long.MAX_VALUE);
         clientConfig.setProperty(ClientProperty.MAX_CONCURRENT_INVOCATIONS.getName(), "1");
+        // disable metrics collection (the periodic send statistics task may interfere with the test)
+        clientConfig.getMetricsConfig().setEnabled(false);
+        // disable backup acknowledgements (the backup listener registration may interfere with the test)
+        clientConfig.setBackupAckToClientEnabled(false);
         HazelcastInstance client = HazelcastClient.newHazelcastClient(clientConfig);
         HazelcastClientCachingProvider cachingProvider = createClientCachingProvider(client);
         final CacheManager cacheManager = cachingProvider.getCacheManager();
         MutableConfiguration configuration = new MutableConfiguration();
-        cacheManager.createCache("xmlCache", configuration);
+        // ensure cache is created despite the low concurrent invocation limit
+        assertTrueEventually(() -> {
+            try {
+                cacheManager.createCache("xmlCache", configuration);
+            } catch (HazelcastOverloadException e) {
+                throw new AssertionError("Could not create cache due to "
+                        + "low concurrent invocation count.");
+            }
+        });
 
         IExecutorService executorService = client.getExecutorService("exec");
         //keep the slot for one invocation to test if client can reconnect even if all slots are kept

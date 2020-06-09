@@ -1,4 +1,4 @@
-# Copyright (c) 2008-2019, Hazelcast, Inc. All Rights Reserved.
+# Copyright (c) 2008-2020, Hazelcast, Inc. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -34,9 +34,8 @@ hazelcast-client:
           secretKeyAlgorithm: DES
           secretKeyFactoryAlgorithm: PBKDF2WithHmacSHA1
 
-  cluster-name: dev
+  cluster-name: my-cluster
   instance-name: CLIENT_NAME
-  license-key: HAZELCAST_ENTERPRISE_LICENSE_KEY
   properties:
     hazelcast.client.shuffle.member.list: true
     hazelcast.client.heartbeat.timeout: 60000
@@ -103,12 +102,14 @@ hazelcast-client:
       zones: us-east1-b,us-east1-c
     azure:
       enabled: false
+      instance-metadata-available: false
       client-id: CLIENT_ID
-      client-secret: CLIENT_SECRET
       tenant-id: TENANT_ID
+      client-secret: CLIENT_SECRET
       subscription-id: SUB_ID
-      cluster-id: HZLCAST001
-      group-name: RESOURCE-GROUP-NAME
+      resource-group: RESOURCE-GROUP-NAME
+      scale-set: SCALE-SET-NAME
+      tag: TAG-NAME=HZLCAST001
     kubernetes:
       enabled: false
       namespace: MY-KUBERNETES-NAMESPACE
@@ -140,18 +141,28 @@ hazelcast-client:
             key-int: 123
             key-boolean: true
 
-  executor-pool-size: 40
-
   security:
-    credentials: com.hazelcast.security.UsernamePasswordCredentials
     credentials-factory:
       class-name: com.hazelcast.examples.MyCredentialsFactory
       properties:
         property: value
+    realms:
+      - name: krb5Initiator
+        authentication:
+          jaas:
+            - class-name: com.sun.security.auth.module.Krb5LoginModule
+              usage: REQUIRED
+              properties:
+                isInitiator: true
+                useTicketCache: false
+                doNotPrompt: true
+                useKeyTab: true
+                storeKey: true
+                principal: jduke@HAZELCAST.COM
+                keyTab: /opt/jduke.keytab
 
   listeners:
     - com.hazelcast.examples.MembershipListener
-    - com.hazelcast.examples.InstanceListener
     - com.hazelcast.examples.MigrationListener
 
   serialization:
@@ -274,7 +285,7 @@ hazelcast-client:
       initial-backoff-millis: 2000
       max-backoff-millis: 60000
       multiplier: 3
-      fail-on-max-backoff: false
+      cluster-connect-timeout-millis: 5000
       jitter: 0.5
 
   reliable-topic:
@@ -286,7 +297,13 @@ hazelcast-client:
     enabled: true
     jarPaths:
       - /User/test/sample.jar
-      - https://hazelcast.com
+      - https://hazelcast.com/
       - file://User/test/sample.jar
     classNames:
       - test.sampleClassName
+
+  metrics:
+    enabled: false
+    jmx:
+      enabled: false
+    collection-frequency-seconds: 42

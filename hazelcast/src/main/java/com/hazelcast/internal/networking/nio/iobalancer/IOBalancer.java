@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2008-2019, Hazelcast, Inc. All Rights Reserved.
+ * Copyright (c) 2008-2020, Hazelcast, Inc. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -22,24 +22,26 @@ import com.hazelcast.internal.networking.nio.NioInboundPipeline;
 import com.hazelcast.internal.networking.nio.NioOutboundPipeline;
 import com.hazelcast.internal.networking.nio.NioThread;
 import com.hazelcast.internal.nio.ConnectionListener;
+import com.hazelcast.internal.server.ServerConnectionManager;
 import com.hazelcast.internal.util.counters.MwCounter;
 import com.hazelcast.internal.util.counters.SwCounter;
 import com.hazelcast.logging.ILogger;
 import com.hazelcast.logging.LoggingService;
-import com.hazelcast.internal.nio.EndpointManager;
-import com.hazelcast.spi.properties.GroupProperty;
+import com.hazelcast.spi.properties.ClusterProperty;
 
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.LinkedBlockingQueue;
 
+import static com.hazelcast.internal.metrics.MetricDescriptorConstants.NETWORKING_METRIC_NIO_IO_BALANCER_IMBALANCE_DETECTED_COUNT;
+import static com.hazelcast.internal.metrics.MetricDescriptorConstants.NETWORKING_METRIC_NIO_IO_BALANCER_MIGRATION_COMPLETED_COUNT;
 import static com.hazelcast.internal.util.counters.MwCounter.newMwCounter;
 import static com.hazelcast.internal.util.counters.SwCounter.newSwCounter;
-import static com.hazelcast.spi.properties.GroupProperty.IO_BALANCER_INTERVAL_SECONDS;
-import static com.hazelcast.spi.properties.GroupProperty.IO_THREAD_COUNT;
+import static com.hazelcast.spi.properties.ClusterProperty.IO_BALANCER_INTERVAL_SECONDS;
+import static com.hazelcast.spi.properties.ClusterProperty.IO_THREAD_COUNT;
 
 /**
  * It attempts to detect and fix a selector imbalance problem.
- * <p>
+ *
  * By default Hazelcast uses 3 threads to read data from TCP connections and
  * 3 threads to write data to connections. We have measured significant fluctuations
  * of performance when the threads are not utilized equally.
@@ -47,21 +49,20 @@ import static com.hazelcast.spi.properties.GroupProperty.IO_THREAD_COUNT;
  * <code>IOBalancer</code> tries to detect such situations and fix them by moving
  * {@link NioInboundPipeline} and {@link NioOutboundPipeline} between {@link NioThread}
  * instances.
- * <p>
+ *
  * It measures load serviced by each pipeline in a given interval and
  * if imbalance is detected then it schedules pipeline migration to fix the situation.
  * The exact migration strategy can be customized via
  * {@link com.hazelcast.internal.networking.nio.iobalancer.MigrationStrategy}.
- * <p>
- * Measuring interval can be customized via {@link GroupProperty#IO_BALANCER_INTERVAL_SECONDS}
- * <p>
+ *
+ * Measuring interval can be customized via {@link ClusterProperty#IO_BALANCER_INTERVAL_SECONDS}
+ *
  * It doesn't leverage {@link ConnectionListener} capability
- * provided by {@link EndpointManager} to observe connections
+ * provided by {@link ServerConnectionManager} to observe connections
  * as it has to be notified right after a physical TCP connection is created whilst
  * <code>ConnectionListener</code> is notified only after a successful (Hazelcast)
  * binding process.
  */
-//FGTODO: 2019/12/2 下午1:25 zmyer
 public class IOBalancer {
     private static final String PROP_MONKEY_BALANCER = "hazelcast.io.balancer.monkey";
     private final ILogger logger;
@@ -72,16 +73,16 @@ public class IOBalancer {
     private final LoadTracker inLoadTracker;
     private final LoadTracker outLoadTracker;
     private final String hzName;
-    private final BlockingQueue<Runnable> workQueue = new LinkedBlockingQueue<Runnable>();
+    private final BlockingQueue<Runnable> workQueue = new LinkedBlockingQueue<>();
     private volatile boolean enabled;
     private IOBalancerThread ioBalancerThread;
 
     // only IOBalancerThread will write to this field.
-    @Probe
+    @Probe(name = NETWORKING_METRIC_NIO_IO_BALANCER_IMBALANCE_DETECTED_COUNT)
     private final SwCounter imbalanceDetectedCount = newSwCounter();
 
     // multiple threads can update this field.
-    @Probe
+    @Probe(name = NETWORKING_METRIC_NIO_IO_BALANCER_MIGRATION_COMPLETED_COUNT)
     private final MwCounter migrationCompletedCount = newMwCounter();
 
     public IOBalancer(NioThread[] inputThreads,

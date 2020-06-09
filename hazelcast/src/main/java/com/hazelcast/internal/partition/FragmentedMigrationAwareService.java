@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2008-2019, Hazelcast, Inc. All Rights Reserved.
+ * Copyright (c) 2008-2020, Hazelcast, Inc. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -19,6 +19,7 @@ package com.hazelcast.internal.partition;
 import com.hazelcast.internal.services.ServiceNamespace;
 import com.hazelcast.internal.services.ServiceNamespaceAware;
 import com.hazelcast.spi.impl.operationservice.Operation;
+import com.hazelcast.spi.properties.ClusterProperty;
 
 import java.util.Collection;
 
@@ -33,7 +34,7 @@ import java.util.Collection;
  * {@link ServiceNamespaceAware} interface and must know their related {@link ServiceNamespace}s.
  * <p>
  * Fragmented migration can be enabled/disabled using configuration property
- * {@link com.hazelcast.spi.properties.GroupProperty#PARTITION_FRAGMENTED_MIGRATION_ENABLED}. Anti-entropy system which
+ * {@link ClusterProperty#PARTITION_FRAGMENTED_MIGRATION_ENABLED}. Anti-entropy system which
  * detects and completes inconsistent backup replicas, always uses fragmented replication for services having support.
  *
  * @see MigrationAwareService

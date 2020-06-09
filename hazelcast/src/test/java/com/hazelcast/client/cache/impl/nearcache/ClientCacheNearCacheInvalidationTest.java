@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2008-2019, Hazelcast, Inc. All Rights Reserved.
+ * Copyright (c) 2008-2020, Hazelcast, Inc. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -17,8 +17,10 @@
 package com.hazelcast.client.cache.impl.nearcache;
 
 import com.hazelcast.cache.ICache;
+import com.hazelcast.cache.impl.CacheService;
 import com.hazelcast.cache.impl.HazelcastServerCacheManager;
 import com.hazelcast.cache.impl.HazelcastServerCachingProvider;
+import com.hazelcast.client.cache.impl.ClientCacheProxy;
 import com.hazelcast.client.cache.impl.HazelcastClientCacheManager;
 import com.hazelcast.client.config.ClientConfig;
 import com.hazelcast.client.impl.clientside.HazelcastClientProxy;
@@ -34,8 +36,8 @@ import com.hazelcast.instance.impl.LifecycleServiceImpl;
 import com.hazelcast.internal.adapter.ICacheDataStructureAdapter;
 import com.hazelcast.internal.nearcache.NearCache;
 import com.hazelcast.internal.nearcache.NearCacheManager;
-import com.hazelcast.internal.nearcache.NearCacheTestContext;
-import com.hazelcast.internal.nearcache.NearCacheTestContextBuilder;
+import com.hazelcast.internal.nearcache.impl.NearCacheTestContext;
+import com.hazelcast.internal.nearcache.impl.NearCacheTestContextBuilder;
 import com.hazelcast.internal.serialization.SerializationService;
 import com.hazelcast.test.AssertTask;
 import com.hazelcast.test.HazelcastParallelParametersRunnerFactory;
@@ -63,11 +65,11 @@ import static com.hazelcast.cache.CacheTestSupport.createServerCachingProvider;
 import static com.hazelcast.cache.CacheUtil.getPrefixedCacheName;
 import static com.hazelcast.client.cache.impl.nearcache.ClientCacheInvalidationListener.createInvalidationEventHandler;
 import static com.hazelcast.client.cache.impl.nearcache.ClientNearCacheTestSupport.generateValueFromKey;
-import static com.hazelcast.internal.nearcache.NearCacheTestUtils.getBaseConfig;
+import static com.hazelcast.internal.nearcache.impl.NearCacheTestUtils.getBaseConfig;
 import static com.hazelcast.internal.nearcache.impl.invalidation.RepairingTask.RECONCILIATION_INTERVAL_SECONDS;
-import static com.hazelcast.spi.properties.GroupProperty.CACHE_INVALIDATION_MESSAGE_BATCH_ENABLED;
-import static com.hazelcast.spi.properties.GroupProperty.CACHE_INVALIDATION_MESSAGE_BATCH_FREQUENCY_SECONDS;
-import static com.hazelcast.spi.properties.GroupProperty.CACHE_INVALIDATION_MESSAGE_BATCH_SIZE;
+import static com.hazelcast.spi.properties.ClusterProperty.CACHE_INVALIDATION_MESSAGE_BATCH_ENABLED;
+import static com.hazelcast.spi.properties.ClusterProperty.CACHE_INVALIDATION_MESSAGE_BATCH_FREQUENCY_SECONDS;
+import static com.hazelcast.spi.properties.ClusterProperty.CACHE_INVALIDATION_MESSAGE_BATCH_SIZE;
 import static java.lang.String.format;
 import static java.util.Arrays.asList;
 import static org.junit.Assert.assertEquals;
@@ -91,7 +93,6 @@ import static org.junit.Assert.assertTrue;
 @RunWith(Parameterized.class)
 @UseParametersRunnerFactory(HazelcastParallelParametersRunnerFactory.class)
 @Category({SlowTest.class, ParallelJVMTest.class})
-@SuppressWarnings("WeakerAccess")
 public class ClientCacheNearCacheInvalidationTest extends HazelcastTestSupport {
 
     private static final String DEFAULT_CACHE_NAME = "ClientCacheNearCacheInvalidationTest";
@@ -156,7 +157,7 @@ public class ClientCacheNearCacheInvalidationTest extends HazelcastTestSupport {
         ICache<Integer, String> cache = cacheManager.createCache(DEFAULT_CACHE_NAME, cacheConfig);
         ICache<Integer, String> memberCache = memberCacheManager.getCache(getPrefixedCacheName(DEFAULT_CACHE_NAME, null, null));
 
-        NearCacheManager nearCacheManager = client.client.getNearCacheManager();
+        NearCacheManager nearCacheManager = ((ClientCacheProxy) cache).getContext().getNearCacheManager(cache.getServiceName());
         NearCache<Object, String> nearCache = nearCacheManager.getNearCache(
                 cacheManager.getCacheNameWithPrefix(DEFAULT_CACHE_NAME));
 
@@ -409,11 +410,11 @@ public class ClientCacheNearCacheInvalidationTest extends HazelcastTestSupport {
                 .addNearCacheConfig(nearCacheConfig);
 
         HazelcastClientProxy client = (HazelcastClientProxy) hazelcastFactory.newHazelcastClient(clientConfig);
-        NearCacheManager nearCacheManager = client.client.getNearCacheManager();
         CachingProvider provider = createClientCachingProvider(client);
         HazelcastClientCacheManager cacheManager = (HazelcastClientCacheManager) provider.getCacheManager();
 
         ICache<K, V> cache = cacheManager.createCache(cacheName, cacheConfig);
+        NearCacheManager nearCacheManager = ((ClientCacheProxy) cache).getContext().getNearCacheManager(CacheService.SERVICE_NAME);
         NearCache<NK, NV> nearCache = nearCacheManager.getNearCache(cacheManager.getCacheNameWithPrefix(cacheName));
 
         NearCacheTestContextBuilder<K, V, NK, NV> builder = new NearCacheTestContextBuilder<>(nearCacheConfig,

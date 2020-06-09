@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2008-2019, Hazelcast, Inc. All Rights Reserved.
+ * Copyright (c) 2008-2020, Hazelcast, Inc. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -27,7 +27,7 @@ import com.hazelcast.core.HazelcastInstance;
 import com.hazelcast.instance.impl.HazelcastInstanceImpl;
 import com.hazelcast.instance.impl.Node;
 import com.hazelcast.instance.impl.TestUtil;
-import com.hazelcast.spi.properties.GroupProperty;
+import com.hazelcast.spi.properties.ClusterProperty;
 import com.hazelcast.test.HazelcastTestSupport;
 import org.junit.After;
 import org.junit.Before;
@@ -37,8 +37,9 @@ import javax.cache.CacheManager;
 import javax.cache.configuration.Configuration;
 import javax.cache.spi.CachingProvider;
 
-import static com.hazelcast.cache.CacheTestSupport.createServerCachingProvider;
 import static com.hazelcast.cache.impl.maxsize.impl.EntryCountCacheEvictionChecker.calculateMaxPartitionSize;
+import static com.hazelcast.test.Accessors.getNode;
+import static com.hazelcast.test.Accessors.getNodeEngineImpl;
 import static java.lang.Integer.parseInt;
 import static org.junit.Assert.assertEquals;
 
@@ -50,7 +51,7 @@ public abstract class CacheTestSupport extends HazelcastTestSupport {
     protected abstract HazelcastInstance getHazelcastInstance();
 
     @Before
-    public final void setup() {
+    public void setup() {
         onSetup();
         cachingProvider = getCachingProvider();
         cacheManager = cachingProvider.getCacheManager();
@@ -138,9 +139,9 @@ public abstract class CacheTestSupport extends HazelcastTestSupport {
     private int getPartitionCount() {
         try {
             Node node = getNode(getHazelcastInstance());
-            return node.getProperties().getInteger(GroupProperty.PARTITION_COUNT);
+            return node.getProperties().getInteger(ClusterProperty.PARTITION_COUNT);
         } catch (IllegalArgumentException e) {
-            return parseInt(GroupProperty.PARTITION_COUNT.getDefaultValue());
+            return parseInt(ClusterProperty.PARTITION_COUNT.getDefaultValue());
         }
     }
 

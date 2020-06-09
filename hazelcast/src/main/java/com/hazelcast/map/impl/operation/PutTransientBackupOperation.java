@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2008-2019, Hazelcast, Inc. All Rights Reserved.
+ * Copyright (c) 2008-2020, Hazelcast, Inc. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -18,15 +18,16 @@ package com.hazelcast.map.impl.operation;
 
 import com.hazelcast.map.impl.MapDataSerializerHook;
 import com.hazelcast.map.impl.record.Record;
-import com.hazelcast.nio.serialization.Data;
+import com.hazelcast.internal.serialization.Data;
 
 public class PutTransientBackupOperation extends PutBackupOperation {
 
     public PutTransientBackupOperation() {
     }
 
-    public PutTransientBackupOperation(String name, Record<Data> record, Data dataValue) {
-        super(name, record, dataValue);
+    public PutTransientBackupOperation(String name, Data dataKey,
+                                       Record<Data> record, Data dataValue) {
+        super(name, dataKey, record, dataValue);
     }
 
     @Override

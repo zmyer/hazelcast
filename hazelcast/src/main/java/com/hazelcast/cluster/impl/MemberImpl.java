@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2008-2019, Hazelcast, Inc. All Rights Reserved.
+ * Copyright (c) 2008-2020, Hazelcast, Inc. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,31 +16,21 @@
 
 package com.hazelcast.cluster.impl;
 
+import com.hazelcast.cluster.Address;
 import com.hazelcast.cluster.Member;
-import com.hazelcast.cluster.MemberAttributeOperationType;
 import com.hazelcast.core.HazelcastInstance;
 import com.hazelcast.core.HazelcastInstanceAware;
 import com.hazelcast.instance.EndpointQualifier;
 import com.hazelcast.instance.impl.HazelcastInstanceImpl;
 import com.hazelcast.internal.cluster.impl.ClusterDataSerializerHook;
-import com.hazelcast.internal.cluster.impl.ClusterServiceImpl;
-import com.hazelcast.internal.cluster.impl.operations.MemberAttributeChangedOp;
-import com.hazelcast.logging.ILogger;
-import com.hazelcast.cluster.Address;
-import com.hazelcast.nio.serialization.IdentifiedDataSerializable;
-import com.hazelcast.spi.impl.operationservice.Operation;
-import com.hazelcast.spi.impl.operationservice.OperationService;
-import com.hazelcast.spi.impl.NodeEngineImpl;
-import com.hazelcast.internal.util.ExceptionUtil;
 import com.hazelcast.internal.util.Preconditions;
+import com.hazelcast.logging.ILogger;
+import com.hazelcast.nio.serialization.IdentifiedDataSerializable;
 import com.hazelcast.version.MemberVersion;
 
 import java.util.Map;
 import java.util.UUID;
-import java.util.function.Supplier;
 
-import static com.hazelcast.cluster.MemberAttributeOperationType.PUT;
-import static com.hazelcast.cluster.MemberAttributeOperationType.REMOVE;
 import static com.hazelcast.instance.EndpointQualifier.MEMBER;
 import static com.hazelcast.internal.util.Preconditions.isNotNull;
 import static java.util.Collections.singletonMap;
@@ -63,11 +53,18 @@ public final class MemberImpl extends AbstractMember implements Member, Hazelcas
     }
 
     public MemberImpl(Address address, MemberVersion version, boolean localMember) {
-        this(singletonMap(MEMBER, address), version, localMember, null, null, false, NA_MEMBER_LIST_JOIN_VERSION, null);
+        this(singletonMap(MEMBER, address), address, version, localMember, null, null, false, NA_MEMBER_LIST_JOIN_VERSION, null);
     }
 
     public MemberImpl(Address address, MemberVersion version, boolean localMember, UUID uuid) {
-        this(singletonMap(MEMBER, address), version, localMember, uuid, null, false, NA_MEMBER_LIST_JOIN_VERSION, null);
+        this(singletonMap(MEMBER, address), address, version, localMember, uuid, null, false, NA_MEMBER_LIST_JOIN_VERSION, null);
+    }
+
+    private MemberImpl(Map<EndpointQualifier, Address> addresses, MemberVersion version, boolean localMember,
+                       UUID uuid, Map<String, String> attributes, boolean liteMember, int memberListJoinVersion,
+                       HazelcastInstanceImpl instance) {
+        this(addresses, addresses.get(MEMBER), version, localMember, uuid, attributes, liteMember, memberListJoinVersion,
+                instance);
     }
 
     public MemberImpl(MemberImpl member) {
@@ -77,10 +74,10 @@ public final class MemberImpl extends AbstractMember implements Member, Hazelcas
         this.instance = member.instance;
     }
 
-    private MemberImpl(Map<EndpointQualifier, Address> addresses, MemberVersion version, boolean localMember,
-                       UUID uuid, Map<String, String> attributes, boolean liteMember, int memberListJoinVersion,
-                       HazelcastInstanceImpl instance) {
-        super(addresses, version, uuid, attributes, liteMember);
+    private MemberImpl(Map<EndpointQualifier, Address> addresses, Address address, MemberVersion version,
+                       boolean localMember, UUID uuid, Map<String, String> attributes, boolean liteMember,
+                       int memberListJoinVersion, HazelcastInstanceImpl instance) {
+        super(addresses, address, version, uuid, attributes, liteMember);
         this.memberListJoinVersion = memberListJoinVersion;
         this.localMember = localMember;
         this.instance = instance;
@@ -110,22 +107,6 @@ public final class MemberImpl extends AbstractMember implements Member, Hazelcas
         return attributes.get(key);
     }
 
-    @Override
-    public void removeAttribute(String key) {
-        ensureLocalMember();
-        isNotNull(key, "key");
-
-        Object value = attributes.remove(key);
-        if (value == null) {
-            return;
-        }
-
-        if (instance != null) {
-            invokeOnAllMembers(new MemberAttributeOperationSupplier(REMOVE, key, null));
-        }
-    }
-
-
     public void setMemberListJoinVersion(int memberListJoinVersion) {
         this.memberListJoinVersion = memberListJoinVersion;
     }
@@ -140,36 +121,16 @@ public final class MemberImpl extends AbstractMember implements Member, Hazelcas
         }
     }
 
-    @Override
     public void setAttribute(String key, String value) {
         ensureLocalMember();
+        if (instance != null && instance.node.clusterService.isJoined()) {
+            throw new UnsupportedOperationException("Attributes can not be changed after instance has started");
+        }
+
         isNotNull(key, "key");
         isNotNull(value, "value");
 
-        Object oldValue = attributes.put(key, value);
-        if (value.equals(oldValue)) {
-            return;
-        }
-
-        if (instance != null) {
-            invokeOnAllMembers(new MemberAttributeOperationSupplier(PUT, key, value));
-        }
-    }
-
-    private void invokeOnAllMembers(Supplier<Operation> operationSupplier) {
-        NodeEngineImpl nodeEngine = instance.node.nodeEngine;
-        OperationService os = nodeEngine.getOperationService();
-        try {
-            for (Member member : nodeEngine.getClusterService().getMembers()) {
-                if (!member.localMember()) {
-                    os.invokeOnTarget(ClusterServiceImpl.SERVICE_NAME, operationSupplier.get(), member.getAddress());
-                } else {
-                    os.execute(operationSupplier.get());
-                }
-            }
-        } catch (Throwable t) {
-            throw ExceptionUtil.rethrow(t);
-        }
+        attributes.put(key, value);
     }
 
     public int getFactoryId() {
@@ -181,29 +142,9 @@ public final class MemberImpl extends AbstractMember implements Member, Hazelcas
         return ClusterDataSerializerHook.MEMBER;
     }
 
-    private class MemberAttributeOperationSupplier implements Supplier<Operation> {
-
-        private final MemberAttributeOperationType operationType;
-        private final String key;
-        private final String value;
-
-        MemberAttributeOperationSupplier(MemberAttributeOperationType operationType, String key, String value) {
-            this.operationType = operationType;
-            this.key = key;
-            this.value = value;
-        }
-
-        @Override
-        public Operation get() {
-            NodeEngineImpl nodeEngine = instance.node.nodeEngine;
-            UUID uuid = nodeEngine.getLocalMember().getUuid();
-            return new MemberAttributeChangedOp(operationType, key, value)
-                    .setCallerUuid(uuid).setNodeEngine(nodeEngine);
-        }
-    }
-
     public static class Builder {
-        private final Map<EndpointQualifier, Address> addressMap;
+        private Address address;
+        private  Map<EndpointQualifier, Address> addressMap;
 
         private Map<String, String> attributes;
         private boolean localMember;
@@ -215,13 +156,18 @@ public final class MemberImpl extends AbstractMember implements Member, Hazelcas
 
         public Builder(Address address) {
             Preconditions.isNotNull(address, "address");
-            this.addressMap = singletonMap(MEMBER, address);
+            this.address = address;
         }
 
         public Builder(Map<EndpointQualifier, Address> addresses) {
             Preconditions.isNotNull(addresses, "addresses");
             Preconditions.isNotNull(addresses.get(MEMBER), "addresses.get(MEMBER)");
             this.addressMap = addresses;
+        }
+
+        public Builder address(Address address) {
+            this.address = Preconditions.isNotNull(address, "address");
+            return this;
         }
 
         public Builder localMember(boolean localMember) {
@@ -260,7 +206,13 @@ public final class MemberImpl extends AbstractMember implements Member, Hazelcas
         }
 
         public MemberImpl build() {
-            return new MemberImpl(addressMap, version, localMember, uuid,
+            if (addressMap == null) {
+                addressMap = singletonMap(MEMBER, address);
+            }
+            if (address == null) {
+                address = addressMap.get(MEMBER);
+            }
+            return new MemberImpl(addressMap, address, version, localMember, uuid,
                     attributes, liteMember, memberListJoinVersion, instance);
         }
     }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2008-2019, Hazelcast, Inc. All Rights Reserved.
+ * Copyright (c) 2008-2020, Hazelcast, Inc. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -17,7 +17,7 @@
 package com.hazelcast.client.impl.protocol;
 
 import com.hazelcast.cache.CacheNotExistsException;
-import com.hazelcast.client.impl.StubAuthenticationException;
+import com.hazelcast.client.AuthenticationException;
 import com.hazelcast.client.impl.protocol.codec.builtin.ErrorsCodec;
 import com.hazelcast.client.impl.protocol.exception.ErrorHolder;
 import com.hazelcast.client.impl.protocol.exception.MaxMessageSizeExceeded;
@@ -44,6 +44,7 @@ import com.hazelcast.crdt.TargetNotReplicaException;
 import com.hazelcast.durableexecutor.StaleTaskIdException;
 import com.hazelcast.flakeidgen.impl.NodeIdOutOfRangeException;
 import com.hazelcast.internal.cluster.impl.ConfigMismatchException;
+import com.hazelcast.internal.cluster.impl.VersionMismatchException;
 import com.hazelcast.map.QueryResultSizeExceededException;
 import com.hazelcast.map.ReachedMaxSizeException;
 import com.hazelcast.memory.NativeOutOfMemoryError;
@@ -70,7 +71,7 @@ import com.hazelcast.transaction.TransactionException;
 import com.hazelcast.transaction.TransactionNotActiveException;
 import com.hazelcast.transaction.TransactionTimedOutException;
 import com.hazelcast.internal.util.AddressUtil;
-import com.hazelcast.wan.WanReplicationQueueFullException;
+import com.hazelcast.wan.WanQueueFullException;
 
 import javax.cache.CacheException;
 import javax.cache.integration.CacheLoaderException;
@@ -105,8 +106,6 @@ import java.util.concurrent.TimeoutException;
  */
 public class ClientExceptions {
 
-    private static final String CAUSED_BY_STACKTRACE_MARKER = "###### Caused by:";
-
     private final Map<Class, Integer> classToInt = new HashMap<Class, Integer>();
 
     public ClientExceptions(boolean jcacheAvailable) {
@@ -120,7 +119,7 @@ public class ClientExceptions {
 
         register(ClientProtocolErrorCodes.ARRAY_INDEX_OUT_OF_BOUNDS, ArrayIndexOutOfBoundsException.class);
         register(ClientProtocolErrorCodes.ARRAY_STORE, ArrayStoreException.class);
-        register(ClientProtocolErrorCodes.AUTHENTICATION, StubAuthenticationException.class);
+        register(ClientProtocolErrorCodes.AUTHENTICATION, AuthenticationException.class);
         register(ClientProtocolErrorCodes.CACHE_NOT_EXISTS, CacheNotExistsException.class);
         register(ClientProtocolErrorCodes.CALLER_NOT_MEMBER, CallerNotMemberException.class);
         register(ClientProtocolErrorCodes.CANCELLATION, CancellationException.class);
@@ -184,7 +183,7 @@ public class ClientExceptions {
         register(ClientProtocolErrorCodes.NO_DATA_MEMBER, NoDataMemberInClusterException.class);
         register(ClientProtocolErrorCodes.REPLICATED_MAP_CANT_BE_CREATED, ReplicatedMapCantBeCreatedOnLiteMemberException.class);
         register(ClientProtocolErrorCodes.MAX_MESSAGE_SIZE_EXCEEDED, MaxMessageSizeExceeded.class);
-        register(ClientProtocolErrorCodes.WAN_REPLICATION_QUEUE_FULL, WanReplicationQueueFullException.class);
+        register(ClientProtocolErrorCodes.WAN_REPLICATION_QUEUE_FULL, WanQueueFullException.class);
 
         register(ClientProtocolErrorCodes.ASSERTION_ERROR, AssertionError.class);
         register(ClientProtocolErrorCodes.OUT_OF_MEMORY_ERROR, OutOfMemoryError.class);
@@ -209,6 +208,7 @@ public class ClientExceptions {
         register(ClientProtocolErrorCodes.LEADER_DEMOTED_EXCEPTION, LeaderDemotedException.class);
         register(ClientProtocolErrorCodes.STALE_APPEND_REQUEST_EXCEPTION, StaleAppendRequestException.class);
         register(ClientProtocolErrorCodes.NOT_LEADER_EXCEPTION, NotLeaderException.class);
+        register(ClientProtocolErrorCodes.VERSION_MISMATCH_EXCEPTION, VersionMismatchException.class);
     }
 
     public ClientMessage createExceptionMessage(Throwable throwable) {

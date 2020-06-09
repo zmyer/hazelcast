@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2008-2019, Hazelcast, Inc. All Rights Reserved.
+ * Copyright (c) 2008-2020, Hazelcast, Inc. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -21,14 +21,14 @@ import java.util.EventListener;
 /**
  * Listener to get notified when a split brain protection state is changed
  */
-//FGTODO: 2019/11/25 下午5:31 zmyer
+@FunctionalInterface
 public interface SplitBrainProtectionListener extends EventListener {
 
     /**
      * Called when the state of the split brain detector is changed.
      *
      * @param splitBrainProtectionEvent provides information about split brain protection
-     *                                  presence and current member list.l
+     *        presence and current member list.
      */
     void onChange(SplitBrainProtectionEvent splitBrainProtectionEvent);
 

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2008-2019, Hazelcast, Inc. All Rights Reserved.
+ * Copyright (c) 2008-2020, Hazelcast, Inc. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -18,9 +18,12 @@ package com.hazelcast.map.impl.record;
 
 import com.hazelcast.nio.ObjectDataInput;
 import com.hazelcast.nio.ObjectDataOutput;
-import com.hazelcast.nio.serialization.Data;
+import com.hazelcast.internal.serialization.Data;
 
 import java.io.IOException;
+
+import static com.hazelcast.internal.nio.IOUtil.readData;
+import static com.hazelcast.internal.nio.IOUtil.writeData;
 
 /**
  * Used when reading and writing records
@@ -31,8 +34,7 @@ public enum RecordReaderWriter {
         @Override
         void writeRecord(ObjectDataOutput out,
                          Record record, Data dataValue) throws IOException {
-            out.writeData(record.getKey());
-            out.writeData(dataValue);
+            writeData(out, dataValue);
             out.writeInt(record.getRawTtl());
             out.writeInt(record.getRawMaxIdle());
             out.writeInt(record.getRawCreationTime());
@@ -45,8 +47,7 @@ public enum RecordReaderWriter {
         @Override
         Record readRecord(ObjectDataInput in) throws IOException {
             DataRecord record = new DataRecord();
-            record.setKey(in.readData());
-            record.setValue(in.readData());
+            record.setValue(readData(in));
             record.setRawTtl(in.readInt());
             record.setRawMaxIdle(in.readInt());
             record.setRawCreationTime(in.readInt());
@@ -62,8 +63,7 @@ public enum RecordReaderWriter {
         @Override
         void writeRecord(ObjectDataOutput out,
                          Record record, Data dataValue) throws IOException {
-            out.writeData(record.getKey());
-            out.writeData(dataValue);
+            writeData(out, dataValue);
             out.writeInt(record.getRawTtl());
             out.writeInt(record.getRawMaxIdle());
             out.writeInt(record.getRawCreationTime());
@@ -78,8 +78,7 @@ public enum RecordReaderWriter {
         @Override
         Record readRecord(ObjectDataInput in) throws IOException {
             DataRecordWithStats record = new DataRecordWithStats();
-            record.setKey(in.readData());
-            record.setValue(in.readData());
+            record.setValue(readData(in));
             record.setRawTtl(in.readInt());
             record.setRawMaxIdle(in.readInt());
             record.setRawCreationTime(in.readInt());

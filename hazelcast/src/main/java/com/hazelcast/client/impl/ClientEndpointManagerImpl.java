@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2008-2019, Hazelcast, Inc. All Rights Reserved.
+ * Copyright (c) 2008-2020, Hazelcast, Inc. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,9 +16,13 @@
 
 package com.hazelcast.client.impl;
 
+import com.hazelcast.internal.metrics.DynamicMetricsProvider;
+import com.hazelcast.internal.metrics.MetricDescriptor;
+import com.hazelcast.internal.metrics.MetricsCollectionContext;
 import com.hazelcast.internal.metrics.MetricsRegistry;
 import com.hazelcast.internal.metrics.Probe;
 import com.hazelcast.internal.nio.Connection;
+import com.hazelcast.internal.server.ServerConnection;
 import com.hazelcast.internal.util.counters.MwCounter;
 import com.hazelcast.logging.ILogger;
 import com.hazelcast.spi.impl.NodeEngine;
@@ -34,6 +38,9 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 
 import static com.hazelcast.client.impl.ClientEngineImpl.SERVICE_NAME;
+import static com.hazelcast.internal.metrics.MetricDescriptorConstants.CLIENT_METRIC_ENDPOINT_MANAGER_COUNT;
+import static com.hazelcast.internal.metrics.MetricDescriptorConstants.CLIENT_METRIC_ENDPOINT_MANAGER_TOTAL_REGISTRATIONS;
+import static com.hazelcast.internal.metrics.MetricDescriptorConstants.CLIENT_PREFIX_ENDPOINT;
 import static com.hazelcast.internal.metrics.ProbeLevel.MANDATORY;
 import static com.hazelcast.internal.util.Preconditions.checkNotNull;
 import static com.hazelcast.internal.util.SetUtil.createHashSet;
@@ -42,24 +49,24 @@ import static com.hazelcast.internal.util.counters.MwCounter.newMwCounter;
 /**
  * Manages and stores {@link com.hazelcast.client.impl.ClientEndpointImpl}s.
  */
-//FGTODO: 2019/12/3 上午10:05 zmyer 
-public class ClientEndpointManagerImpl implements ClientEndpointManager {
+public class ClientEndpointManagerImpl implements ClientEndpointManager, DynamicMetricsProvider {
 
     private final ILogger logger;
     private final EventService eventService;
 
-    @Probe(name = "count", level = MANDATORY)
+    @Probe(name = CLIENT_METRIC_ENDPOINT_MANAGER_COUNT, level = MANDATORY)
     private final ConcurrentMap<Connection, ClientEndpoint> endpoints =
             new ConcurrentHashMap<>();
 
-    @Probe(name = "totalRegistrations", level = MANDATORY)
+    @Probe(name = CLIENT_METRIC_ENDPOINT_MANAGER_TOTAL_REGISTRATIONS, level = MANDATORY)
     private final MwCounter totalRegistrations = newMwCounter();
 
     public ClientEndpointManagerImpl(NodeEngine nodeEngine) {
         this.logger = nodeEngine.getLogger(ClientEndpointManager.class);
         this.eventService = nodeEngine.getEventService();
         MetricsRegistry metricsRegistry = ((NodeEngineImpl) nodeEngine).getMetricsRegistry();
-        metricsRegistry.registerStaticMetrics(this, "client.endpoint");
+        metricsRegistry.registerStaticMetrics(this, CLIENT_PREFIX_ENDPOINT);
+        metricsRegistry.registerDynamicMetricsProvider(this);
     }
 
     @Override
@@ -82,7 +89,7 @@ public class ClientEndpointManagerImpl implements ClientEndpointManager {
     public boolean registerEndpoint(ClientEndpoint endpoint) {
         checkNotNull(endpoint, "endpoint can't be null");
 
-        final Connection conn = endpoint.getConnection();
+        final ServerConnection conn = endpoint.getConnection();
         if (endpoints.putIfAbsent(conn, endpoint) != null) {
             return false;
         } else {
@@ -111,6 +118,8 @@ public class ClientEndpointManagerImpl implements ClientEndpointManager {
             endpoint.destroy();
         } catch (LoginException e) {
             logger.warning(e);
+        } catch (Exception e) {
+            logger.finest(e);
         }
 
         ClientEvent event = new ClientEvent(endpoint.getUuid(),
@@ -140,4 +149,8 @@ public class ClientEndpointManagerImpl implements ClientEndpointManager {
         return endpoints.size();
     }
 
+    @Override
+    public void provideDynamicMetrics(MetricDescriptor descriptor, MetricsCollectionContext context) {
+        endpoints.forEach((connection, clientEndpoint) -> clientEndpoint.provideDynamicMetrics(descriptor, context));
+    }
 }

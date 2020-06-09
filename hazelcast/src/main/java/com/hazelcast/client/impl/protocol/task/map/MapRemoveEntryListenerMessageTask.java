@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2008-2019, Hazelcast, Inc. All Rights Reserved.
+ * Copyright (c) 2008-2020, Hazelcast, Inc. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -20,13 +20,14 @@ import com.hazelcast.client.impl.protocol.ClientMessage;
 import com.hazelcast.client.impl.protocol.codec.MapRemoveEntryListenerCodec;
 import com.hazelcast.client.impl.protocol.task.AbstractRemoveListenerMessageTask;
 import com.hazelcast.instance.impl.Node;
-import com.hazelcast.map.impl.MapService;
 import com.hazelcast.internal.nio.Connection;
+import com.hazelcast.map.impl.MapService;
 import com.hazelcast.security.permission.ActionConstants;
 import com.hazelcast.security.permission.MapPermission;
 
 import java.security.Permission;
 import java.util.UUID;
+import java.util.concurrent.Future;
 
 public class MapRemoveEntryListenerMessageTask
         extends AbstractRemoveListenerMessageTask<MapRemoveEntryListenerCodec.RequestParameters> {
@@ -36,9 +37,9 @@ public class MapRemoveEntryListenerMessageTask
     }
 
     @Override
-    protected boolean deRegisterListener() {
+    protected Future<Boolean> deRegisterListener() {
         MapService service = getService(MapService.SERVICE_NAME);
-        return service.getMapServiceContext().removeEventListener(parameters.name, parameters.registrationId);
+        return service.getMapServiceContext().removeEventListenerAsync(parameters.name, parameters.registrationId);
     }
 
     @Override

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2008-2019, Hazelcast, Inc. All Rights Reserved.
+ * Copyright (c) 2008-2020, Hazelcast, Inc. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -18,16 +18,15 @@ package com.hazelcast.instance.impl;
 
 import com.hazelcast.cluster.ClusterState;
 import com.hazelcast.core.HazelcastInstance;
-import com.hazelcast.core.HazelcastInstanceNotActiveException;
+import com.hazelcast.internal.util.ExceptionUtil;
+import com.hazelcast.spi.impl.AllowedDuringPassiveState;
 import com.hazelcast.spi.impl.NodeEngine;
 import com.hazelcast.spi.impl.operationservice.Operation;
-import com.hazelcast.spi.impl.AllowedDuringPassiveState;
 import com.hazelcast.test.HazelcastParallelClassRunner;
 import com.hazelcast.test.HazelcastTestSupport;
 import com.hazelcast.test.TestHazelcastInstanceFactory;
 import com.hazelcast.test.annotation.ParallelJVMTest;
 import com.hazelcast.test.annotation.QuickTest;
-import com.hazelcast.internal.util.ExceptionUtil;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
@@ -39,6 +38,8 @@ import java.util.concurrent.TimeUnit;
 
 import static com.hazelcast.internal.cluster.impl.AdvancedClusterStateTest.changeClusterStateEventually;
 import static com.hazelcast.spi.impl.operationservice.impl.OperationServiceImpl_asyncInvokeOnPartitionTest.InvocationEntryProcessor.latch;
+import static com.hazelcast.test.Accessors.getNode;
+import static com.hazelcast.test.Accessors.getNodeEngineImpl;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
@@ -107,91 +108,79 @@ public class NodeStateTest extends HazelcastTestSupport {
 
     @Test
     public void shouldReject_NormalOperationInvocation_whilePassive() throws Exception {
-        InvocationTask task = new InvocationTask() {
-            @Override
-            public void invoke(NodeEngine nodeEngine) throws Exception {
-                Future<Object> future = nodeEngine.getOperationService()
-                        .invokeOnPartition(null, new DummyOperation(), 1);
-                try {
-                    future.get();
-                    fail("Invocation should fail while node is passive!");
-                } catch (ExecutionException e) {
-                    Throwable cause = e.getCause();
-                    assertTrue("Cause: " + cause, cause instanceof HazelcastInstanceNotActiveException);
-                }
+        InvocationTask task = nodeEngine -> {
+            Future<Object> future = nodeEngine.getOperationService()
+                    .invokeOnPartition(null, new DummyOperation(), 1);
+            try {
+                future.get();
+                fail("Invocation should fail while node is passive!");
+            } catch (ExecutionException e) {
+                Throwable cause = e.getCause();
+                assertTrue("Cause: " + cause, cause instanceof IllegalStateException);
             }
         };
 
-        testInvocation_whilePassive(task);
+        testInvocation_whileClusterPassive(task);
     }
 
     @Test
     public void shouldReject_NormalOperationExecution_whilePassive() throws Exception {
-        InvocationTask task = new InvocationTask() {
-            @Override
-            public void invoke(NodeEngine nodeEngine) throws Exception {
-                final CountDownLatch latch = new CountDownLatch(1);
-                Operation op = new DummyOperation() {
-                    @Override
-                    public void onExecutionFailure(Throwable e) {
-                        latch.countDown();
-                    }
+        InvocationTask task = nodeEngine -> {
+            final CountDownLatch latch = new CountDownLatch(1);
+            Operation op = new DummyOperation() {
+                @Override
+                public void onExecutionFailure(Throwable e) {
+                    latch.countDown();
+                }
 
-                    @Override
-                    public boolean returnsResponse() {
-                        return false;
-                    }
-                };
+                @Override
+                public boolean returnsResponse() {
+                    return false;
+                }
+            };
 
-                nodeEngine.getOperationService().run(op);
-                assertOpenEventually(latch);
-            }
+            nodeEngine.getOperationService().run(op);
+            assertOpenEventually(latch);
         };
 
-        testInvocation_whilePassive(task);
+        testInvocation_whileClusterPassive(task);
     }
 
     @Test
     public void shouldAllow_AllowedOperationInvocation_whilePassive() throws Exception {
-        InvocationTask task = new InvocationTask() {
-            @Override
-            public void invoke(NodeEngine nodeEngine) throws Exception {
-                Future<Object> future = nodeEngine.getOperationService()
-                        .invokeOnTarget(null, new DummyAllowedDuringPassiveStateOperation(), nodeEngine.getThisAddress());
-                future.get(1, TimeUnit.MINUTES);
-            }
+        InvocationTask task = nodeEngine -> {
+            Future<Object> future = nodeEngine.getOperationService()
+                    .invokeOnTarget(null, new DummyAllowedDuringPassiveStateOperation(), nodeEngine.getThisAddress());
+            future.get(1, TimeUnit.MINUTES);
         };
 
-        testInvocation_whilePassive(task);
+        testInvocation_whileClusterPassive(task);
     }
 
     @Test
     public void shouldAllow_AllowedOperationExecution_whilePassive() throws Exception {
-        InvocationTask task = new InvocationTask() {
-            @Override
-            public void invoke(NodeEngine nodeEngine) throws Exception {
-                final CountDownLatch latch = new CountDownLatch(1);
-                Operation op = new DummyAllowedDuringPassiveStateOperation() {
-                    @Override
-                    public void afterRun() throws Exception {
-                        latch.countDown();
-                    }
+        InvocationTask task = nodeEngine -> {
+            final CountDownLatch latch = new CountDownLatch(1);
+            Operation op = new DummyAllowedDuringPassiveStateOperation() {
+                @Override
+                public void afterRun() throws Exception {
+                    latch.countDown();
+                }
 
-                    @Override
-                    public boolean returnsResponse() {
-                        return false;
-                    }
-                };
+                @Override
+                public boolean returnsResponse() {
+                    return false;
+                }
+            };
 
-                nodeEngine.getOperationService().run(op);
-                assertOpenEventually(latch);
-            }
+            nodeEngine.getOperationService().run(op);
+            assertOpenEventually(latch);
         };
 
-        testInvocation_whilePassive(task);
+        testInvocation_whileClusterPassive(task);
     }
 
-    private void testInvocation_whilePassive(InvocationTask invocationTask) throws Exception {
+    private void testInvocation_whileClusterPassive(InvocationTask invocationTask) throws Exception {
         TestHazelcastInstanceFactory factory = createHazelcastInstanceFactory();
         final HazelcastInstance hz = factory.newHazelcastInstance();
         final Node node = getNode(hz);

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2008-2019, Hazelcast, Inc. All Rights Reserved.
+ * Copyright (c) 2008-2020, Hazelcast, Inc. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -17,11 +17,10 @@
 package com.hazelcast.internal.util;
 
 import com.hazelcast.config.Config;
-import com.hazelcast.config.ManagementCenterConfig;
 import com.hazelcast.core.HazelcastInstance;
 import com.hazelcast.instance.BuildInfoProvider;
 import com.hazelcast.instance.impl.Node;
-import com.hazelcast.spi.properties.GroupProperty;
+import com.hazelcast.spi.properties.ClusterProperty;
 import com.hazelcast.test.HazelcastParallelClassRunner;
 import com.hazelcast.test.HazelcastTestSupport;
 import com.hazelcast.test.annotation.ParallelJVMTest;
@@ -36,6 +35,7 @@ import java.lang.management.RuntimeMXBean;
 import java.util.Map;
 import java.util.UUID;
 
+import static com.hazelcast.test.Accessors.getNode;
 import static java.lang.System.getenv;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
@@ -61,10 +61,10 @@ public class PhoneHomeTest extends HazelcastTestSupport {
         OperatingSystemMXBean osMxBean = ManagementFactory.getOperatingSystemMXBean();
         assertEquals(parameters.get("version"), BuildInfoProvider.getBuildInfo().getVersion());
         assertEquals(UUID.fromString(parameters.get("m")), node.getLocalMember().getUuid());
-        assertEquals(parameters.get("e"), null);
-        assertEquals(parameters.get("oem"), null);
-        assertEquals(parameters.get("l"), null);
-        assertEquals(parameters.get("hdgb"), null);
+        assertNull(parameters.get("e"));
+        assertNull(parameters.get("oem"));
+        assertNull(parameters.get("l"));
+        assertNull(parameters.get("hdgb"));
         assertEquals(parameters.get("p"), "source");
         assertEquals(parameters.get("crsz"), "A");
         assertEquals(parameters.get("cssz"), "A");
@@ -83,32 +83,12 @@ public class PhoneHomeTest extends HazelcastTestSupport {
         assertEquals(parameters.get("osv"), osMxBean.getVersion());
         assertEquals(parameters.get("jvmn"), runtimeMxBean.getVmName());
         assertEquals(parameters.get("jvmv"), System.getProperty("java.version"));
-        assertEquals(parameters.get("mcver"), "MC_NOT_CONFIGURED");
-        assertEquals(parameters.get("mclicense"), "MC_NOT_CONFIGURED");
-    }
-
-    @Test
-    public void testPhoneHomeParameters_withManagementCenterConfiguredButNotAvailable() {
-        ManagementCenterConfig managementCenterConfig = new ManagementCenterConfig()
-                .setEnabled(true)
-                .setUrl("http://localhost:11111/mancen");
-        Config config = new Config()
-                .setManagementCenterConfig(managementCenterConfig);
-
-        HazelcastInstance hz = createHazelcastInstance(config);
-        Node node = getNode(hz);
-        PhoneHome phoneHome = new PhoneHome(node);
-
-        sleepAtLeastMillis(1);
-        Map<String, String> parameters = phoneHome.phoneHome(node, true);
-        assertEquals(parameters.get("mcver"), "MC_NOT_AVAILABLE");
-        assertEquals(parameters.get("mclicense"), "MC_NOT_AVAILABLE");
     }
 
     @Test
     public void testScheduling_whenPhoneHomeIsDisabled() {
         Config config = new Config()
-                .setProperty(GroupProperty.PHONE_HOME_ENABLED.getName(), "false");
+                .setProperty(ClusterProperty.PHONE_HOME_ENABLED.getName(), "false");
 
         HazelcastInstance hz = createHazelcastInstance(config);
         Node node = getNode(hz);
@@ -123,7 +103,7 @@ public class PhoneHomeTest extends HazelcastTestSupport {
         assumeFalse("Skipping. The PhoneHome is disabled by the Environment variable",
                 "false".equals(getenv("HZ_PHONE_HOME_ENABLED")));
         Config config = new Config()
-                .setProperty(GroupProperty.PHONE_HOME_ENABLED.getName(), "true");
+                .setProperty(ClusterProperty.PHONE_HOME_ENABLED.getName(), "true");
 
         HazelcastInstance hz = createHazelcastInstance(config);
         Node node = getNode(hz);

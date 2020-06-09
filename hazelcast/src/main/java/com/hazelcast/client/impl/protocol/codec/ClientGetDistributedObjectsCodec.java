@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2008-2019, Hazelcast, Inc. All Rights Reserved.
+ * Copyright (c) 2008-2020, Hazelcast, Inc. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -34,16 +34,16 @@ import static com.hazelcast.client.impl.protocol.codec.builtin.FixedSizeTypesCod
  */
 
 /**
- * TODO DOC
+ * Gets the list of distributed objects in the cluster.
  */
-@Generated("330dcace5742f0d9ede4a69c05f99bad")
+@Generated("df3c6c6f35c09da82da7613c452c8556")
 public final class ClientGetDistributedObjectsCodec {
-    //hex: 0x000A00
-    public static final int REQUEST_MESSAGE_TYPE = 2560;
-    //hex: 0x000A01
-    public static final int RESPONSE_MESSAGE_TYPE = 2561;
+    //hex: 0x000800
+    public static final int REQUEST_MESSAGE_TYPE = 2048;
+    //hex: 0x000801
+    public static final int RESPONSE_MESSAGE_TYPE = 2049;
     private static final int REQUEST_INITIAL_FRAME_SIZE = PARTITION_ID_FIELD_OFFSET + INT_SIZE_IN_BYTES;
-    private static final int RESPONSE_INITIAL_FRAME_SIZE = RESPONSE_BACKUP_ACKS_FIELD_OFFSET + INT_SIZE_IN_BYTES;
+    private static final int RESPONSE_INITIAL_FRAME_SIZE = RESPONSE_BACKUP_ACKS_FIELD_OFFSET + BYTE_SIZE_IN_BYTES;
 
     private ClientGetDistributedObjectsCodec() {
     }
@@ -55,10 +55,10 @@ public final class ClientGetDistributedObjectsCodec {
     public static ClientMessage encodeRequest() {
         ClientMessage clientMessage = ClientMessage.createForEncode();
         clientMessage.setRetryable(false);
-        clientMessage.setAcquiresResource(false);
         clientMessage.setOperationName("Client.GetDistributedObjects");
         ClientMessage.Frame initialFrame = new ClientMessage.Frame(new byte[REQUEST_INITIAL_FRAME_SIZE], UNFRAGMENTED_MESSAGE);
         encodeInt(initialFrame.content, TYPE_FIELD_OFFSET, REQUEST_MESSAGE_TYPE);
+        encodeInt(initialFrame.content, PARTITION_ID_FIELD_OFFSET, -1);
         clientMessage.add(initialFrame);
         return clientMessage;
     }

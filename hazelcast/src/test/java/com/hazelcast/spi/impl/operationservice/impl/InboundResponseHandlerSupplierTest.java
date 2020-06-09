@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2008-2019, Hazelcast, Inc. All Rights Reserved.
+ * Copyright (c) 2008-2020, Hazelcast, Inc. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,19 +16,19 @@
 
 package com.hazelcast.spi.impl.operationservice.impl;
 
+import com.hazelcast.internal.nio.Packet;
+import com.hazelcast.internal.server.ServerConnection;
 import com.hazelcast.internal.serialization.InternalSerializationService;
 import com.hazelcast.internal.serialization.impl.DefaultSerializationServiceBuilder;
 import com.hazelcast.logging.ILogger;
 import com.hazelcast.logging.Logger;
-import com.hazelcast.internal.nio.Connection;
-import com.hazelcast.internal.nio.Packet;
 import com.hazelcast.spi.impl.NodeEngine;
 import com.hazelcast.spi.impl.operationservice.Operation;
 import com.hazelcast.spi.impl.operationservice.impl.InboundResponseHandlerSupplier.AsyncMultithreadedResponseHandler;
 import com.hazelcast.spi.impl.operationservice.impl.InboundResponseHandlerSupplier.AsyncSingleThreadedResponseHandler;
 import com.hazelcast.spi.impl.operationservice.impl.responses.NormalResponse;
 import com.hazelcast.spi.impl.sequence.CallIdSequenceWithoutBackpressure;
-import com.hazelcast.spi.properties.GroupProperty;
+import com.hazelcast.spi.properties.ClusterProperty;
 import com.hazelcast.spi.properties.HazelcastProperties;
 import com.hazelcast.test.AssertTask;
 import com.hazelcast.test.HazelcastParallelClassRunner;
@@ -102,7 +102,7 @@ public class InboundResponseHandlerSupplierTest extends HazelcastTestSupport {
 
     private InboundResponseHandlerSupplier newSupplier(int threadCount) {
         Properties props = new Properties();
-        props.put(GroupProperty.RESPONSE_THREAD_COUNT.getName(), "" + threadCount);
+        props.put(ClusterProperty.RESPONSE_THREAD_COUNT.getName(), "" + threadCount);
         HazelcastProperties properties = new HazelcastProperties(props);
         when(nodeEngine.getProperties()).thenReturn(properties);
 
@@ -136,7 +136,7 @@ public class InboundResponseHandlerSupplierTest extends HazelcastTestSupport {
         final Packet response = new Packet(serializationService.toBytes(new NormalResponse("foo", callId, 0, false)))
                 .setPacketType(Packet.Type.OPERATION)
                 .raiseFlags(FLAG_OP_RESPONSE)
-                .setConn(mock(Connection.class));
+                .setConn(mock(ServerConnection.class));
 
         supplier.get().accept(response);
 
@@ -173,7 +173,7 @@ public class InboundResponseHandlerSupplierTest extends HazelcastTestSupport {
         // the response flag isn't set; so an exception is thrown.
         Packet badResponse = new Packet(serializationService.toBytes(new NormalResponse("bad", 1, 0, false)))
                 .setPacketType(Packet.Type.OPERATION)
-                .setConn(mock(Connection.class));
+                .setConn(mock(ServerConnection.class));
 
         Consumer<Packet> responseConsumer = supplier.get();
 
@@ -182,7 +182,7 @@ public class InboundResponseHandlerSupplierTest extends HazelcastTestSupport {
         final Packet goodResponse = new Packet(serializationService.toBytes(new NormalResponse("foo", callId, 0, false)))
                 .setPacketType(Packet.Type.OPERATION)
                 .raiseFlags(FLAG_OP_RESPONSE)
-                .setConn(mock(Connection.class));
+                .setConn(mock(ServerConnection.class));
 
         responseConsumer.accept(goodResponse);
 

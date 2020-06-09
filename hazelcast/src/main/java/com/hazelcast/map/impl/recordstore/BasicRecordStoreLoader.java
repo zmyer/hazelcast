@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2008-2019, Hazelcast, Inc. All Rights Reserved.
+ * Copyright (c) 2008-2020, Hazelcast, Inc. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -24,13 +24,13 @@ import com.hazelcast.map.impl.MapServiceContext;
 import com.hazelcast.map.impl.mapstore.MapDataStore;
 import com.hazelcast.map.impl.operation.MapOperationProvider;
 import com.hazelcast.map.impl.operation.RemoveFromLoadAllOperation;
-import com.hazelcast.nio.serialization.Data;
+import com.hazelcast.internal.serialization.Data;
 import com.hazelcast.spi.impl.executionservice.ExecutionService;
 import com.hazelcast.spi.impl.NodeEngine;
 import com.hazelcast.spi.impl.operationservice.Operation;
 import com.hazelcast.spi.impl.operationservice.OperationAccessor;
 import com.hazelcast.spi.impl.operationservice.OperationService;
-import com.hazelcast.spi.properties.GroupProperty;
+import com.hazelcast.spi.properties.ClusterProperty;
 import com.hazelcast.internal.util.ExceptionUtil;
 
 import java.util.ArrayList;
@@ -318,6 +318,6 @@ class BasicRecordStoreLoader implements RecordStoreLoader {
      * of other value loading tasks on other partitions.
      */
     private int getLoadBatchSize() {
-        return mapServiceContext.getNodeEngine().getProperties().getInteger(GroupProperty.MAP_LOAD_CHUNK_SIZE);
+        return mapServiceContext.getNodeEngine().getProperties().getInteger(ClusterProperty.MAP_LOAD_CHUNK_SIZE);
     }
 }

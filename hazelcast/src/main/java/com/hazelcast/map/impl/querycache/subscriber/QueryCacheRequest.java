@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2008-2019, Hazelcast, Inc. All Rights Reserved.
+ * Copyright (c) 2008-2020, Hazelcast, Inc. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -40,6 +40,7 @@ public class QueryCacheRequest {
     private Boolean includeValue;
     private QueryCacheContext context;
     private QueryCacheConfig queryCacheConfig;
+    private boolean isUrgent;
 
     QueryCacheRequest() {
     }
@@ -86,6 +87,11 @@ public class QueryCacheRequest {
         return this;
     }
 
+    public QueryCacheRequest urgent(boolean urgent) {
+        this.isUrgent = urgent;
+        return this;
+    }
+
     public IMap getMap() {
         return map;
     }
@@ -116,5 +122,9 @@ public class QueryCacheRequest {
 
     public QueryCacheConfig getQueryCacheConfig() {
         return queryCacheConfig;
+    }
+
+    public boolean isUrgent() {
+        return isUrgent;
     }
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2008-2019, Hazelcast, Inc. All Rights Reserved.
+ * Copyright (c) 2008-2020, Hazelcast, Inc. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -22,7 +22,7 @@ import com.hazelcast.config.AttributeConfig;
 import com.hazelcast.config.MapConfig;
 import com.hazelcast.map.IMap;
 import com.hazelcast.instance.impl.HazelcastInstanceProxy;
-import com.hazelcast.nio.serialization.impl.DefaultPortableReaderQuickTest.TestPortableFactory;
+import com.hazelcast.internal.serialization.impl.portable.portablereader.DefaultPortableReaderQuickTest.TestPortableFactory;
 import com.hazelcast.query.Predicates;
 import com.hazelcast.query.extractor.ValueCollector;
 import com.hazelcast.query.extractor.ValueExtractor;

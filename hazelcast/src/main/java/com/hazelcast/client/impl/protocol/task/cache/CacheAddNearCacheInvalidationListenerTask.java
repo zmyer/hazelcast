@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2008-2019, Hazelcast, Inc. All Rights Reserved.
+ * Copyright (c) 2008-2020, Hazelcast, Inc. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -21,37 +21,37 @@ import com.hazelcast.cache.impl.CacheService;
 import com.hazelcast.client.impl.ClientEndpoint;
 import com.hazelcast.client.impl.protocol.ClientMessage;
 import com.hazelcast.client.impl.protocol.codec.CacheAddNearCacheInvalidationListenerCodec;
-import com.hazelcast.client.impl.protocol.task.AbstractCallableMessageTask;
-import com.hazelcast.client.impl.protocol.task.ListenerMessageTask;
+import com.hazelcast.client.impl.protocol.task.AbstractAddListenerMessageTask;
 import com.hazelcast.instance.impl.Node;
 import com.hazelcast.internal.nearcache.impl.invalidation.Invalidation;
 import com.hazelcast.internal.nio.Connection;
-import com.hazelcast.nio.serialization.Data;
+import com.hazelcast.internal.serialization.Data;
 
 import java.security.Permission;
 import java.util.List;
 import java.util.UUID;
+import java.util.concurrent.CompletableFuture;
+
+import static com.hazelcast.spi.impl.InternalCompletableFuture.newCompletedFuture;
 
 public class CacheAddNearCacheInvalidationListenerTask
-        extends AbstractCallableMessageTask<CacheAddNearCacheInvalidationListenerCodec.RequestParameters>
-        implements ListenerMessageTask {
+        extends AbstractAddListenerMessageTask<CacheAddNearCacheInvalidationListenerCodec.RequestParameters> {
 
     public CacheAddNearCacheInvalidationListenerTask(ClientMessage clientMessage, Node node, Connection connection) {
         super(clientMessage, node, connection);
     }
 
     @Override
-    protected Object call() {
+    protected CompletableFuture<UUID> processInternal() {
         CacheService cacheService = getService(CacheService.SERVICE_NAME);
         CacheContext cacheContext = cacheService.getOrCreateCacheContext(parameters.name);
         NearCacheInvalidationListener listener
                 = new NearCacheInvalidationListener(endpoint, cacheContext,
                 nodeEngine.getLocalMember().getUuid(), clientMessage.getCorrelationId());
 
-        UUID registrationId =
-                cacheService.addInvalidationListener(parameters.name, listener, parameters.localOnly);
-        endpoint.addListenerDestroyAction(CacheService.SERVICE_NAME, parameters.name, registrationId);
-        return registrationId;
+        return parameters.localOnly ? newCompletedFuture(
+                cacheService.registerLocalListener(parameters.name, listener)) : (CompletableFuture<UUID>) cacheService
+                .registerListenerAsync(parameters.name, listener);
     }
 
     private final class NearCacheInvalidationListener extends AbstractCacheClientNearCacheInvalidationListener {

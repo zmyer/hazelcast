@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2008-2019, Hazelcast, Inc. All Rights Reserved.
+ * Copyright (c) 2008-2020, Hazelcast, Inc. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -19,7 +19,7 @@ import com.hazelcast.internal.serialization.InternalSerializationService;
 import com.hazelcast.internal.serialization.impl.DefaultSerializationServiceBuilder;
 import com.hazelcast.internal.serialization.impl.ObjectDataInputStream;
 import com.hazelcast.internal.serialization.impl.ObjectDataOutputStream;
-import com.hazelcast.nio.serialization.Data;
+import com.hazelcast.internal.serialization.Data;
 import com.hazelcast.test.HazelcastParallelClassRunner;
 import com.hazelcast.test.annotation.ParallelJVMTest;
 import com.hazelcast.test.annotation.QuickTest;
@@ -113,7 +113,6 @@ public class RecordReaderWriterTest {
         writtenRecord.setCreationTime(7);
         writtenRecord.setVersion(8);
         writtenRecord.setHits(9);
-        writtenRecord.setKey(ss.toData(10));
         writtenRecord.setValue(ss.toData(11));
         return writtenRecord;
     }
@@ -128,14 +127,12 @@ public class RecordReaderWriterTest {
 
     private static Record<Data> asDataRecord(Record fromRecord, Data value) {
         DataRecord toRecord = new DataRecord(value);
-        toRecord.setKey(fromRecord.getKey());
         toRecord.setValue(value);
         return copyMetadata(fromRecord, toRecord);
     }
 
     private static Record<Data> asDataRecordWithStats(Record fromRecord, Data value) {
         DataRecordWithStats toRecord = new DataRecordWithStats(value);
-        toRecord.setKey(fromRecord.getKey());
         toRecord.setValue(value);
         return copyMetadata(fromRecord, toRecord);
     }

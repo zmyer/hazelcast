@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2008-2019, Hazelcast, Inc. All Rights Reserved.
+ * Copyright (c) 2008-2020, Hazelcast, Inc. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -18,6 +18,7 @@ package com.hazelcast.instance.impl;
 
 import com.hazelcast.cache.impl.CacheService;
 import com.hazelcast.cache.impl.ICacheService;
+import com.hazelcast.client.impl.ClusterViewListenerService;
 import com.hazelcast.cluster.ClusterState;
 import com.hazelcast.config.Config;
 import com.hazelcast.config.HotRestartPersistenceConfig;
@@ -30,9 +31,6 @@ import com.hazelcast.core.HazelcastInstanceNotActiveException;
 import com.hazelcast.cp.internal.persistence.CPPersistenceService;
 import com.hazelcast.cp.internal.persistence.NopCPPersistenceService;
 import com.hazelcast.hotrestart.HotRestartService;
-import com.hazelcast.internal.hotrestart.InternalHotRestartService;
-import com.hazelcast.internal.hotrestart.NoOpHotRestartService;
-import com.hazelcast.internal.hotrestart.NoopInternalHotRestartService;
 import com.hazelcast.instance.BuildInfo;
 import com.hazelcast.instance.BuildInfoProvider;
 import com.hazelcast.instance.EndpointQualifier;
@@ -63,20 +61,22 @@ import com.hazelcast.internal.diagnostics.SystemLogPlugin;
 import com.hazelcast.internal.diagnostics.SystemPropertiesPlugin;
 import com.hazelcast.internal.dynamicconfig.DynamicConfigListener;
 import com.hazelcast.internal.dynamicconfig.EmptyDynamicConfigListener;
+import com.hazelcast.internal.hotrestart.InternalHotRestartService;
+import com.hazelcast.internal.hotrestart.NoOpHotRestartService;
+import com.hazelcast.internal.hotrestart.NoopInternalHotRestartService;
 import com.hazelcast.internal.jmx.ManagementService;
-import com.hazelcast.internal.management.ManagementCenterConnectionFactory;
 import com.hazelcast.internal.management.TimedMemberStateFactory;
 import com.hazelcast.internal.memory.DefaultMemoryStats;
 import com.hazelcast.internal.memory.MemoryStats;
-import com.hazelcast.internal.networking.ChannelInitializerProvider;
+import com.hazelcast.internal.networking.ChannelInitializer;
 import com.hazelcast.internal.networking.InboundHandler;
 import com.hazelcast.internal.networking.OutboundHandler;
 import com.hazelcast.internal.nio.ClassLoaderUtil;
-import com.hazelcast.internal.nio.IOService;
-import com.hazelcast.internal.nio.tcp.DefaultChannelInitializerProvider;
-import com.hazelcast.internal.nio.tcp.PacketDecoder;
-import com.hazelcast.internal.nio.tcp.PacketEncoder;
-import com.hazelcast.internal.nio.tcp.TcpIpConnection;
+import com.hazelcast.internal.server.tcp.ChannelInitializerFunction;
+import com.hazelcast.internal.server.ServerContext;
+import com.hazelcast.internal.server.tcp.PacketDecoder;
+import com.hazelcast.internal.server.tcp.PacketEncoder;
+import com.hazelcast.internal.server.ServerConnection;
 import com.hazelcast.internal.serialization.InternalSerializationService;
 import com.hazelcast.internal.serialization.SerializationServiceBuilder;
 import com.hazelcast.internal.serialization.impl.DefaultSerializationServiceBuilder;
@@ -97,7 +97,7 @@ import com.hazelcast.spi.impl.NodeEngine;
 import com.hazelcast.spi.impl.NodeEngineImpl;
 import com.hazelcast.spi.impl.eventservice.impl.EventServiceImpl;
 import com.hazelcast.spi.impl.servicemanager.ServiceManager;
-import com.hazelcast.spi.properties.GroupProperty;
+import com.hazelcast.spi.properties.ClusterProperty;
 import com.hazelcast.version.MemberVersion;
 import com.hazelcast.version.Version;
 import com.hazelcast.wan.impl.WanReplicationService;
@@ -108,12 +108,12 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.function.Function;
 import java.util.function.Supplier;
 
 import static com.hazelcast.config.ConfigAccessor.getActiveMemberNetworkConfig;
 import static com.hazelcast.map.impl.MapServiceConstructor.getDefaultMapServiceConstructor;
 
-//FGTODO: 2019/11/26 下午3:15 zmyer
 @SuppressWarnings({"checkstyle:methodcount", "checkstyle:classfanoutcomplexity", "checkstyle:classdataabstractioncoupling"})
 public class DefaultNodeExtension implements NodeExtension {
 
@@ -174,15 +174,33 @@ public class DefaultNodeExtension implements NodeExtension {
     public void printNodeInfo() {
         BuildInfo buildInfo = node.getBuildInfo();
 
+        printBannersBeforeNodeInfo();
+
+        String build = constructBuildString(buildInfo);
+        printNodeInfoInternal(buildInfo, build);
+    }
+
+    protected void printBannersBeforeNodeInfo() {
+    }
+
+    protected String constructBuildString(BuildInfo buildInfo) {
         String build = buildInfo.getBuild();
         String revision = buildInfo.getRevision();
         if (!revision.isEmpty()) {
             build += " - " + revision;
         }
-        systemLogger.info("Hazelcast " + buildInfo.getVersion()
+        return build;
+    }
+
+    private void printNodeInfoInternal(BuildInfo buildInfo, String build) {
+        systemLogger.info(getEditionString() + " " + buildInfo.getVersion()
                 + " (" + build + ") starting at " + node.getThisAddress());
-        systemLogger.info("Copyright (c) 2008-2019, Hazelcast, Inc. All Rights Reserved.");
+        systemLogger.info("Copyright (c) 2008-2020, Hazelcast, Inc. All Rights Reserved.");
         systemLogger.fine("Configured Hazelcast Serialization version: " + buildInfo.getSerializationVersion());
+    }
+
+    protected String getEditionString() {
+        return "Hazelcast";
     }
 
     @Override
@@ -218,7 +236,7 @@ public class DefaultNodeExtension implements NodeExtension {
             SerializationConfig serializationConfig = config.getSerializationConfig() != null
                     ? config.getSerializationConfig() : new SerializationConfig();
 
-            byte version = (byte) node.getProperties().getInteger(GroupProperty.SERIALIZATION_VERSION);
+            byte version = (byte) node.getProperties().getInteger(ClusterProperty.SERIALIZATION_VERSION);
 
             ss = builder.setClassLoader(configClassLoader)
                     .setConfig(serializationConfig)
@@ -245,7 +263,7 @@ public class DefaultNodeExtension implements NodeExtension {
     }
 
     protected PartitioningStrategy getPartitioningStrategy(ClassLoader configClassLoader) throws Exception {
-        String partitioningStrategyClassName = node.getProperties().getString(GroupProperty.PARTITIONING_STRATEGY_CLASS);
+        String partitioningStrategyClassName = node.getProperties().getString(ClusterProperty.PARTITIONING_STRATEGY_CLASS);
         if (partitioningStrategyClassName != null && partitioningStrategyClassName.length() > 0) {
             return ClassLoaderUtil.newInstance(configClassLoader, partitioningStrategyClassName);
         } else {
@@ -285,7 +303,7 @@ public class DefaultNodeExtension implements NodeExtension {
 
     @Override
     public InboundHandler[] createInboundHandlers(EndpointQualifier qualifier,
-                                                  TcpIpConnection connection, IOService ioService) {
+                                                  ServerConnection connection, ServerContext serverContext) {
         NodeEngineImpl nodeEngine = node.nodeEngine;
         PacketDecoder decoder = new PacketDecoder(connection, nodeEngine.getPacketDispatcher());
         return new InboundHandler[]{decoder};
@@ -293,13 +311,13 @@ public class DefaultNodeExtension implements NodeExtension {
 
     @Override
     public OutboundHandler[] createOutboundHandlers(EndpointQualifier qualifier,
-                                                    TcpIpConnection connection, IOService ioService) {
+                                                    ServerConnection connection, ServerContext serverContext) {
         return new OutboundHandler[]{new PacketEncoder()};
     }
 
     @Override
-    public ChannelInitializerProvider createChannelInitializerProvider(IOService ioService) {
-        DefaultChannelInitializerProvider provider = new DefaultChannelInitializerProvider(ioService, node.getConfig());
+    public Function<EndpointQualifier, ChannelInitializer> createChannelInitializerFn(ServerContext serverContext) {
+        ChannelInitializerFunction provider = new ChannelInitializerFunction(serverContext, node.getConfig());
         provider.init();
         return provider;
     }
@@ -368,13 +386,18 @@ public class DefaultNodeExtension implements NodeExtension {
 
     @Override
     public void onPartitionStateChange() {
-        if (node.clientEngine.getPartitionListenerService() != null) {
-            node.clientEngine.getPartitionListenerService().onPartitionStateChange();
+        ClusterViewListenerService service = node.clientEngine.getClusterListenerService();
+        if (service != null) {
+            service.onPartitionStateChange();
         }
     }
 
     @Override
     public void onMemberListChange() {
+        ClusterViewListenerService service = node.clientEngine.getClusterListenerService();
+        if (service != null) {
+            service.onMemberListChange();
+        }
     }
 
     @Override
@@ -434,23 +457,23 @@ public class DefaultNodeExtension implements NodeExtension {
     }
 
     @Override
-    public ByteArrayProcessor createMulticastInputProcessor(IOService ioService) {
+    public ByteArrayProcessor createMulticastInputProcessor(ServerContext serverContext) {
         return null;
     }
 
     @Override
-    public ByteArrayProcessor createMulticastOutputProcessor(IOService ioService) {
+    public ByteArrayProcessor createMulticastOutputProcessor(ServerContext serverContext) {
         return null;
     }
 
     // obtain cluster version, if already initialized (not null)
-    // otherwise, if overridden with GroupProperty#INIT_CLUSTER_VERSION, use this one
+    // otherwise, if overridden with ClusterProperty#INIT_CLUSTER_VERSION, use this one
     // otherwise, if not overridden, use current node's codebase version
     private Version getClusterOrNodeVersion() {
         if (node.getClusterService() != null && !node.getClusterService().getClusterVersion().isUnknown()) {
             return node.getClusterService().getClusterVersion();
         } else {
-            String overriddenClusterVersion = node.getProperties().getString(GroupProperty.INIT_CLUSTER_VERSION);
+            String overriddenClusterVersion = node.getProperties().getString(ClusterProperty.INIT_CLUSTER_VERSION);
             return (overriddenClusterVersion != null) ? MemberVersion.of(overriddenClusterVersion).asVersion()
                     : node.getVersion().asVersion();
         }
@@ -490,11 +513,6 @@ public class DefaultNodeExtension implements NodeExtension {
         diagnostics.register(new NetworkingImbalancePlugin(nodeEngine));
         diagnostics.register(new OperationHeartbeatPlugin(nodeEngine));
         diagnostics.register(new OperationThreadSamplerPlugin(nodeEngine));
-    }
-
-    @Override
-    public ManagementCenterConnectionFactory getManagementCenterConnectionFactory() {
-        return null;
     }
 
     @Override

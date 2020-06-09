@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2008-2019, Hazelcast, Inc. All Rights Reserved.
+ * Copyright (c) 2008-2020, Hazelcast, Inc. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -17,13 +17,26 @@
 package com.hazelcast.internal.monitor.impl;
 
 import com.hazelcast.internal.metrics.Probe;
-import com.hazelcast.internal.json.JsonObject;
 import com.hazelcast.nearcache.NearCacheStats;
 
 import java.util.concurrent.atomic.AtomicLongFieldUpdater;
 
-import static com.hazelcast.internal.util.JsonUtil.getLong;
-import static com.hazelcast.internal.util.JsonUtil.getString;
+import static com.hazelcast.internal.metrics.MetricDescriptorConstants.NEARCACHE_METRIC_CREATION_TIME;
+import static com.hazelcast.internal.metrics.MetricDescriptorConstants.NEARCACHE_METRIC_EVICTIONS;
+import static com.hazelcast.internal.metrics.MetricDescriptorConstants.NEARCACHE_METRIC_EXPIRATIONS;
+import static com.hazelcast.internal.metrics.MetricDescriptorConstants.NEARCACHE_METRIC_HITS;
+import static com.hazelcast.internal.metrics.MetricDescriptorConstants.NEARCACHE_METRIC_INVALIDATIONS;
+import static com.hazelcast.internal.metrics.MetricDescriptorConstants.NEARCACHE_METRIC_INVALIDATION_REQUESTS;
+import static com.hazelcast.internal.metrics.MetricDescriptorConstants.NEARCACHE_METRIC_LAST_PERSISTENCE_DURATION;
+import static com.hazelcast.internal.metrics.MetricDescriptorConstants.NEARCACHE_METRIC_LAST_PERSISTENCE_KEY_COUNT;
+import static com.hazelcast.internal.metrics.MetricDescriptorConstants.NEARCACHE_METRIC_LAST_PERSISTENCE_TIME;
+import static com.hazelcast.internal.metrics.MetricDescriptorConstants.NEARCACHE_METRIC_LAST_PERSISTENCE_WRITTEN_BYTES;
+import static com.hazelcast.internal.metrics.MetricDescriptorConstants.NEARCACHE_METRIC_MISSES;
+import static com.hazelcast.internal.metrics.MetricDescriptorConstants.NEARCACHE_METRIC_OWNED_ENTRY_COUNT;
+import static com.hazelcast.internal.metrics.MetricDescriptorConstants.NEARCACHE_METRIC_OWNED_ENTRY_MEMORY_COST;
+import static com.hazelcast.internal.metrics.MetricDescriptorConstants.NEARCACHE_METRIC_PERSISTENCE_COUNT;
+import static com.hazelcast.internal.metrics.ProbeUnit.BYTES;
+import static com.hazelcast.internal.metrics.ProbeUnit.MS;
 import static java.lang.String.format;
 import static java.util.concurrent.atomic.AtomicLongFieldUpdater.newUpdater;
 
@@ -51,35 +64,35 @@ public class NearCacheStatsImpl implements NearCacheStats {
     private static final AtomicLongFieldUpdater<NearCacheStatsImpl> PERSISTENCE_COUNT =
             newUpdater(NearCacheStatsImpl.class, "persistenceCount");
 
-    @Probe
-    private volatile long creationTime;
-    @Probe
+    @Probe(name = NEARCACHE_METRIC_CREATION_TIME, unit = MS)
+    private final long creationTime;
+    @Probe(name = NEARCACHE_METRIC_OWNED_ENTRY_COUNT)
     private volatile long ownedEntryCount;
-    @Probe
+    @Probe(name = NEARCACHE_METRIC_OWNED_ENTRY_MEMORY_COST, unit = BYTES)
     private volatile long ownedEntryMemoryCost;
-    @Probe
+    @Probe(name = NEARCACHE_METRIC_HITS)
     private volatile long hits;
-    @Probe
+    @Probe(name = NEARCACHE_METRIC_MISSES)
     private volatile long misses;
-    @Probe
+    @Probe(name = NEARCACHE_METRIC_EVICTIONS)
     private volatile long evictions;
-    @Probe
+    @Probe(name = NEARCACHE_METRIC_EXPIRATIONS)
     private volatile long expirations;
 
-    @Probe
+    @Probe(name = NEARCACHE_METRIC_INVALIDATIONS)
     private volatile long invalidations;
-    @Probe
+    @Probe(name = NEARCACHE_METRIC_INVALIDATION_REQUESTS)
     private volatile long invalidationRequests;
 
-    @Probe
+    @Probe(name = NEARCACHE_METRIC_PERSISTENCE_COUNT)
     private volatile long persistenceCount;
-    @Probe
+    @Probe(name = NEARCACHE_METRIC_LAST_PERSISTENCE_TIME, unit = MS)
     private volatile long lastPersistenceTime;
-    @Probe
+    @Probe(name = NEARCACHE_METRIC_LAST_PERSISTENCE_DURATION, unit = MS)
     private volatile long lastPersistenceDuration;
-    @Probe
+    @Probe(name = NEARCACHE_METRIC_LAST_PERSISTENCE_WRITTEN_BYTES, unit = BYTES)
     private volatile long lastPersistenceWrittenBytes;
-    @Probe
+    @Probe(name = NEARCACHE_METRIC_LAST_PERSISTENCE_KEY_COUNT)
     private volatile long lastPersistenceKeyCount;
     private volatile String lastPersistenceFailure = "";
 
@@ -280,46 +293,6 @@ public class NearCacheStatsImpl implements NearCacheStats {
     @Override
     public String getLastPersistenceFailure() {
         return lastPersistenceFailure;
-    }
-
-    @Override
-    public JsonObject toJson() {
-        JsonObject root = new JsonObject();
-        root.add("ownedEntryCount", ownedEntryCount);
-        root.add("ownedEntryMemoryCost", ownedEntryMemoryCost);
-        root.add("creationTime", creationTime);
-        root.add("hits", hits);
-        root.add("misses", misses);
-        root.add("evictions", evictions);
-        root.add("expirations", expirations);
-        root.add("invalidations", invalidations);
-        root.add("invalidationEvents", invalidationRequests);
-        root.add("persistenceCount", persistenceCount);
-        root.add("lastPersistenceTime", lastPersistenceTime);
-        root.add("lastPersistenceDuration", lastPersistenceDuration);
-        root.add("lastPersistenceWrittenBytes", lastPersistenceWrittenBytes);
-        root.add("lastPersistenceKeyCount", lastPersistenceKeyCount);
-        root.add("lastPersistenceFailure", lastPersistenceFailure);
-        return root;
-    }
-
-    @Override
-    public void fromJson(JsonObject json) {
-        ownedEntryCount = getLong(json, "ownedEntryCount", -1L);
-        ownedEntryMemoryCost = getLong(json, "ownedEntryMemoryCost", -1L);
-        creationTime = getLong(json, "creationTime", -1L);
-        hits = getLong(json, "hits", -1L);
-        misses = getLong(json, "misses", -1L);
-        evictions = getLong(json, "evictions", -1L);
-        expirations = getLong(json, "expirations", -1L);
-        invalidations = getLong(json, "invalidations", -1L);
-        invalidationRequests = getLong(json, "invalidationEvents", -1L);
-        persistenceCount = getLong(json, "persistenceCount", -1L);
-        lastPersistenceTime = getLong(json, "lastPersistenceTime", -1L);
-        lastPersistenceDuration = getLong(json, "lastPersistenceDuration", -1L);
-        lastPersistenceWrittenBytes = getLong(json, "lastPersistenceWrittenBytes", -1L);
-        lastPersistenceKeyCount = getLong(json, "lastPersistenceKeyCount", -1L);
-        lastPersistenceFailure = getString(json, "lastPersistenceFailure", "");
     }
 
     @Override

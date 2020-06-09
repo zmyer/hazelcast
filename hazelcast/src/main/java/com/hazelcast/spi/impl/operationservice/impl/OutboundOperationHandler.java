@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2008-2019, Hazelcast, Inc. All Rights Reserved.
+ * Copyright (c) 2008-2020, Hazelcast, Inc. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,11 +16,11 @@
 
 package com.hazelcast.spi.impl.operationservice.impl;
 
-import com.hazelcast.instance.impl.Node;
-import com.hazelcast.internal.serialization.InternalSerializationService;
 import com.hazelcast.cluster.Address;
-import com.hazelcast.internal.nio.Connection;
+import com.hazelcast.instance.impl.Node;
 import com.hazelcast.internal.nio.Packet;
+import com.hazelcast.internal.server.ServerConnection;
+import com.hazelcast.internal.serialization.InternalSerializationService;
 import com.hazelcast.spi.impl.operationservice.Operation;
 
 import static com.hazelcast.instance.EndpointQualifier.MEMBER;
@@ -49,11 +49,11 @@ public class OutboundOperationHandler {
             throw new IllegalArgumentException("Target is this node! -> " + target + ", op: " + op);
         }
 
-        Connection connection = node.getNetworkingService().getEndpointManager(MEMBER).getOrConnect(target);
+        ServerConnection connection = node.getServer().getConnectionManager(MEMBER).getOrConnect(target);
         return send(op, connection);
     }
 
-    public boolean send(Operation op, Connection connection) {
+    public boolean send(Operation op, ServerConnection connection) {
         byte[] bytes = serializationService.toBytes(op);
         int partitionId = op.getPartitionId();
         Packet packet = new Packet(bytes, partitionId).setPacketType(Packet.Type.OPERATION);
@@ -62,6 +62,6 @@ public class OutboundOperationHandler {
             packet.raiseFlags(FLAG_URGENT);
         }
 
-        return node.getEndpointManager(MEMBER).transmit(packet, connection);
+        return node.getServer().getConnectionManager(MEMBER).transmit(packet, connection);
     }
 }

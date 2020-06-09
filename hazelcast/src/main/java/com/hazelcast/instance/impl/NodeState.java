@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2008-2019, Hazelcast, Inc. All Rights Reserved.
+ * Copyright (c) 2008-2020, Hazelcast, Inc. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -19,7 +19,6 @@ package com.hazelcast.instance.impl;
 import com.hazelcast.cluster.Cluster;
 import com.hazelcast.cluster.ClusterState;
 import com.hazelcast.spi.impl.AllowedDuringPassiveState;
-import com.hazelcast.spi.impl.operationservice.ReadonlyOperation;
 
 /**
  * Possible states of a {@link Node} during its lifecycle.
@@ -54,12 +53,6 @@ public enum NodeState {
      * {@link Cluster#changeClusterState(ClusterState)}
      * </li>
      * </ul>
-     * <p>
-     * In {@code PASSIVE} state, all operations will be rejected except operations marked as
-     * {@link ReadonlyOperation}, join operations of some members that are explained in
-     * {@link ClusterState}, replication / migration operations and heartbeat operations.
-     * Operations those are to be allowed during {@code PASSIVE} state should be marked as
-     * {@link AllowedDuringPassiveState}.
      */
     PASSIVE,
 

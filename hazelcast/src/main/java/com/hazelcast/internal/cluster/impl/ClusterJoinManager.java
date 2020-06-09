@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2008-2019, Hazelcast, Inc. All Rights Reserved.
+ * Copyright (c) 2008-2020, Hazelcast, Inc. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,37 +16,38 @@
 
 package com.hazelcast.internal.cluster.impl;
 
+import com.hazelcast.cluster.Address;
 import com.hazelcast.cluster.ClusterState;
 import com.hazelcast.cluster.Member;
-import com.hazelcast.internal.hotrestart.InternalHotRestartService;
-import com.hazelcast.instance.BuildInfo;
 import com.hazelcast.cluster.impl.MemberImpl;
+import com.hazelcast.instance.BuildInfo;
 import com.hazelcast.instance.impl.Node;
 import com.hazelcast.instance.impl.NodeExtension;
 import com.hazelcast.internal.cluster.MemberInfo;
 import com.hazelcast.internal.cluster.impl.operations.AuthenticationFailureOp;
 import com.hazelcast.internal.cluster.impl.operations.BeforeJoinCheckFailureOp;
+import com.hazelcast.internal.cluster.impl.operations.ClusterMismatchOp;
 import com.hazelcast.internal.cluster.impl.operations.ConfigMismatchOp;
 import com.hazelcast.internal.cluster.impl.operations.FinalizeJoinOp;
-import com.hazelcast.internal.cluster.impl.operations.ClusterMismatchOp;
 import com.hazelcast.internal.cluster.impl.operations.JoinRequestOp;
 import com.hazelcast.internal.cluster.impl.operations.MasterResponseOp;
 import com.hazelcast.internal.cluster.impl.operations.MembersUpdateOp;
 import com.hazelcast.internal.cluster.impl.operations.OnJoinOp;
 import com.hazelcast.internal.cluster.impl.operations.WhoisMasterOp;
-import com.hazelcast.internal.partition.InternalPartitionService;
-import com.hazelcast.internal.partition.PartitionRuntimeState;
-import com.hazelcast.logging.ILogger;
-import com.hazelcast.cluster.Address;
+import com.hazelcast.internal.hotrestart.InternalHotRestartService;
 import com.hazelcast.internal.nio.Connection;
 import com.hazelcast.internal.nio.Packet;
-import com.hazelcast.security.Credentials;
-import com.hazelcast.spi.impl.operationservice.Operation;
-import com.hazelcast.spi.impl.operationservice.OperationService;
-import com.hazelcast.spi.impl.NodeEngineImpl;
-import com.hazelcast.spi.properties.GroupProperty;
+import com.hazelcast.internal.server.ServerConnection;
+import com.hazelcast.internal.partition.InternalPartitionService;
+import com.hazelcast.internal.partition.PartitionRuntimeState;
 import com.hazelcast.internal.util.Clock;
 import com.hazelcast.internal.util.UuidUtil;
+import com.hazelcast.logging.ILogger;
+import com.hazelcast.security.Credentials;
+import com.hazelcast.spi.impl.NodeEngineImpl;
+import com.hazelcast.spi.impl.operationservice.Operation;
+import com.hazelcast.spi.impl.operationservice.OperationService;
+import com.hazelcast.spi.properties.ClusterProperty;
 import com.hazelcast.version.MemberVersion;
 import com.hazelcast.version.Version;
 
@@ -79,13 +80,13 @@ import static java.lang.String.format;
  * If this is master node, it will handle join request and notify all other members
  * about newly joined member.
  */
-//FGTODO: 2019/11/22 下午5:43 zmyer
 @SuppressWarnings({"checkstyle:methodcount", "checkstyle:classfanoutcomplexity", "checkstyle:npathcomplexity"})
 public class ClusterJoinManager {
 
     public static final String STALE_JOIN_PREVENTION_DURATION_PROP = "hazelcast.stale.join.prevention.duration.seconds";
     private static final int CLUSTER_OPERATION_RETRY_COUNT = 100;
-    private static final int STALE_JOIN_PREVENTION_DURATION_SECONDS = Integer.getInteger(STALE_JOIN_PREVENTION_DURATION_PROP, 30);
+    private static final int STALE_JOIN_PREVENTION_DURATION_SECONDS
+            = Integer.getInteger(STALE_JOIN_PREVENTION_DURATION_PROP, 30);
 
     private final ILogger logger;
     private final Node node;
@@ -115,8 +116,8 @@ public class ClusterJoinManager {
         clusterStateManager = clusterService.getClusterStateManager();
         clusterClock = clusterService.getClusterClock();
 
-        maxWaitMillisBeforeJoin = node.getProperties().getMillis(GroupProperty.MAX_WAIT_SECONDS_BEFORE_JOIN);
-        waitMillisBeforeJoin = node.getProperties().getMillis(GroupProperty.WAIT_SECONDS_BEFORE_JOIN);
+        maxWaitMillisBeforeJoin = node.getProperties().getMillis(ClusterProperty.MAX_WAIT_SECONDS_BEFORE_JOIN);
+        waitMillisBeforeJoin = node.getProperties().getMillis(ClusterProperty.WAIT_SECONDS_BEFORE_JOIN);
         staleJoinPreventionDuration = TimeUnit.SECONDS.toMillis(STALE_JOIN_PREVENTION_DURATION_SECONDS);
     }
 
@@ -146,10 +147,10 @@ public class ClusterJoinManager {
      * joining node know the current master. Otherwise, if no other join is in progress, execute the {@link JoinRequest}
      *
      * @param joinRequest the join request
-     * @param connection  the connection to the joining node
+     * @param connection the connection to the joining node
      * @see JoinRequestOp
      */
-    public void handleJoinRequest(JoinRequest joinRequest, Connection connection) {
+    public void handleJoinRequest(JoinRequest joinRequest, ServerConnection connection) {
         if (!ensureNodeIsReady()) {
             return;
         }
@@ -168,7 +169,8 @@ public class ClusterJoinManager {
 
         if (joinInProgress) {
             if (logger.isFineEnabled()) {
-                logger.fine(format("Join or membership claim is in progress, cannot handle join request from %s at the moment", target));
+                logger.fine(format("Join or membership claim is in progress, cannot handle join request from %s at the moment",
+                        target));
             }
             return;
         }
@@ -193,7 +195,7 @@ public class ClusterJoinManager {
                 return true;
             }
 
-            logger.warning(format("Received an invalid join request from %s, cause: clusters part of different cluster-groups",
+            logger.warning(format("Received an invalid join request from %s, cause: members part of different cluster",
                     address));
             nodeEngine.getOperationService().send(new ClusterMismatchOp(), address);
         } catch (ConfigMismatchException e) {
@@ -246,7 +248,7 @@ public class ClusterJoinManager {
      * @param joinRequest the join request from a node attempting to join
      * @param connection  the connection of this node to the joining node
      */
-    private void executeJoinRequest(JoinRequest joinRequest, Connection connection) {
+    private void executeJoinRequest(JoinRequest joinRequest, ServerConnection connection) {
         clusterServiceLock.lock();
         try {
             if (checkJoinRequest(joinRequest, connection)) {
@@ -268,7 +270,7 @@ public class ClusterJoinManager {
     }
 
     @SuppressWarnings("checkstyle:npathcomplexity")
-    private boolean checkJoinRequest(JoinRequest joinRequest, Connection connection) {
+    private boolean checkJoinRequest(JoinRequest joinRequest, ServerConnection connection) {
         if (checkIfJoinRequestFromAnExistingMember(joinRequest, connection)) {
             return true;
         }
@@ -403,9 +405,9 @@ public class ClusterJoinManager {
     /**
      * Start processing the join request. This method is executed by the master node. In the case that there hasn't been any
      * previous join requests from the {@code memberInfo}'s address the master will first respond by sending the master answer.
-     * <p>
-     * Also, during the first {@link GroupProperty#MAX_WAIT_SECONDS_BEFORE_JOIN} period since the master received the first
-     * join request from any node, the master will always wait for {@link GroupProperty#WAIT_SECONDS_BEFORE_JOIN} before
+     *
+     * Also, during the first {@link ClusterProperty#MAX_WAIT_SECONDS_BEFORE_JOIN} period since the master received the first
+     * join request from any node, the master will always wait for {@link ClusterProperty#WAIT_SECONDS_BEFORE_JOIN} before
      * allowing any join request to proceed. This means that in the initial period from receiving the first ever join request,
      * every new join request from a different address will prolong the wait time. After the initial period, join requests
      * will get processed as they arrive for the first time.
@@ -444,14 +446,13 @@ public class ClusterJoinManager {
      * Send join request to {@code toAddress}.
      *
      * @param toAddress       the currently known master address.
-     * @param withCredentials use cluster credentials
      * @return {@code true} if join request was sent successfully, otherwise {@code false}.
      */
-    public boolean sendJoinRequest(Address toAddress, boolean withCredentials) {
+    public boolean sendJoinRequest(Address toAddress) {
         if (toAddress == null) {
             toAddress = clusterService.getMasterAddress();
         }
-        JoinRequestOp joinRequest = new JoinRequestOp(node.createJoinRequest(withCredentials));
+        JoinRequestOp joinRequest = new JoinRequestOp(node.createJoinRequest(toAddress));
         return nodeEngine.getOperationService().send(joinRequest, toAddress);
     }
 
@@ -524,11 +525,11 @@ public class ClusterJoinManager {
                 return;
             }
 
-            Connection conn = node.getEndpointManager(MEMBER).getConnection(currentMaster);
+            Connection conn = node.getServer().getConnectionManager(MEMBER).get(currentMaster);
             if (conn != null && conn.isAlive()) {
                 logger.info(format("Ignoring master response %s from %s since this node has an active master %s",
                         masterAddress, callerAddress, currentMaster));
-                sendJoinRequest(currentMaster, true);
+                sendJoinRequest(currentMaster);
             } else {
                 logger.warning(format("Ambiguous master response! Received master response %s from %s. "
                                 + "This node has a master %s, but does not have an active connection to it. "
@@ -543,8 +544,8 @@ public class ClusterJoinManager {
 
     private void setMasterAndJoin(Address masterAddress) {
         clusterService.setMasterAddress(masterAddress);
-        node.getEndpointManager(MEMBER).getOrConnect(masterAddress);
-        if (!sendJoinRequest(masterAddress, true)) {
+        node.getServer().getConnectionManager(MEMBER).getOrConnect(masterAddress);
+        if (!sendJoinRequest(masterAddress)) {
             logger.warning("Could not create connection to possible master " + masterAddress);
         }
     }
@@ -572,7 +573,7 @@ public class ClusterJoinManager {
      * @param connection  the connection to operation caller, to which response will be sent.
      * @see WhoisMasterOp
      */
-    public void answerWhoisMasterQuestion(JoinMessage joinMessage, Connection connection) {
+    public void answerWhoisMasterQuestion(JoinMessage joinMessage, ServerConnection connection) {
         if (!ensureValidConfiguration(joinMessage)) {
             return;
         }
@@ -604,7 +605,7 @@ public class ClusterJoinManager {
 
         if (masterAddress.equals(node.getThisAddress())
                 && node.getNodeExtension().getInternalHotRestartService()
-                .isMemberExcluded(masterAddress, clusterService.getThisUuid())) {
+                    .isMemberExcluded(masterAddress, clusterService.getThisUuid())) {
             // I already know that I will do a force-start so I will not allow target to join me
             logger.info("Cannot send master answer because " + target + " should not join to this master node.");
             return;
@@ -619,7 +620,7 @@ public class ClusterJoinManager {
         nodeEngine.getOperationService().send(op, target);
     }
 
-    private boolean checkIfJoinRequestFromAnExistingMember(JoinMessage joinMessage, Connection connection) {
+    private boolean checkIfJoinRequestFromAnExistingMember(JoinMessage joinMessage, ServerConnection connection) {
         Address target = joinMessage.getAddress();
         MemberImpl member = clusterService.getMember(target);
         if (member == null) {
@@ -659,12 +660,12 @@ public class ClusterJoinManager {
             logger.warning(msg);
 
             clusterService.suspectMember(member, msg, false);
-            Connection existing = node.getEndpointManager(MEMBER).getConnection(target);
+            ServerConnection existing = node.getServer().getConnectionManager(MEMBER).get(target);
             if (existing != connection) {
                 if (existing != null) {
                     existing.close(msg, null);
                 }
-                node.getEndpointManager(MEMBER).registerConnection(target, connection);
+                node.getServer().getConnectionManager(MEMBER).register(target, connection);
             }
         }
         return true;
@@ -907,7 +908,7 @@ public class ClusterJoinManager {
      * This is a pure function that must produce always the same output when called with the same parameters.
      * This logic should not be changed, otherwise compatibility will be broken.
      *
-     * @param thisAddress   this address
+     * @param thisAddress this address
      * @param targetAddress target address
      * @return true if this address should merge to target, false otherwise
      */

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2008-2019, Hazelcast, Inc. All Rights Reserved.
+ * Copyright (c) 2008-2020, Hazelcast, Inc. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -19,25 +19,21 @@ package com.hazelcast.client;
 import com.hazelcast.client.config.ClientConfig;
 import com.hazelcast.client.config.ClientConnectionStrategyConfig;
 import com.hazelcast.client.config.ClientNetworkConfig;
+import com.hazelcast.client.impl.clientside.HazelcastClientInstanceImpl;
 import com.hazelcast.client.impl.connection.AddressProvider;
 import com.hazelcast.client.impl.connection.Addresses;
 import com.hazelcast.client.impl.connection.ClientConnectionManager;
-import com.hazelcast.client.impl.connection.nio.ClientConnectionManagerImpl;
-import com.hazelcast.client.impl.clientside.HazelcastClientInstanceImpl;
+import com.hazelcast.client.impl.connection.tcp.TcpClientConnectionManager;
 import com.hazelcast.client.properties.ClientProperty;
 import com.hazelcast.client.test.ClientTestSupport;
 import com.hazelcast.client.util.AddressHelper;
+import com.hazelcast.cluster.Address;
 import com.hazelcast.config.Config;
-import com.hazelcast.core.EntryEvent;
 import com.hazelcast.core.Hazelcast;
 import com.hazelcast.core.HazelcastInstance;
 import com.hazelcast.map.IMap;
-import com.hazelcast.core.LifecycleEvent;
-import com.hazelcast.core.LifecycleListener;
 import com.hazelcast.map.listener.EntryAddedListener;
-import com.hazelcast.cluster.Address;
-import com.hazelcast.spi.properties.GroupProperty;
-import com.hazelcast.test.AssertTask;
+import com.hazelcast.spi.properties.ClusterProperty;
 import com.hazelcast.test.HazelcastSerialClassRunner;
 import com.hazelcast.test.annotation.QuickTest;
 import org.junit.After;
@@ -67,200 +63,161 @@ public class ClientRegressionWithRealNetworkTest extends ClientTestSupport {
 
     @Test
     public void testClientPortConnection() {
-        final Config config1 = new Config();
+        Config config1 = new Config();
         config1.setClusterName("foo");
         config1.getNetworkConfig().setPort(5701);
-        final HazelcastInstance instance1 = Hazelcast.newHazelcastInstance(config1);
+        HazelcastInstance instance1 = Hazelcast.newHazelcastInstance(config1);
         instance1.getMap("map").put("key", "value");
 
-        final Config config2 = new Config();
+        Config config2 = new Config();
         config2.setClusterName("bar");
         config2.getNetworkConfig().setPort(5702);
         Hazelcast.newHazelcastInstance(config2);
 
-        final ClientConfig clientConfig = new ClientConfig();
+        ClientConfig clientConfig = new ClientConfig();
         clientConfig.setClusterName("bar");
-        final HazelcastInstance client = HazelcastClient.newHazelcastClient(clientConfig);
+        HazelcastInstance client = HazelcastClient.newHazelcastClient(clientConfig);
 
-        final IMap<Object, Object> map = client.getMap("map");
+        IMap<Object, Object> map = client.getMap("map");
         assertNull(map.put("key", "value"));
         assertEquals(1, map.size());
     }
 
     @Test
-    public void testClientConnectionBeforeServerReady() throws InterruptedException {
+    public void testClientConnectionBeforeServerReady() {
         ExecutorService executorService = Executors.newFixedThreadPool(2);
-        executorService.submit(new Runnable() {
-            @Override
-            public void run() {
-                Hazelcast.newHazelcastInstance();
-            }
-        });
+        executorService.submit((Runnable) Hazelcast::newHazelcastInstance);
 
-        final CountDownLatch clientLatch = new CountDownLatch(1);
-        executorService.submit(new Runnable() {
-            @Override
-            public void run() {
-                ClientConfig config = new ClientConfig();
-                config.getConnectionStrategyConfig().getConnectionRetryConfig().setFailOnMaxBackoff(false);
-                HazelcastClient.newHazelcastClient(config);
-                clientLatch.countDown();
-            }
+        CountDownLatch clientLatch = new CountDownLatch(1);
+        executorService.submit(() -> {
+            ClientConfig config = new ClientConfig();
+            config.getConnectionStrategyConfig().getConnectionRetryConfig().setClusterConnectTimeoutMillis(Long.MAX_VALUE);
+            HazelcastClient.newHazelcastClient(config);
+            clientLatch.countDown();
         });
 
         assertOpenEventually(clientLatch);
     }
 
     @Test
-    public void testConnectionCountAfterOwnerReconnect_memberHostname_clientIp() {
-        testConnectionCountAfterOwnerReconnect("localhost", "127.0.0.1");
+    public void testConnectionCountAfterClientReconnect_memberHostname_clientIp() {
+        testConnectionCountAfterClientReconnect("localhost", "127.0.0.1");
     }
 
     @Test
-    public void testConnectionCountAfterOwnerReconnect_memberHostname_clientHostname() {
-        testConnectionCountAfterOwnerReconnect("localhost", "localhost");
+    public void testConnectionCountAfterClientReconnect_memberHostname_clientHostname() {
+        testConnectionCountAfterClientReconnect("localhost", "localhost");
     }
 
     @Test
-    public void testConnectionCountAfterOwnerReconnect_memberIp_clientIp() {
-        testConnectionCountAfterOwnerReconnect("127.0.0.1", "127.0.0.1");
+    public void testConnectionCountAfterClientReconnect_memberIp_clientIp() {
+        testConnectionCountAfterClientReconnect("127.0.0.1", "127.0.0.1");
     }
 
     @Test
-    public void testConnectionCountAfterOwnerReconnect_memberIp_clientHostname() {
-        testConnectionCountAfterOwnerReconnect("127.0.0.1", "localhost");
+    public void testConnectionCountAfterClientReconnect_memberIp_clientHostname() {
+        testConnectionCountAfterClientReconnect("127.0.0.1", "localhost");
     }
 
-    private void testConnectionCountAfterOwnerReconnect(String memberAddress, String clientAddress) {
+    private void testConnectionCountAfterClientReconnect(String memberAddress, String clientAddress) {
         Config config = new Config();
         config.getNetworkConfig().setPublicAddress(memberAddress);
         HazelcastInstance hazelcastInstance = Hazelcast.newHazelcastInstance(config);
 
         ClientConfig clientConfig = new ClientConfig();
         clientConfig.getNetworkConfig().addAddress(clientAddress);
-        clientConfig.getConnectionStrategyConfig().getConnectionRetryConfig().setFailOnMaxBackoff(false);
+        clientConfig.getConnectionStrategyConfig().getConnectionRetryConfig().setClusterConnectTimeoutMillis(Long.MAX_VALUE);
 
         HazelcastInstance client = HazelcastClient.newHazelcastClient(clientConfig);
         HazelcastClientInstanceImpl clientInstanceImpl = getHazelcastClientInstanceImpl(client);
-        final ClientConnectionManager connectionManager = clientInstanceImpl.getConnectionManager();
+        ClientConnectionManager connectionManager = clientInstanceImpl.getConnectionManager();
 
-        Hazelcast.newHazelcastInstance(config);
+        assertTrueEventually(() -> assertEquals(1, connectionManager.getActiveConnections().size()));
 
-        assertTrueEventually(new AssertTask() {
-            @Override
-            public void run() {
-                assertEquals(2, connectionManager.getActiveConnections().size());
-            }
-        });
-
-        final CountDownLatch disconnectedLatch = new CountDownLatch(1);
-        final CountDownLatch connectedLatch = new CountDownLatch(1);
-        client.getLifecycleService().addLifecycleListener(new LifecycleListener() {
-            @Override
-            public void stateChanged(LifecycleEvent event) {
-                LifecycleEvent.LifecycleState state = event.getState();
-                if (state.equals(LifecycleEvent.LifecycleState.CLIENT_DISCONNECTED)) {
-                    disconnectedLatch.countDown();
-                } else if (state.equals(LifecycleEvent.LifecycleState.CLIENT_CONNECTED)) {
-                    connectedLatch.countDown();
-                }
-            }
-        });
+        ReconnectListener reconnectListener = new ReconnectListener();
+        client.getLifecycleService().addLifecycleListener(reconnectListener);
 
         hazelcastInstance.shutdown();
+        assertOpenEventually(reconnectListener.disconnectedLatch);
+        Hazelcast.newHazelcastInstance(config);
 
-        assertOpenEventually(disconnectedLatch);
-
-        assertOpenEventually(connectedLatch);
-
+        assertOpenEventually(reconnectListener.reconnectedLatch);
         assertEquals(1, connectionManager.getActiveConnections().size());
     }
 
     @Test
-    public void testListenersAfterOwnerDisconnect_memberHostname_clientIp() {
-        testListenersAfterOwnerDisconnect("localhost", "127.0.0.1");
+    public void testListenersAfterClientDisconnected_memberHostname_clientIp() {
+        testListenersAfterClientDisconnected("localhost", "127.0.0.1");
     }
 
     @Test
-    public void testListenersAfterOwnerDisconnect_memberHostname_clientHostname() {
-        testListenersAfterOwnerDisconnect("localhost", "localhost");
+    public void testListenersAfterClientDisconnected_memberHostname_clientHostname() {
+        testListenersAfterClientDisconnected("localhost", "localhost");
     }
 
     @Test
-    public void testListenersAfterOwnerDisconnect_memberIp_clientIp() {
-        testListenersAfterOwnerDisconnect("127.0.0.1", "127.0.0.1");
+    public void testListenersAfterClientDisconnected_memberIp_clientIp() {
+        testListenersAfterClientDisconnected("127.0.0.1", "127.0.0.1");
     }
 
     @Test
-    public void testListenersAfterOwnerDisconnect_memberIp_clientHostname() {
-        testListenersAfterOwnerDisconnect("127.0.0.1", "localhost");
+    public void testListenersAfterClientDisconnected_memberIp_clientHostname() {
+        testListenersAfterClientDisconnected("127.0.0.1", "localhost");
     }
 
-    private void testListenersAfterOwnerDisconnect(String memberAddress, String clientAddress) {
+    private void testListenersAfterClientDisconnected(String memberAddress, String clientAddress) {
         Config config = new Config();
         int heartBeatSeconds = 6;
         config.getNetworkConfig().setPublicAddress(memberAddress);
-        config.setProperty(GroupProperty.CLIENT_HEARTBEAT_TIMEOUT_SECONDS.getName(), Integer.toString(heartBeatSeconds));
+        config.setProperty(ClusterProperty.CLIENT_HEARTBEAT_TIMEOUT_SECONDS.getName(), Integer.toString(heartBeatSeconds));
         HazelcastInstance hazelcastInstance = Hazelcast.newHazelcastInstance(config);
 
         ClientConfig clientConfig = new ClientConfig();
         ClientNetworkConfig networkConfig = clientConfig.getNetworkConfig();
         networkConfig.addAddress(clientAddress);
-        clientConfig.getConnectionStrategyConfig().getConnectionRetryConfig().setFailOnMaxBackoff(false);
-        final HazelcastInstance client = HazelcastClient.newHazelcastClient(clientConfig);
-        final IMap<Integer, Integer> map = client.getMap("test");
+        clientConfig.getConnectionStrategyConfig().getConnectionRetryConfig().setClusterConnectTimeoutMillis(Long.MAX_VALUE);
+        HazelcastInstance client = HazelcastClient.newHazelcastClient(clientConfig);
+        IMap<Integer, Integer> map = client.getMap("test");
 
-        final AtomicInteger eventCount = new AtomicInteger(0);
+        AtomicInteger eventCount = new AtomicInteger(0);
 
-        map.addEntryListener(new EntryAddedListener() {
-            @Override
-            public void entryAdded(EntryEvent event) {
-                eventCount.incrementAndGet();
-            }
-        }, false);
+        map.addEntryListener((EntryAddedListener<Object, Object>) event -> eventCount.incrementAndGet(), false);
 
-        Hazelcast.newHazelcastInstance(config);
+        assertTrueEventually(() -> {
+            HazelcastClientInstanceImpl clientInstanceImpl = getHazelcastClientInstanceImpl(client);
+            int size = clientInstanceImpl.getConnectionManager().getActiveConnections().size();
+            assertEquals(1, size);
 
-        assertTrueEventually(new AssertTask() {
-            @Override
-            public void run() {
-                HazelcastClientInstanceImpl clientInstanceImpl = getHazelcastClientInstanceImpl(client);
-                int size = clientInstanceImpl.getConnectionManager().getActiveConnections().size();
-                assertEquals(2, size);
-
-            }
         });
 
         hazelcastInstance.shutdown();
-
         sleepAtLeastSeconds(2 * heartBeatSeconds);
+        Hazelcast.newHazelcastInstance(config);
 
-        assertTrueEventually(new AssertTask() {
-            @Override
-            public void run() {
-                map.put(1, 2);
-                assertNotEquals(0, eventCount.get());
-            }
+        assertTrueEventually(() -> {
+            map.remove(1);
+            map.put(1, 2);
+            assertNotEquals(0, eventCount.get());
         });
     }
 
     @Test
-    public void testOperationsContinueWhenOwnerDisconnected_reconnectModeAsync() throws Exception {
-        testOperationsContinueWhenOwnerDisconnected(ClientConnectionStrategyConfig.ReconnectMode.ASYNC);
+    public void testOperationsContinueWhenClientDisconnected_reconnectModeAsync() {
+        testOperationsContinueWhenClientDisconnected(ClientConnectionStrategyConfig.ReconnectMode.ASYNC);
     }
 
     @Test
-    public void testOperationsContinueWhenOwnerDisconnected_reconnectModeOn() throws Exception {
-        testOperationsContinueWhenOwnerDisconnected(ClientConnectionStrategyConfig.ReconnectMode.ON);
+    public void testOperationsContinueWhenClientDisconnected_reconnectModeOn() {
+        testOperationsContinueWhenClientDisconnected(ClientConnectionStrategyConfig.ReconnectMode.ON);
     }
 
-    private void testOperationsContinueWhenOwnerDisconnected(ClientConnectionStrategyConfig.ReconnectMode reconnectMode) throws Exception {
+    private void testOperationsContinueWhenClientDisconnected(ClientConnectionStrategyConfig.ReconnectMode reconnectMode) {
         HazelcastInstance instance1 = Hazelcast.newHazelcastInstance();
         ClientConfig clientConfig = new ClientConfig();
         clientConfig.getConnectionStrategyConfig().setReconnectMode(reconnectMode);
-        final AtomicBoolean waitFlag = new AtomicBoolean();
-        final CountDownLatch testFinished = new CountDownLatch(1);
-        final AddressProvider addressProvider = new AddressProvider() {
+        AtomicBoolean waitFlag = new AtomicBoolean();
+        CountDownLatch testFinished = new CountDownLatch(1);
+        AddressProvider addressProvider = new AddressProvider() {
             @Override
             public Addresses loadAddresses() {
                 if (waitFlag.get()) {
@@ -278,7 +235,7 @@ public class ClientRegressionWithRealNetworkTest extends ClientTestSupport {
                 return address;
             }
         };
-        clientConfig.getConnectionStrategyConfig().getConnectionRetryConfig().setFailOnMaxBackoff(false);
+        clientConfig.getConnectionStrategyConfig().getConnectionRetryConfig().setClusterConnectTimeoutMillis(Long.MAX_VALUE);
         clientConfig.setProperty(ClientProperty.INVOCATION_TIMEOUT_SECONDS.getName(), "3");
         HazelcastInstance client = HazelcastClientUtil.newHazelcastClient(addressProvider, clientConfig);
 
@@ -300,7 +257,6 @@ public class ClientRegressionWithRealNetworkTest extends ClientTestSupport {
         assertEquals(1, clientMap.get(keyOwnedBy2));
 
         testFinished.countDown();
-
     }
 
     @Test
@@ -308,18 +264,12 @@ public class ClientRegressionWithRealNetworkTest extends ClientTestSupport {
         ClientConfig config = new ClientConfig();
         config.getConnectionStrategyConfig().setAsyncStart(true).
                 setReconnectMode(ClientConnectionStrategyConfig.ReconnectMode.ASYNC)
-                .getConnectionRetryConfig().setInitialBackoffMillis(1).setMaxBackoffMillis(1000);
+                .getConnectionRetryConfig().setInitialBackoffMillis(1).setClusterConnectTimeoutMillis(1000);
         HazelcastInstance client = HazelcastClient.newHazelcastClient(config);
-        final HazelcastClientInstanceImpl clientInstanceImpl = getHazelcastClientInstanceImpl(client);
-        final ClientConnectionManagerImpl connectionManager = (ClientConnectionManagerImpl) clientInstanceImpl.getConnectionManager();
+        HazelcastClientInstanceImpl clientInstanceImpl = getHazelcastClientInstanceImpl(client);
+        TcpClientConnectionManager connectionManager = (TcpClientConnectionManager) clientInstanceImpl.getConnectionManager();
         sleepSeconds(2);
-        assertTrueEventually(new AssertTask() {
-            @Override
-            public void run() {
-                assertEquals(0, connectionManager.getNetworking().getChannels().size());
-            }
-        });
+        assertTrueEventually(() -> assertEquals(0, connectionManager.getNetworking().getChannels().size()));
         client.shutdown();
-
     }
 }

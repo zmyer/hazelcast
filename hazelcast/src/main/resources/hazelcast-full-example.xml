@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!--
-  ~ Copyright (c) 2008-2019, Hazelcast, Inc. All Rights Reserved.
+  ~ Copyright (c) 2008-2020, Hazelcast, Inc. All Rights Reserved.
   ~
   ~ Licensed under the Apache License, Version 2.0 (the "License");
   ~ you may not use this file except in compliance with the License.
@@ -23,7 +23,7 @@
   the directory where you start your Hazelcast member.
 
   To learn how to configure Hazelcast, please see the schema at
-  https://hazelcast.com/schema/config/hazelcast-config-4.0.xsd
+  https://hazelcast.com/schema/config/hazelcast-config-4.1.xsd
   or the Reference Manual at https://hazelcast.org/documentation/
 -->
 
@@ -31,7 +31,7 @@
 <hazelcast xmlns="http://www.hazelcast.com/schema/config"
            xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
            xsi:schemaLocation="http://www.hazelcast.com/schema/config
-           http://www.hazelcast.com/schema/config/hazelcast-config-4.0.xsd">
+           http://www.hazelcast.com/schema/config/hazelcast-config-4.1.xsd">
 
     <!--
         You can use the <import> element to load different Hazelcast declarative configuration files you prepared.
@@ -78,10 +78,11 @@
         </replacer>
     </config-replacers>
 
-    <!--Specifies the cluster name. It allows creating separate sub-clusters with different names.
+    <!--
+        Specifies the cluster name. It allows creating separate sub-clusters with different names.
         The name is also referenced in the WAN Replication configuration.
     -->
-    <cluster-name>dev</cluster-name>
+    <cluster-name>my-cluster</cluster-name>
     <!--
         ===== HAZELCAST LICENSE CONFIGURATION =====
 
@@ -99,19 +100,16 @@
     <!--
         ===== HAZELCAST MANAGEMENT CENTER CONFIGURATION =====
 
-        The value for the element <management-center> is the URL where you deploy the Management Center.
-        It has three optional attributes:
-        * enabled:
-        Set to true to be able to use the Management Center. Its default value is false.
+        The element <management-center> has the following optional attributes:
         * scripting-enabled:
         Set to true to allow scripting on the member, false to disallow.
-        * update-interval:
-        The time frequency (in seconds) for which Management Center will take information from Hazelcast cluster.
-        Its default value is 3 seconds. Hazelcast's Open Source edition provides the Management Center with monitoring
-        at most 2 members in your cluster. To use it for more members, you need to have either a Management Center,
+        Default value is false.
+
+        Hazelcast's Open Source edition provides the Management Center with monitoring at most 3 members
+        in your cluster. To use it for more members, you need to have either a Management Center,
         Hazelcast Enterprise or Hazelcast Enterprise HD license.
     -->
-    <management-center enabled="true" scripting-enabled="false" update-interval="2">http://localhost:8080/hazelcast-mancenter</management-center>
+    <management-center scripting-enabled="false" />
     <!--
         The <properties> element lets you add properties to some of the Hazelcast elements used to configure some of
         the Hazelcast modules.
@@ -142,7 +140,7 @@
 
         The <wan-replication> element has the following sub-elements:
         * <batch-publisher>:
-            WAN publisher using the built-in com.hazelcast.enterprise.wan.impl.replication.WanBatchReplication.
+            WAN publisher using the built-in com.hazelcast.enterprise.wan.impl.replication.WanBatchPublisher.
             Waits until a batch size is reached or a delay time is passed.
             Please see the batch-size and batch-max-delay-millis configuration descriptions below.
             * "<cluster-name>":
@@ -258,7 +256,7 @@
                 you should increase queue capacity.
             * "<target-endpoints>":
                 Comma separated list of IP addresses of the target cluster members for which the WAN replication is implemented.
-            * <wan-sync>:
+            * <sync>:
             Configuration for the WAN sync mechanism. It has the following sub-elements:
                 - <consistency-check-strategy>:
                     Sets the strategy for checking consistency of data between source and
@@ -314,7 +312,7 @@
                     </discovery-strategy>
                 </discovery-strategies>
         * <custom-publisher>:
-            Custom implementation of a WAN publisher implementing WanReplicationPublisher.
+            Custom implementation of a WAN publisher implementing WanPublisher.
             * "<class-name>":
                 Mandatory config value defining the fully qualified class name of the
                 WAN publisher implementation.
@@ -332,7 +330,7 @@
             It has the following sub-elements:
             - <class-name>:
                 Sets the fully qualified class name of the class implementing
-                a custom WAN consumer (WanReplicationConsumer).
+                a custom WAN consumer (WanConsumer).
                 If you don't define a class name, the default processing logic for
                 incoming WAN events will be used.
             - <properties>:
@@ -362,9 +360,9 @@
             <max-target-endpoints>2147483647</max-target-endpoints>
             <queue-capacity>10000</queue-capacity>
             <target-endpoints>10.3.5.1:5701,10.3.5.2:5701</target-endpoints>
-            <wan-sync>
+            <sync>
                 <consistency-check-strategy>NONE</consistency-check-strategy>
-            </wan-sync>
+            </sync>
             <!--            <aws enabled="false">-->
             <!--                <access-key>my-access-key</access-key>-->
             <!--                <secret-key>my-secret-key</secret-key>-->
@@ -668,12 +666,14 @@
                 <zones>us-east1-b,us-east1-c</zones>
             </gcp>
             <azure enabled="false">
+                <instance-metadata-available>false</instance-metadata-available>
                 <client-id>CLIENT_ID</client-id>
                 <client-secret>CLIENT_SECRET</client-secret>
                 <tenant-id>TENANT_ID</tenant-id>
                 <subscription-id>SUB_ID</subscription-id>
-                <cluster-id>HZLCAST001</cluster-id>
-                <group-name>RESOURCE-GROUP-NAME</group-name>
+                <resource-group>RESOURCE-GROUP-NAME</resource-group>
+                <scale-set>SCALE-SET-NAME</scale-set>
+                <tag>TAG-NAME=HZLCAST001</tag>
             </azure>
             <kubernetes enabled="false">
                 <namespace>MY-KUBERNETES-NAMESPACE</namespace>
@@ -869,6 +869,9 @@
         * <capacity>:
             Capacity of the scheduled executor. The default value is 100.
             This is the maximum number of tasks for a given scheduled executor on a particular partition.
+        * <capacity-policy>:
+            The active policy for the capacity setting. Default is PER_NODE
+            Available options (PER_PARTITION, PER_NODE)
         * <split-brain-protection-ref>:
             Adds the Split Brain Protection for this data-structure which you configure using the <split-brain-protection>
             element. You should set the <split-brain-protection-ref>'s value as the <split-brain-protection>'s name.
@@ -880,6 +883,7 @@
         <pool-size>16</pool-size>
         <durability>1</durability>
         <capacity>100</capacity>
+        <capacity-policy>PER_NODE</capacity-policy>
         <split-brain-protection-ref>splitBrainProtectionRuleWithThreeNodes</split-brain-protection-ref>
         <merge-policy batch-size="100">PutIfAbsentMergePolicy</merge-policy>
     </scheduled-executor-service>
@@ -1214,7 +1218,7 @@
             - <republishing-enabled>:
                 When enabled, an incoming event to a member is forwarded to target cluster of that member. Its
                 default value is true.
-             - <merge-policy>:
+             - <merge-policy-class-name>:
                 Resolve conflicts that occurred when target cluster already has the replicated
                 entry key.
 
@@ -1239,6 +1243,8 @@
                 target one.
                 com.hazelcast.spi.merge.PassThroughMergePolicy: Incoming entry merges from
                 the source cache to the target cache unless the incoming entry is not null.
+
+                The default policy is com.hazelcast.spi.merge.PassThroughMergePolicy.
         * <indexes>:
         You can define indexes for your map using this element's <index> sub-elements. Index definition consists
         of type, optional name and the list of columns to be indexed. Valid types are SORTED (default) and HASH.
@@ -1297,7 +1303,7 @@
             <eviction size="1000" max-size-policy="ENTRY_COUNT" eviction-policy="LFU"/>
         </near-cache>
         <wan-replication-ref name="my-wan-cluster-batch">
-            <merge-policy>PassThroughMergePolicy</merge-policy>
+            <merge-policy-class-name>PassThroughMergePolicy</merge-policy-class-name>
             <filters>
                 <filter-impl>com.example.SampleFilter</filter-impl>
                 <filter-impl>com.example.SampleFilter2</filter-impl>
@@ -1305,15 +1311,47 @@
             <republishing-enabled>false</republishing-enabled>
         </wan-replication-ref>
         <indexes>
+            <!-- unordered/hash index on the name attribute -->
             <index type="HASH">
                 <attributes>
                     <attribute>name</attribute>
                 </attributes>
             </index>
+            <!-- ordered/tree index on the age attribute -->
             <index>
                 <attributes>
                     <attribute>age</attribute>
                 </attributes>
+            </index>
+            <!-- composite unordered/hash index on the name and age attributes -->
+            <index type="HASH">
+                <attributes>
+                    <attribute>name</attribute>
+                    <attribute>age</attribute>
+                </attributes>
+            </index>
+            <!-- composite ordered/tree index on the age and name attributes -->
+            <index>
+                <attributes>
+                    <attribute>age</attribute>
+                    <attribute>name</attribute>
+                </attributes>
+            </index>
+            <!-- bitmap index on the age attribute -->
+            <index type="BITMAP">
+                <attributes>
+                    <attribute>age</attribute>
+                </attributes>
+            </index>
+            <!-- bitmap index on the name attribute with options -->
+            <index type="BITMAP">
+                <attributes>
+                    <attribute>name</attribute>
+                </attributes>
+                <bitmap-index-options>
+                    <unique-key>id</unique-key>
+                    <unique-key-transformation>RAW</unique-key-transformation>
+                </bitmap-index-options>
             </index>
         </indexes>
         <attributes>
@@ -1628,7 +1666,7 @@
         <async-backup-count>0</async-backup-count>
         <eviction size="1000" max-size-policy="ENTRY_COUNT" eviction-policy="LFU"/>
         <wan-replication-ref name="my-wan-cluster-batch">
-            <merge-policy>PassThroughMergePolicy</merge-policy>
+            <merge-policy-class-name>PassThroughMergePolicy</merge-policy-class-name>
             <republishing-enabled>true</republishing-enabled>
             <filters>
                 <filter-impl>com.example.SampleFilter</filter-impl>
@@ -1915,19 +1953,9 @@
 
             This setting pertains only to newId() calls made on the member that configured it.
 
-        * <id-offset>:
-            Sets the offset that will be added to the returned IDs. Default value is 0. Setting might be
-            useful when migrating from IdGenerator, default value works for all green-field projects.
-
-            For example: Largest ID returned from IdGenerator is 150. FlakeIdGenerator now returns
-            100. If you configure idOffset of 50 and stop using the IdGenerator, the next ID from
-            FlakeIdGenerator will be 151 or larger and no duplicate IDs will be generated. In real-life,
-            the IDs are much larger. You also need to add a reserve to the offset because the IDs
-            from FlakeIdGenerator are only roughly ordered. Recommended reserve is 2^38, that is
-            274877906944.
-
-            Negative values are allowed to increase the lifespan of the generator, however keep in
-            mind that the generated IDs might also be negative.
+        * <epoch-start>:
+            Sets the offset of timestamp component. Time unit is milliseconds, default is 1514764800000
+             (1.1.2018 0:00 UTC).
 
         * <node-id-offset>:
             Sets the offset that will be added to the node ID assigned to cluster member for this generator.
@@ -1935,14 +1963,26 @@
             You create cluster B and for some time both will generate IDs and you want to have them unique.
             In this case, configure node ID offset for generators on cluster B.
 
+        * <bits-sequence>:
+            Sets the bit-length of the sequence component, default is 6 bits.
+
+        * <bits-node-id>:
+            Sets the bit-length of node id component. Default value is 16 bits.
+
+        * <allowed-future-millis>:
+            Sets how far to the future is the generator allowed to go to generate IDs without blocking, default is 15 seconds.
+
         * <statistics-enabled>:
             When you enable it, you can retrieve the Flake ID generators statistics. Its default value is true.
     -->
     <flake-id-generator name="default">
         <prefetch-count>100</prefetch-count>
         <prefetch-validity-millis>600000</prefetch-validity-millis>
-        <id-offset>0</id-offset>
+        <epoch-start>1514764800000</epoch-start>
         <node-id-offset>0</node-id-offset>
+        <bits-sequence>6</bits-sequence>
+        <bits-node-id>16</bits-node-id>
+        <allowed-future-millis>15000</allowed-future-millis>
         <statistics-enabled>true</statistics-enabled>
     </flake-id-generator>
 
@@ -2075,40 +2115,6 @@
         <persistent-memory-directory>/mnt/optane</persistent-memory-directory>
     </native-memory>
     <!--
-        ===== HAZELCAST USER DEFINED SERVICES CONFIGURATION =====
-
-        This part is used to perform configurations after you develop your own data structure or service using
-        Hazelcast's Service Provider Interface (SPI). Configuration element's name is <services>. You can list
-        your services using its <service>.
-        It has the following attribute:
-        * enable-defaults:
-            Set as true if you want to use Hazelcast's services and operations (getMap, putAsync, etc.)
-            in your own service implementation. Its default value is true.
-
-        Each <service> has the following attributes and sub-elements:
-        * enabled:
-            Specifies whether the service is enabled.
-        * <name>:
-            Name of your service to be registered.
-        * <class-name>:
-            Full name of the class that you developed for your service on top of Hazelcast SPI.
-        * <properties>:
-            Lists the properties using its <property> element, with which you can specify the name and value of your
-            custom service properties.
-        * <configuration>:
-            Lists the configuration elements that you defined for your service using Hazelcast's "Config" object.
-    -->
-    <services enable-defaults="false">
-        <service enabled="true">
-            <name>custom-service</name>
-            <class-name>com.hazelcast.examples.MyService</class-name>
-            <properties>
-                <property name="prop1">prop1-value</property>
-                <property name="prop2">prop2-value</property>
-            </properties>
-        </service>
-    </services>
-    <!--
         ===== HAZELCAST SECURITY CONFIGURATION =====
 
         This feature is available only in Hazelcast Enterprise. Configuration element's name is <security>.
@@ -2139,7 +2145,7 @@
                 ===== HAZELCAST SECURITY REALMS CONFIGURATION =====
 
                 Security realms are named security configurations which can be referenced from Hazelcast security configuration.
-                Currently, the realms support configuring <authentication> and/or <identity>. Only one type of authentication 
+                Currently, the realms support configuring <authentication> and/or <identity>. Only one type of authentication
                 configuration and one type of identity configuration is allowed per the realm.
                 Authentication types:
                 * <jaas>
@@ -2149,6 +2155,8 @@
                     in Hazelcast network configuration)
                 * <ldap>
                     LDAP based authentication
+                * <kerberos>
+                    Kerberos based authentication
                 Identity configuration types:
                 * <credentials-factory>:
                     Specifies the name and properties of your class that you developed by implementing Hazelcast's Credentials
@@ -2164,6 +2172,8 @@
                 * <token>
                     Defines a static TokenCredentials instance as the client's identity. It can have attribute "encoding".
                     Content of the element is token value in given encoding (or in plain text).
+                * <kerberos>
+                    Uses Kerberos ticket (wrapped as GSS-API init token) as the identity.
             -->
             <realm name="mr">
                 <authentication>
@@ -2215,6 +2225,8 @@
                         <user-name-attribute>userNameAttribute</user-name-attribute>
                         <system-user-dn>systemUserDn</system-user-dn>
                         <system-user-password>systemUserPassword</system-user-password>
+                        <system-authentication>simple</system-authentication>
+                        <security-realm>realmName</security-realm>
                         <password-attribute>passwordAttribute</password-attribute>
                         <user-context>userContext</user-context>
                         <user-filter>userFilter</user-filter>
@@ -2236,6 +2248,65 @@
                 <identity>
                     <token encoding="base64">SGF6ZWxjYXN0</token>
                 </identity>
+            </realm>
+            <realm name="kerberosRealm">
+                <authentication>
+                    <kerberos>
+                        <skip-role>true</skip-role>
+                        <relax-flags-check>true</relax-flags-check>
+                        <security-realm>krb5Acceptor</security-realm>
+                        <ldap>
+                            <url>ldap://127.0.0.1/</url>
+                            <system-authentication>GSSAPI</system-authentication>
+                            <security-realm>krb5Initiator</security-realm>
+                            <skip-authentication>true</skip-authentication>
+                            <user-filter>(krb5PrincipalName={login})</user-filter>
+                            <role-mapping-attribute>cn</role-mapping-attribute>
+                        </ldap>
+                    </kerberos>
+                </authentication>
+                <identity>
+                    <kerberos>
+                        <realm>HAZELCAST.COM</realm>
+                        <security-realm>krb5Initiator</security-realm>
+                        <service-name-prefix>hz/</service-name-prefix>
+                        <spn>hz/127.0.0.1@HAZELCAST.COM</spn>
+                    </kerberos>
+                </identity>
+            </realm>
+            <realm name="krb5Acceptor">
+                <authentication>
+                    <jaas>
+                        <login-module class-name="com.sun.security.auth.module.Krb5LoginModule" usage="REQUIRED">
+                            <properties>
+                                <property name="isInitiator">false</property>
+                                <property name="useTicketCache">false</property>
+                                <property name="doNotPrompt">true</property>
+                                <property name="useKeyTab">true</property>
+                                <property name="storeKey">true</property>
+                                <property name="principal">hz/127.0.0.1@HAZELCAST.COM</property>
+                                <property name="keyTab">/opt/hz-localhost.keytab</property>
+                            </properties>
+                        </login-module>
+                    </jaas>
+                </authentication>
+            </realm>
+            <realm name="krb5Initiator">
+                <authentication>
+                    <jaas>
+                        <login-module class-name="com.sun.security.auth.module.Krb5LoginModule" usage="REQUIRED">
+                            <properties>
+                                <property name="isInitiator">true</property>
+                                <property name="useTicketCache">false</property>
+                                <property name="doNotPrompt">true</property>
+                                <property name="useKeyTab">true</property>
+                                <property name="storeKey">true</property>
+                                <property name="principal">hz/127.0.0.1@HAZELCAST.COM</property>
+                                <property name="keyTab">/opt/hz-localhost.keytab</property>
+                            </properties>
+                        </login-module>
+                    </jaas>
+                </authentication>
             </realm>
         </realms>
         <member-authentication realm="mr"/>
@@ -2962,12 +3033,14 @@
                 <zones>us-east1-b,us-east1-c</zones>
             </gcp>
             <azure enabled="false">
+                <instance-metadata-available>false</instance-metadata-available>
                 <client-id>CLIENT_ID</client-id>
                 <client-secret>CLIENT_SECRET</client-secret>
                 <tenant-id>TENANT_ID</tenant-id>
                 <subscription-id>SUB_ID</subscription-id>
-                <cluster-id>HZLCAST001</cluster-id>
-                <group-name>RESOURCE-GROUP-NAME</group-name>
+                <resource-group>RESOURCE-GROUP-NAME</resource-group>
+                <scale-set>SCALE-SET-NAME</scale-set>
+                <tag>TAG-NAME=HZLCAST001</tag>
             </azure>
             <kubernetes enabled="false">
                 <namespace>MY-KUBERNETES-NAMESPACE</namespace>
@@ -3309,11 +3382,62 @@
         </locks>
     </cp-subsystem>
 
-    <metrics enabled="false" mc-enabled="false" jmx-enabled="false">
-        <collection-interval-seconds>10</collection-interval-seconds>
-        <retention-seconds>30</retention-seconds>
-        <metrics-for-data-structures>true</metrics-for-data-structures>
-        <minimum-level>DEBUG</minimum-level>
+    <!--
+        ===== HAZELCAST METRICS CONFIGURATION =====
+
+        Configuration element's name is <metrics>.
+
+        It has the following attributes:
+        - enabled:
+            The master-switch for the metrics collection. If this is set
+            to false no metrics collection is done, regardless of the other
+            settings. Its default value is true.
+
+        It has the following sub-elements:
+        * <management-center>:
+            Defines the Hazelcast Management Center related metrics configuration.
+
+            It has the following attributes:
+            * "enabled":
+                Controls whether the metrics collected are exposed to
+                Hazelcast Management Center. It is enabled by default.
+                Please note that the metrics are polled by the
+                Hazelcast Management Center, hence the members need to
+                buffer the collected metrics between two polls. The aim
+                for this switch is to reduce memory consumption of the
+                metrics system if the Hazelcast Management Center is not
+                used.
+
+            It has the following  sub-elements:
+            * <retention-seconds>:
+                Sets the number of seconds the metrics will be retained on the
+                instance. By default, metrics are retained for 5 seconds (that is for
+                one collection of metrics values, if default <collection-frequency-seconds>
+                collection frequency is used). More retention means more heap memory, but
+                allows for longer client hiccups without losing a value (for example to
+                restart the Management Center).
+
+        * <jmx>:
+            Defines the JMX related metrics configuration.
+
+            It has the following attributes:
+            * "enabled":
+                Controls whether the metrics collected are exposed to
+                through JMX. It is enabled by default.
+                In order to expose the metrics, the metrics system need
+                to be enabled via the enabled master-switch attribute.
+
+        * <collection-frequency-seconds>:
+            Sets the metrics collection frequency in seconds.
+            By default, metrics are collected every 5 seconds.
+
+    -->
+    <metrics enabled="false">
+        <management-center enabled="false">
+            <retention-seconds>30</retention-seconds>
+        </management-center>
+        <jmx enabled="false"/>
+        <collection-frequency-seconds>10</collection-frequency-seconds>
     </metrics>
 
 </hazelcast>

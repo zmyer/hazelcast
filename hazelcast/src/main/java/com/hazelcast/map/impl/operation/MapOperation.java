@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2008-2019, Hazelcast, Inc. All Rights Reserved.
+ * Copyright (c) 2008-2020, Hazelcast, Inc. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,8 +16,8 @@
 
 package com.hazelcast.map.impl.operation;
 
-import com.hazelcast.core.EntryView;
 import com.hazelcast.internal.nearcache.impl.invalidation.Invalidator;
+import com.hazelcast.internal.serialization.Data;
 import com.hazelcast.internal.services.ObjectNamespace;
 import com.hazelcast.internal.services.ServiceNamespaceAware;
 import com.hazelcast.logging.ILogger;
@@ -32,13 +32,14 @@ import com.hazelcast.map.impl.mapstore.writebehind.TxnReservedCapacityCounter;
 import com.hazelcast.map.impl.nearcache.MapNearCacheManager;
 import com.hazelcast.map.impl.record.Record;
 import com.hazelcast.map.impl.recordstore.RecordStore;
+import com.hazelcast.map.impl.wan.WanMapEntryView;
 import com.hazelcast.memory.NativeOutOfMemoryError;
-import com.hazelcast.nio.serialization.Data;
 import com.hazelcast.nio.serialization.IdentifiedDataSerializable;
 import com.hazelcast.spi.impl.operationservice.AbstractNamedOperation;
 import com.hazelcast.spi.impl.operationservice.BackupOperation;
 import com.hazelcast.wan.impl.CallerProvenance;
 
+import javax.annotation.Nonnull;
 import java.util.List;
 import java.util.logging.Level;
 
@@ -46,7 +47,8 @@ import static com.hazelcast.config.InMemoryFormat.NATIVE;
 import static com.hazelcast.internal.util.CollectionUtil.isEmpty;
 import static com.hazelcast.internal.util.ExceptionUtil.rethrow;
 import static com.hazelcast.internal.util.ToHeapDataConverter.toHeapData;
-import static com.hazelcast.map.impl.EntryViews.createSimpleEntryView;
+import static com.hazelcast.map.impl.EntryViews.createWanEntryView;
+import static com.hazelcast.map.impl.operation.ForcedEviction.runWithForcedEvictionStrategies;
 
 @SuppressWarnings("checkstyle:methodcount")
 public abstract class MapOperation extends AbstractNamedOperation
@@ -55,7 +57,7 @@ public abstract class MapOperation extends AbstractNamedOperation
     private static final boolean ASSERTION_ENABLED = MapOperation.class.desiredAssertionStatus();
 
     protected transient MapService mapService;
-    protected transient RecordStore recordStore;
+    protected transient RecordStore<Record> recordStore;
     protected transient MapContainer mapContainer;
     protected transient MapServiceContext mapServiceContext;
     protected transient MapEventPublisher mapEventPublisher;
@@ -109,13 +111,22 @@ public abstract class MapOperation extends AbstractNamedOperation
         try {
             runInternal();
         } catch (NativeOutOfMemoryError e) {
-            WithForcedEviction.rerun(this);
+            rerunWithForcedEviction();
         }
     }
 
     protected void runInternal() {
         // Intentionally empty method body.
         // Concrete classes can override this method.
+    }
+
+    private void rerunWithForcedEviction() {
+        try {
+            runWithForcedEvictionStrategies(this);
+        } catch (NativeOutOfMemoryError e) {
+            disposeDeferredBlocks();
+            throw e;
+        }
     }
 
     @Override
@@ -311,13 +322,14 @@ public abstract class MapOperation extends AbstractNamedOperation
             return;
         }
 
-        Record record = recordStore.getRecord(dataKey);
+        Record<Object> record = recordStore.getRecord(dataKey);
         if (record == null) {
             return;
         }
 
         Data dataValue = toHeapData(mapServiceContext.toData(value));
-        EntryView entryView = createSimpleEntryView(toHeapData(dataKey), dataValue, record);
+        WanMapEntryView<Object, Object> entryView = createWanEntryView(
+                toHeapData(dataKey), dataValue, record, getNodeEngine().getSerializationService());
 
         mapEventPublisher.publishWanUpdate(name, entryView, hasLoadProvenance);
     }
@@ -326,7 +338,7 @@ public abstract class MapOperation extends AbstractNamedOperation
         publishWanUpdateInternal(dataKey, value, true);
     }
 
-    protected final void publishWanRemove(Data dataKey) {
+    protected final void publishWanRemove(@Nonnull Data dataKey) {
         if (!canPublishWanEvent) {
             return;
         }

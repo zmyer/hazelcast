@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2008-2019, Hazelcast, Inc. All Rights Reserved.
+ * Copyright (c) 2008-2020, Hazelcast, Inc. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -18,16 +18,14 @@ package com.hazelcast.partition;
 
 import com.hazelcast.cluster.ClusterState;
 import com.hazelcast.config.Config;
-import com.hazelcast.config.ListenerConfig;
 import com.hazelcast.core.HazelcastInstance;
 import com.hazelcast.internal.partition.MigrationInfo;
 import com.hazelcast.internal.partition.MigrationStateImpl;
 import com.hazelcast.internal.partition.impl.InternalPartitionServiceImpl;
-import com.hazelcast.internal.partition.impl.MigrationCommitTest.DelayMigrationStart;
-import com.hazelcast.internal.util.UuidUtil;
 import com.hazelcast.internal.partition.impl.MigrationInterceptor;
 import com.hazelcast.internal.partition.impl.MigrationStats;
-import com.hazelcast.spi.properties.GroupProperty;
+import com.hazelcast.internal.util.UuidUtil;
+import com.hazelcast.spi.properties.ClusterProperty;
 import com.hazelcast.test.HazelcastParallelClassRunner;
 import com.hazelcast.test.HazelcastTestSupport;
 import com.hazelcast.test.TestHazelcastInstanceFactory;
@@ -38,15 +36,16 @@ import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
 
-import java.util.UUID;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
-import java.util.concurrent.CountDownLatch;
+import java.util.UUID;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 
 import static com.hazelcast.internal.cluster.impl.AdvancedClusterStateTest.changeClusterStateEventually;
+import static com.hazelcast.test.Accessors.getPartitionService;
 import static org.hamcrest.Matchers.greaterThan;
 import static org.hamcrest.Matchers.greaterThanOrEqualTo;
 import static org.hamcrest.Matchers.lessThan;
@@ -72,10 +71,16 @@ public class PartitionMigrationListenerTest extends HazelcastTestSupport {
         HazelcastInstance hz1 = factory.newHazelcastInstance();
         warmUpPartitions(hz1);
 
+        // Change to NO_MIGRATION to prevent repartitioning
+        // before 2nd member started and ready.
+        hz1.getCluster().changeClusterState(ClusterState.NO_MIGRATION);
+
         EventCollectingMigrationListener listener = new EventCollectingMigrationListener();
         hz1.getPartitionService().addMigrationListener(listener);
 
-        factory.newHazelcastInstance();
+        HazelcastInstance hz2 = factory.newHazelcastInstance();
+        // Back to ACTIVE
+        changeClusterStateEventually(hz2, ClusterState.ACTIVE);
 
         MigrationEventsPack eventsPack = listener.ensureAndGetSingleEventPack();
         assertMigrationProcessCompleted(eventsPack);
@@ -88,12 +93,12 @@ public class PartitionMigrationListenerTest extends HazelcastTestSupport {
         TestHazelcastInstanceFactory factory = createHazelcastInstanceFactory();
         Config config = new Config();
         int partitionCount = 100;
-        config.setProperty(GroupProperty.PARTITION_COUNT.getName(), String.valueOf(partitionCount));
+        config.setProperty(ClusterProperty.PARTITION_COUNT.getName(), String.valueOf(partitionCount));
 
-        HazelcastInstance hz = factory.newHazelcastInstance(config);
-        warmUpPartitions(hz);
+        HazelcastInstance hz1 = factory.newHazelcastInstance(config);
+        warmUpPartitions(hz1);
 
-        InternalPartitionServiceImpl partitionService = (InternalPartitionServiceImpl) getPartitionService(hz);
+        InternalPartitionServiceImpl partitionService = (InternalPartitionServiceImpl) getPartitionService(hz1);
         AtomicReference<HazelcastInstance> newInstanceRef = new AtomicReference<>();
         partitionService.setMigrationInterceptor(new MigrationInterceptor() {
             @Override
@@ -110,13 +115,20 @@ public class PartitionMigrationListenerTest extends HazelcastTestSupport {
         });
 
         EventCollectingMigrationListener listener = new EventCollectingMigrationListener();
-        hz.getPartitionService().addMigrationListener(listener);
+        hz1.getPartitionService().addMigrationListener(listener);
+
+        // Change to NO_MIGRATION to prevent repartitioning
+        // before 2nd member started and ready.
+        hz1.getCluster().changeClusterState(ClusterState.NO_MIGRATION);
 
         // trigger migrations
-        factory.newHazelcastInstance(config);
+        HazelcastInstance hz2 = factory.newHazelcastInstance(config);
+
+        // Back to ACTIVE
+        changeClusterStateEventually(hz2, ClusterState.ACTIVE);
 
         // await until 3rd member joins
-        assertClusterSizeEventually(3, hz);
+        assertClusterSizeEventually(3, hz1);
         assertTrueEventually(() -> assertNotNull(newInstanceRef.get()));
 
         List<MigrationEventsPack> eventsPackList = listener.ensureAndGetEventPacks(2);
@@ -131,6 +143,16 @@ public class PartitionMigrationListenerTest extends HazelcastTestSupport {
 
         // 2nd migration process finishes by consuming all migration tasks
         MigrationEventsPack secondEventsPack = eventsPackList.get(1);
+
+        if (secondEventsPack.migrationProcessCompleted.getCompletedMigrations() == 1
+            && !secondEventsPack.migrationsCompleted.get(0).isSuccess()) {
+            // There is a failed migration process
+            // because migrations restarted before 3rd member is ready.
+            // This migration process is failed immediately
+            // and we expect a third migration process.
+            secondEventsPack = listener.ensureAndGetEventPacks(3).get(2);
+        }
+
         assertMigrationProcessCompleted(secondEventsPack);
         assertMigrationProcessEventsConsistent(secondEventsPack);
         assertMigrationEventsConsistentWithResult(secondEventsPack);
@@ -143,6 +165,7 @@ public class PartitionMigrationListenerTest extends HazelcastTestSupport {
         HazelcastInstance hz2 = factory.newHazelcastInstance();
         HazelcastInstance hz3 = factory.newHazelcastInstance();
         warmUpPartitions(hz1, hz2, hz3);
+        waitAllForSafeState(Arrays.asList(hz1, hz2, hz3));
 
         EventCollectingMigrationListener listener = new EventCollectingMigrationListener();
         hz1.getPartitionService().addMigrationListener(listener);
@@ -160,7 +183,7 @@ public class PartitionMigrationListenerTest extends HazelcastTestSupport {
     @Test
     public void testMigrationStats_afterPartitionsLost_when_NO_MIGRATION() {
         TestHazelcastInstanceFactory factory = createHazelcastInstanceFactory();
-        Config config = new Config().setProperty(GroupProperty.PARTITION_COUNT.getName(), "2000");
+        Config config = new Config().setProperty(ClusterProperty.PARTITION_COUNT.getName(), "2000");
         HazelcastInstance[] instances = factory.newInstances(config, 10);
         assertClusterSizeEventually(instances.length, instances);
         warmUpPartitions(instances);
@@ -233,21 +256,21 @@ public class PartitionMigrationListenerTest extends HazelcastTestSupport {
         Config config = new Config();
         // even partition count to make migration count deterministic
         int partitionCount = 10;
-        config.setProperty(GroupProperty.PARTITION_COUNT.getName(), String.valueOf(partitionCount));
-
-        // hold the migrations until all nodes join so that there will be no retries / failed migrations etc.
-        CountDownLatch migrationStartLatch = new CountDownLatch(1);
-        config.addListenerConfig(new ListenerConfig(new DelayMigrationStart(migrationStartLatch)));
+        config.setProperty(ClusterProperty.PARTITION_COUNT.getName(), String.valueOf(partitionCount));
 
         HazelcastInstance instance1 = factory.newHazelcastInstance(config);
         warmUpPartitions(instance1);
+
+        // Change to NO_MIGRATION to prevent repartitioning
+        // before 2nd member started and ready.
+        instance1.getCluster().changeClusterState(ClusterState.NO_MIGRATION);
 
         CountingMigrationListener migrationListener = new CountingMigrationListener(partitionCount);
         instance1.getPartitionService().addMigrationListener(migrationListener);
 
         HazelcastInstance instance2 = factory.newHazelcastInstance(config);
 
-        migrationStartLatch.countDown();
+        changeClusterStateEventually(instance2, ClusterState.ACTIVE);
 
         waitAllForSafeState(instance2, instance1);
 

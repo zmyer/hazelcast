@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2008-2019, Hazelcast, Inc. All Rights Reserved.
+ * Copyright (c) 2008-2020, Hazelcast, Inc. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -87,7 +87,7 @@ import com.hazelcast.client.impl.protocol.codec.MapUnlockCodec;
 import com.hazelcast.client.impl.protocol.codec.MapValuesCodec;
 import com.hazelcast.client.impl.protocol.codec.MapValuesWithPagingPredicateCodec;
 import com.hazelcast.client.impl.protocol.codec.MapValuesWithPredicateCodec;
-import com.hazelcast.client.impl.querycache.ClientQueryCacheContext;
+import com.hazelcast.client.impl.protocol.codec.holder.PagingPredicateHolder;
 import com.hazelcast.client.impl.spi.ClientContext;
 import com.hazelcast.client.impl.spi.ClientPartitionService;
 import com.hazelcast.client.impl.spi.ClientProxy;
@@ -95,23 +95,22 @@ import com.hazelcast.client.impl.spi.EventHandler;
 import com.hazelcast.client.impl.spi.impl.ClientInvocation;
 import com.hazelcast.client.impl.spi.impl.ClientInvocationFuture;
 import com.hazelcast.client.impl.spi.impl.ListenerMessageCodec;
-import com.hazelcast.client.map.impl.ClientMapPartitionIterator;
-import com.hazelcast.client.map.impl.ClientMapQueryPartitionIterator;
+import com.hazelcast.client.map.impl.iterator.ClientMapPartitionIterator;
+import com.hazelcast.client.map.impl.iterator.ClientMapQueryPartitionIterator;
+import com.hazelcast.client.map.impl.querycache.ClientQueryCacheContext;
 import com.hazelcast.cluster.Member;
 import com.hazelcast.config.IndexConfig;
 import com.hazelcast.core.EntryEvent;
 import com.hazelcast.core.EntryEventType;
 import com.hazelcast.core.EntryView;
-import com.hazelcast.core.ExecutionCallback;
 import com.hazelcast.core.ReadOnly;
 import com.hazelcast.internal.journal.EventJournalInitialSubscriberState;
 import com.hazelcast.internal.journal.EventJournalReader;
 import com.hazelcast.internal.monitor.impl.LocalMapStatsImpl;
-import com.hazelcast.internal.serialization.InternalSerializationService;
+import com.hazelcast.internal.serialization.Data;
 import com.hazelcast.internal.serialization.SerializationService;
 import com.hazelcast.internal.util.CollectionUtil;
 import com.hazelcast.internal.util.IterationType;
-import com.hazelcast.internal.util.collection.ImmutableInflatableSet;
 import com.hazelcast.map.EntryProcessor;
 import com.hazelcast.map.EventJournalMapEvent;
 import com.hazelcast.map.IMap;
@@ -122,7 +121,6 @@ import com.hazelcast.map.MapInterceptor;
 import com.hazelcast.map.MapPartitionLostEvent;
 import com.hazelcast.map.QueryCache;
 import com.hazelcast.map.impl.DataAwareEntryEvent;
-import com.hazelcast.map.impl.LazyMapEntry;
 import com.hazelcast.map.impl.ListenerAdapter;
 import com.hazelcast.map.impl.SimpleEntryView;
 import com.hazelcast.map.impl.querycache.subscriber.QueryCacheEndToEndProvider;
@@ -130,7 +128,6 @@ import com.hazelcast.map.impl.querycache.subscriber.QueryCacheRequest;
 import com.hazelcast.map.impl.querycache.subscriber.SubscriberContext;
 import com.hazelcast.map.listener.MapListener;
 import com.hazelcast.map.listener.MapPartitionLostListener;
-import com.hazelcast.nio.serialization.Data;
 import com.hazelcast.projection.Projection;
 import com.hazelcast.query.PagingPredicate;
 import com.hazelcast.query.PartitionPredicate;
@@ -138,9 +135,10 @@ import com.hazelcast.query.Predicate;
 import com.hazelcast.query.impl.IndexUtils;
 import com.hazelcast.query.impl.predicates.PagingPredicateImpl;
 import com.hazelcast.ringbuffer.ReadResultSet;
-import com.hazelcast.ringbuffer.impl.client.PortableReadResultSet;
+import com.hazelcast.ringbuffer.impl.ReadResultSetImpl;
 import com.hazelcast.spi.impl.InternalCompletableFuture;
 import com.hazelcast.spi.impl.UnmodifiableLazyList;
+import com.hazelcast.spi.impl.UnmodifiableLazySet;
 
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
@@ -158,6 +156,8 @@ import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.BiConsumer;
+import java.util.function.BiFunction;
+import java.util.function.Function;
 
 import static com.hazelcast.internal.util.CollectionUtil.objectToDataCollection;
 import static com.hazelcast.internal.util.ExceptionUtil.rethrow;
@@ -165,7 +165,6 @@ import static com.hazelcast.internal.util.MapUtil.createHashMap;
 import static com.hazelcast.internal.util.Preconditions.checkNotInstanceOf;
 import static com.hazelcast.internal.util.Preconditions.checkNotNull;
 import static com.hazelcast.internal.util.Preconditions.checkPositive;
-import static com.hazelcast.internal.util.SortingUtil.getSortedQueryResultSet;
 import static com.hazelcast.internal.util.ThreadUtil.getThreadId;
 import static com.hazelcast.internal.util.TimeUtil.timeInMsOrOneIfResultIsZero;
 import static com.hazelcast.internal.util.TimeUtil.timeInMsOrTimeIfNullUnit;
@@ -173,6 +172,7 @@ import static com.hazelcast.map.impl.ListenerAdapters.createListenerAdapter;
 import static com.hazelcast.map.impl.MapListenerFlagOperator.setAndGetListenerFlags;
 import static com.hazelcast.map.impl.querycache.subscriber.QueryCacheRequest.newQueryCacheRequest;
 import static com.hazelcast.map.impl.record.Record.UNSET;
+import static com.hazelcast.query.impl.predicates.PredicateUtils.unwrapPagingPredicate;
 import static java.lang.Thread.currentThread;
 import static java.util.Collections.emptyMap;
 import static java.util.concurrent.TimeUnit.MILLISECONDS;
@@ -197,7 +197,8 @@ public class ClientMapProxy<K, V> extends ClientProxy
     protected static final String NULL_TTL_UNIT_IS_NOT_ALLOWED = "Null ttlUnit is not allowed!";
     protected static final String NULL_MAX_IDLE_UNIT_IS_NOT_ALLOWED = "Null maxIdleUnit is not allowed!";
     protected static final String NULL_TIMEUNIT_IS_NOT_ALLOWED = "Null timeunit is not allowed!";
-
+    protected static final String NULL_BIFUNCTION_IS_NOT_ALLOWED = "Null BiFunction is not allowed!";
+    protected static final String NULL_FUNCTION_IS_NOT_ALLOWED = "Null Function is not allowed!";
 
     private ClientLockReferenceIdGenerator lockReferenceIdGenerator;
     private ClientQueryCacheContext queryCacheContext;
@@ -1119,13 +1120,7 @@ public class ClientMapProxy<K, V> extends ClientProxy
         ClientMessage response = invoke(request);
         MapKeySetCodec.ResponseParameters resultParameters = MapKeySetCodec.decodeResponse(response);
 
-        ImmutableInflatableSet.ImmutableSetBuilder<K> setBuilder =
-                ImmutableInflatableSet.newImmutableSetBuilder(resultParameters.response.size());
-        for (Data data : resultParameters.response) {
-            K key = toObject(data);
-            setBuilder.add(key);
-        }
-        return setBuilder.build();
+        return (Set<K>) new UnmodifiableLazySet(resultParameters.response, getSerializationService());
     }
 
     @Override
@@ -1206,7 +1201,7 @@ public class ClientMapProxy<K, V> extends ClientProxy
         ClientMessage request = MapValuesCodec.encodeRequest(name);
         ClientMessage response = invoke(request);
         MapValuesCodec.ResponseParameters resultParameters = MapValuesCodec.decodeResponse(response);
-        return new UnmodifiableLazyList<>(resultParameters.response, getSerializationService());
+        return new UnmodifiableLazyList(resultParameters.response, getSerializationService());
     }
 
     @Nonnull
@@ -1216,14 +1211,7 @@ public class ClientMapProxy<K, V> extends ClientProxy
         ClientMessage response = invoke(request);
         MapEntrySetCodec.ResponseParameters resultParameters = MapEntrySetCodec.decodeResponse(response);
 
-        ImmutableInflatableSet.ImmutableSetBuilder<Entry<K, V>> setBuilder =
-                ImmutableInflatableSet.newImmutableSetBuilder(resultParameters.response.size());
-        InternalSerializationService serializationService = getContext().getSerializationService();
-        for (Entry<Data, Data> row : resultParameters.response) {
-            LazyMapEntry<K, V> entry = new LazyMapEntry<>(row.getKey(), row.getValue(), serializationService);
-            setBuilder.add(entry);
-        }
-        return setBuilder.build();
+        return getEntriesAsImmutableLazySet(resultParameters.response);
     }
 
     @SuppressWarnings("unchecked")
@@ -1231,45 +1219,32 @@ public class ClientMapProxy<K, V> extends ClientProxy
     public Set<K> keySet(@Nonnull Predicate<K, V> predicate) {
         checkNotNull(predicate, NULL_PREDICATE_IS_NOT_ALLOWED);
         if (containsPagingPredicate(predicate)) {
-            PagingPredicate pagingPredicate = unwrapPagingPredicate(predicate);
-            if (pagingPredicate.getComparator() == null) {
-                return keySetWithPagingPredicate(predicate);
-            } else {
-                // custom comparator may act on keys and values at the same time
-                return entrySetWithPagingPredicate(predicate, IterationType.KEY);
-            }
+            return keySetWithPagingPredicate(predicate);
         }
 
         ClientMessage request = MapKeySetWithPredicateCodec.encodeRequest(name, toData(predicate));
         ClientMessage response = invokeWithPredicate(request, predicate);
         MapKeySetWithPredicateCodec.ResponseParameters resultParameters = MapKeySetWithPredicateCodec.decodeResponse(response);
 
-        ImmutableInflatableSet.ImmutableSetBuilder<K> setBuilder =
-                ImmutableInflatableSet.newImmutableSetBuilder(resultParameters.response.size());
-        for (Data data : resultParameters.response) {
-            K key = toObject(data);
-            setBuilder.add(key);
-        }
-        return setBuilder.build();
+        return (Set<K>) new UnmodifiableLazySet(resultParameters.response, getSerializationService());
     }
 
     @SuppressWarnings("unchecked")
-    private Set<K> keySetWithPagingPredicate(Predicate predicate) {
+    private Set keySetWithPagingPredicate(Predicate predicate) {
         PagingPredicateImpl pagingPredicate = unwrapPagingPredicate(predicate);
         pagingPredicate.setIterationType(IterationType.KEY);
 
-        ClientMessage request = MapKeySetWithPagingPredicateCodec.encodeRequest(name, toData(predicate));
-
+        PagingPredicateHolder pagingPredicateHolder = PagingPredicateHolder.of(predicate, getSerializationService());
+        ClientMessage request = MapKeySetWithPagingPredicateCodec.encodeRequest(name, pagingPredicateHolder);
         ClientMessage response = invokeWithPredicate(request, predicate);
         MapKeySetWithPagingPredicateCodec.ResponseParameters resultParameters = MapKeySetWithPagingPredicateCodec
                 .decodeResponse(response);
 
-        ArrayList<Map.Entry> resultList = new ArrayList<>();
-        for (Data keyData : resultParameters.response) {
-            K key = toObject(keyData);
-            resultList.add(new AbstractMap.SimpleImmutableEntry<K, V>(key, null));
-        }
-        return (Set<K>) getSortedQueryResultSet(resultList, pagingPredicate, IterationType.KEY);
+        SerializationService serializationService = getSerializationService();
+
+        pagingPredicate.setAnchorList(resultParameters.anchorDataList.asAnchorList(serializationService));
+
+        return new UnmodifiableLazySet(resultParameters.response, serializationService);
     }
 
     @SuppressWarnings("unchecked")
@@ -1277,40 +1252,34 @@ public class ClientMapProxy<K, V> extends ClientProxy
     public Set<Entry<K, V>> entrySet(@Nonnull Predicate predicate) {
         checkNotNull(predicate, NULL_PREDICATE_IS_NOT_ALLOWED);
         if (containsPagingPredicate(predicate)) {
-            return entrySetWithPagingPredicate(predicate, IterationType.ENTRY);
+            return entrySetWithPagingPredicate(predicate);
         }
         ClientMessage request = MapEntriesWithPredicateCodec.encodeRequest(name, toData(predicate));
 
         ClientMessage response = invokeWithPredicate(request, predicate);
         MapEntriesWithPredicateCodec.ResponseParameters resultParameters = MapEntriesWithPredicateCodec.decodeResponse(response);
 
-        ImmutableInflatableSet.ImmutableSetBuilder<Entry<K, V>> setBuilder =
-                ImmutableInflatableSet.newImmutableSetBuilder(resultParameters.response.size());
-        InternalSerializationService serializationService = getContext().getSerializationService();
-        for (Entry<Data, Data> row : resultParameters.response) {
-            LazyMapEntry<K, V> entry = new LazyMapEntry<>(row.getKey(), row.getValue(), serializationService);
-            setBuilder.add(entry);
-        }
-        return setBuilder.build();
+        return getEntriesAsImmutableLazySet(resultParameters.response);
     }
 
-    private Set entrySetWithPagingPredicate(Predicate predicate, IterationType iterationType) {
+    private Set getEntriesAsImmutableLazySet(List<Entry<Data, Data>> entryDataList) {
+        return new UnmodifiableLazySet(entryDataList, getSerializationService());
+    }
+
+    private Set entrySetWithPagingPredicate(Predicate predicate) {
         PagingPredicateImpl pagingPredicate = unwrapPagingPredicate(predicate);
         pagingPredicate.setIterationType(IterationType.ENTRY);
 
-        ClientMessage request = MapEntriesWithPagingPredicateCodec.encodeRequest(name, toData(predicate));
+        PagingPredicateHolder pagingPredicateHolder = PagingPredicateHolder.of(predicate, getSerializationService());
+        ClientMessage request = MapEntriesWithPagingPredicateCodec.encodeRequest(name, pagingPredicateHolder);
 
         ClientMessage response = invokeWithPredicate(request, predicate);
         MapEntriesWithPagingPredicateCodec.ResponseParameters resultParameters = MapEntriesWithPagingPredicateCodec
                 .decodeResponse(response);
 
-        ArrayList<Map.Entry> resultList = new ArrayList<>();
-        for (Entry<Data, Data> entry : resultParameters.response) {
-            K key = toObject(entry.getKey());
-            V value = toObject(entry.getValue());
-            resultList.add(new AbstractMap.SimpleEntry<>(key, value));
-        }
-        return getSortedQueryResultSet(resultList, pagingPredicate, iterationType);
+        pagingPredicate.setAnchorList(resultParameters.anchorDataList.asAnchorList(getSerializationService()));
+
+        return getEntriesAsImmutableLazySet(resultParameters.response);
     }
 
     @Override
@@ -1324,7 +1293,7 @@ public class ClientMapProxy<K, V> extends ClientProxy
         ClientMessage response = invokeWithPredicate(request, predicate);
         MapValuesWithPredicateCodec.ResponseParameters resultParameters = MapValuesWithPredicateCodec.decodeResponse(response);
 
-        return new UnmodifiableLazyList<>(resultParameters.response, getSerializationService());
+        return (Collection<V>) new UnmodifiableLazyList(resultParameters.response, getSerializationService());
     }
 
     private ClientMessage invokeWithPredicate(ClientMessage request, Predicate predicate) {
@@ -1343,18 +1312,18 @@ public class ClientMapProxy<K, V> extends ClientProxy
         PagingPredicateImpl pagingPredicate = unwrapPagingPredicate(predicate);
         pagingPredicate.setIterationType(IterationType.VALUE);
 
-        ClientMessage request = MapValuesWithPagingPredicateCodec.encodeRequest(name, toData(predicate));
+        PagingPredicateHolder pagingPredicateHolder = PagingPredicateHolder.of(predicate, getSerializationService());
+        ClientMessage request = MapValuesWithPagingPredicateCodec.encodeRequest(name, pagingPredicateHolder);
+
         ClientMessage response = invokeWithPredicate(request, predicate);
         MapValuesWithPagingPredicateCodec.ResponseParameters resultParameters = MapValuesWithPagingPredicateCodec
                 .decodeResponse(response);
 
-        List<Entry> resultList = new ArrayList<>(resultParameters.response.size());
-        for (Entry<Data, Data> entry : resultParameters.response) {
-            K key = toObject(entry.getKey());
-            V value = toObject(entry.getValue());
-            resultList.add(new AbstractMap.SimpleImmutableEntry<>(key, value));
-        }
-        return (Collection<V>) getSortedQueryResultSet(resultList, pagingPredicate, IterationType.VALUE);
+        SerializationService serializationService = getSerializationService();
+
+        pagingPredicate.setAnchorList(resultParameters.anchorDataList.asAnchorList(serializationService));
+
+        return (Collection<V>) new UnmodifiableLazyList(resultParameters.response, serializationService);
     }
 
     @Override
@@ -1414,36 +1383,6 @@ public class ClientMapProxy<K, V> extends ClientProxy
         ClientMessage response = invoke(request, keyData);
         MapExecuteOnKeyCodec.ResponseParameters resultParameters = MapExecuteOnKeyCodec.decodeResponse(response);
         return toObject(resultParameters.response);
-    }
-
-    @Override
-    public <R> void submitToKey(@Nonnull K key,
-                                @Nonnull EntryProcessor<K, V, R> entryProcessor,
-                                ExecutionCallback<? super R> callback) {
-        checkNotNull(key, NULL_KEY_IS_NOT_ALLOWED);
-        submitToKeyInternal(key, entryProcessor, callback);
-    }
-
-    @SuppressWarnings("unchecked")
-    public <R> void submitToKeyInternal(Object key,
-                                        EntryProcessor<K, V, R> entryProcessor,
-                                        ExecutionCallback<? super R> callback) {
-        try {
-            Data keyData = toData(key);
-            ClientMessage request = MapSubmitToKeyCodec.encodeRequest(name, toData(entryProcessor), keyData, getThreadId());
-            ClientInvocationFuture future = invokeOnKeyOwner(request, keyData);
-            SerializationService ss = getSerializationService();
-            new ClientDelegatingFuture<R>(future, ss, message -> MapSubmitToKeyCodec.decodeResponse(message).response)
-                    .whenCompleteAsync((response, throwable) -> {
-                        if (throwable == null) {
-                            callback.onResponse(response);
-                        } else {
-                            callback.onFailure(throwable);
-                        }
-                    });
-        } catch (Exception e) {
-            throw rethrow(e);
-        }
     }
 
     @Override
@@ -1532,7 +1471,7 @@ public class ClientMapProxy<K, V> extends ClientProxy
         MapProjectCodec.ResponseParameters resultParameters =
                 MapProjectCodec.decodeResponse(response);
 
-        return new UnmodifiableLazyList<>(resultParameters.response, getSerializationService());
+        return new UnmodifiableLazyList(resultParameters.response, getSerializationService());
     }
 
     @Override
@@ -1548,7 +1487,7 @@ public class ClientMapProxy<K, V> extends ClientProxy
         MapProjectWithPredicateCodec.ResponseParameters resultParameters =
                 MapProjectWithPredicateCodec.decodeResponse(response);
 
-        return new UnmodifiableLazyList<>(resultParameters.response, getSerializationService());
+        return new UnmodifiableLazyList(resultParameters.response, getSerializationService());
     }
 
     @Override
@@ -1613,9 +1552,7 @@ public class ClientMapProxy<K, V> extends ClientProxy
         }
     }
 
-    /**
-     * Async version of {@link #executeOnKeys}.
-     */
+    @Override
     public <R> InternalCompletableFuture<Map<K, R>> submitToKeys(@Nonnull Set<K> keys,
                                                                  @Nonnull EntryProcessor<K, V, R> entryProcessor) {
         checkNotNull(keys, NULL_KEY_IS_NOT_ALLOWED);
@@ -1664,18 +1601,32 @@ public class ClientMapProxy<K, V> extends ClientProxy
 
     @Override
     public void putAll(@Nonnull Map<? extends K, ? extends V> m) {
-        putAllInternal(m, null);
+        putAllInternal(m, null, true);
     }
 
-    // used by Jet
+    @Override
     public InternalCompletableFuture<Void> putAllAsync(@Nonnull Map<? extends K, ? extends V> m) {
         InternalCompletableFuture<Void> future = new InternalCompletableFuture<>();
-        putAllInternal(m, future);
+        putAllInternal(m, future, true);
+        return future;
+    }
+
+    @Override
+    public void setAll(@Nonnull Map<? extends K, ? extends V> m) {
+        putAllInternal(m, null, false);
+    }
+
+    @Override
+    public InternalCompletableFuture<Void> setAllAsync(@Nonnull Map<? extends K, ? extends V> m) {
+        InternalCompletableFuture<Void> future = new InternalCompletableFuture<>();
+        putAllInternal(m, future, false);
         return future;
     }
 
     @SuppressWarnings("checkstyle:npathcomplexity")
-    private void putAllInternal(@Nonnull Map<? extends K, ? extends V> map, @Nullable InternalCompletableFuture<Void> future) {
+    private void putAllInternal(@Nonnull Map<? extends K, ? extends V> map,
+                                @Nullable InternalCompletableFuture<Void> future,
+                                boolean triggerMapLoader) {
         if (map.isEmpty()) {
             if (future != null) {
                 future.complete(null);
@@ -1719,7 +1670,7 @@ public class ClientMapProxy<K, V> extends ClientProxy
             Integer partitionId = entry.getKey();
             // if there is only one entry, consider how we can use MapPutRequest
             // without having to get back the return value
-            ClientMessage request = MapPutAllCodec.encodeRequest(name, entry.getValue());
+            ClientMessage request = MapPutAllCodec.encodeRequest(name, entry.getValue(), triggerMapLoader);
             new ClientInvocation(getClient(), request, getName(), partitionId)
                     .invoke()
                     .whenCompleteAsync(callback);
@@ -1760,11 +1711,14 @@ public class ClientMapProxy<K, V> extends ClientProxy
      * including internal operations.
      * The underlying implementation may send more values in one batch than {@code fetchSize} if it needs to get to
      * a "safepoint" to later resume iteration.
-     * <p>
      * <b>NOTE</b>
-     * Iterating the map should be done only when the {@link IMap} is not being
-     * mutated and the cluster is stable (there are no migrations or membership changes).
-     * In other cases, the iterator may not return some entries or may return an entry twice.
+     * The iteration may be done when the map is being mutated or when there are
+     * membership changes. The iterator does not reflect the state when it has
+     * been constructed - it may return some entries that were added after the
+     * iteration has started and may not return some entries that were removed
+     * after iteration has started.
+     * The iterator will not, however, skip an entry if it has not been changed
+     * and will not return an entry twice.
      *
      * @param fetchSize   the size of the batches which will be sent when iterating the data
      * @param partitionId the partition ID which is being iterated
@@ -1787,11 +1741,14 @@ public class ClientMapProxy<K, V> extends ClientProxy
      * The underlying implementation may send more values in one batch than {@code fetchSize} if it needs to get to
      * a "safepoint" to later resume iteration.
      * Predicates of type {@link PagingPredicate} are not supported.
-     * <p>
-     * <b>NOTE</b>
-     * Iterating the map should be done only when the {@link IMap} is not being
-     * mutated and the cluster is stable (there are no migrations or membership changes).
-     * In other cases, the iterator may not return some entries or may return an entry twice.
+     <b>NOTE</b>
+     * The iteration may be done when the map is being mutated or when there are
+     * membership changes. The iterator does not reflect the state when it has
+     * been constructed - it may return some entries that were added after the
+     * iteration has started and may not return some entries that were removed
+     * after iteration has started.
+     * The iterator will not, however, skip an entry if it has not been changed
+     * and will not return an entry twice.
      *
      * @param fetchSize   the size of the batches which will be sent when iterating the data
      * @param partitionId the partition ID which is being iterated
@@ -1842,7 +1799,7 @@ public class ClientMapProxy<K, V> extends ClientProxy
         final ClientInvocationFuture fut = new ClientInvocation(getClient(), request, getName(), partitionId).invoke();
         return new ClientDelegatingFuture<>(fut, ss, message -> {
             MapEventJournalReadCodec.ResponseParameters params = MapEventJournalReadCodec.decodeResponse(message);
-            PortableReadResultSet<?> resultSet = new PortableReadResultSet<>(
+            ReadResultSetImpl resultSet = new ReadResultSetImpl<>(
                     params.readCount, params.items, params.itemSeqs, params.nextSeq);
             resultSet.setSerializationService(getSerializationService());
             return resultSet;
@@ -1879,15 +1836,6 @@ public class ClientMapProxy<K, V> extends ClientProxy
         }
         PartitionPredicate partitionPredicate = (PartitionPredicate) predicate;
         return partitionPredicate.getTarget() instanceof PagingPredicateImpl;
-    }
-
-    private static PagingPredicateImpl unwrapPagingPredicate(Predicate predicate) {
-        if (predicate instanceof PagingPredicateImpl) {
-            return (PagingPredicateImpl) predicate;
-        }
-
-        Predicate unwrappedPredicate = ((PartitionPredicate) predicate).getTarget();
-        return (PagingPredicateImpl) unwrappedPredicate;
     }
 
     private class ClientMapToKeyWithPredicateEventHandler extends AbstractClientMapEventHandler {
@@ -2022,14 +1970,6 @@ public class ClientMapProxy<K, V> extends ClientProxy
             return new DataAwareEntryEvent<>(member, eventType, name, keyData, valueData, oldValueData,
                     mergingValueData, getSerializationService());
         }
-
-        @Override
-        public void beforeListenerRegister() {
-        }
-
-        @Override
-        public void onListenerRegister() {
-        }
     }
 
     private class ClientMapPartitionLostEventHandler
@@ -2040,14 +1980,6 @@ public class ClientMapProxy<K, V> extends ClientProxy
 
         ClientMapPartitionLostEventHandler(MapPartitionLostListener listener) {
             this.listener = listener;
-        }
-
-        @Override
-        public void beforeListenerRegister() {
-        }
-
-        @Override
-        public void onListenerRegister() {
         }
 
         @Override
@@ -2067,4 +1999,62 @@ public class ClientMapProxy<K, V> extends ClientProxy
             super.onDestroy();
         }
     }
+
+    @Override
+    public V computeIfPresent(@Nonnull K key, @Nonnull BiFunction<? super K, ? super V, ? extends V> remappingFunction) {
+        checkNotNull(key, NULL_KEY_IS_NOT_ALLOWED);
+        checkNotNull(key, NULL_BIFUNCTION_IS_NOT_ALLOWED);
+
+        return computeIfPresentLocally(key, remappingFunction);
+    }
+
+
+    private V computeIfPresentLocally(K key,
+                                      BiFunction<? super K, ? super V, ? extends V> remappingFunction) {
+
+        while (true) {
+            Data oldValueAsData = toData(getInternal(key));
+            if (oldValueAsData == null) {
+                return null;
+            }
+
+            V oldValueClone = toObject(oldValueAsData);
+            V newValue = remappingFunction.apply(key, oldValueClone);
+            if (newValue != null) {
+                if (replaceIfSameInternal(key, oldValueAsData, toData(newValue))) {
+                    return newValue;
+                }
+            } else if (removeInternal(key, oldValueAsData)) {
+                return null;
+            }
+        }
+    }
+
+    @Override
+    public V computeIfAbsent(@Nonnull K key, @Nonnull Function<? super K, ? extends V> mappingFunction) {
+        checkNotNull(key, NULL_KEY_IS_NOT_ALLOWED);
+        checkNotNull(mappingFunction, NULL_FUNCTION_IS_NOT_ALLOWED);
+
+        return computeIfAbsentLocally(key, mappingFunction);
+    }
+
+    private V computeIfAbsentLocally(K key, Function<? super K, ? extends V> mappingFunction) {
+        V oldValue = toObject(getInternal(key));
+        if (oldValue != null) {
+            return oldValue;
+        }
+
+        V newValue = mappingFunction.apply(key);
+        if (newValue == null) {
+            return null;
+        }
+
+        V result = putIfAbsentInternal(UNSET, MILLISECONDS, null, null, key, toData(newValue));
+        if (result == null) {
+            return newValue;
+        } else {
+            return result;
+        }
+    }
+
 }

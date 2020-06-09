@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2008-2019, Hazelcast, Inc. All Rights Reserved.
+ * Copyright (c) 2008-2020, Hazelcast, Inc. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -18,10 +18,7 @@ package com.hazelcast.internal.nio;
 
 import com.hazelcast.internal.memory.impl.EndiannessUtil;
 
-import java.io.DataInput;
-import java.io.IOException;
 import java.nio.ByteBuffer;
-import java.nio.charset.Charset;
 
 import static com.hazelcast.internal.memory.impl.EndiannessUtil.BYTE_ARRAY_ACCESS;
 import static com.hazelcast.internal.memory.impl.EndiannessUtil.BYTE_BUFFER_ACCESS;
@@ -72,15 +69,6 @@ public final class Bits {
      * Length of the data blocks used by the CPU cache sub-system in bytes.
      */
     public static final int CACHE_LINE_LENGTH = 64;
-
-    /**
-     * A reusable instance of the UTF-8 charset
-     */
-    public static final Charset UTF_8 = Charset.forName("UTF-8");
-    /**
-     * A reusable instance of the ISO Latin-1 charset
-     */
-    public static final Charset ISO_8859_1 = Charset.forName("ISO-8859-1");
 
     private Bits() {
     }
@@ -199,16 +187,6 @@ public final class Bits {
 
     public static int writeUtf8Char(byte[] buffer, int pos, int c) {
         return EndiannessUtil.writeUtf8Char(BYTE_ARRAY_ACCESS, buffer, pos, c);
-    }
-
-    public static int readUtf8Char(byte[] buffer, int pos, char[] dst, int dstPos)
-            throws IOException {
-        return EndiannessUtil.readUtf8Char(buffer, pos, dst, dstPos);
-    }
-
-    public static char readUtf8Char(DataInput in, byte firstByte)
-            throws IOException {
-        return EndiannessUtil.readUtf8Char(in, firstByte);
     }
 
     /**

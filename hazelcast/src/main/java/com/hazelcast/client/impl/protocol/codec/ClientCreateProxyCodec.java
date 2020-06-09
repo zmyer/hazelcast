@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2008-2019, Hazelcast, Inc. All Rights Reserved.
+ * Copyright (c) 2008-2020, Hazelcast, Inc. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -34,16 +34,16 @@ import static com.hazelcast.client.impl.protocol.codec.builtin.FixedSizeTypesCod
  */
 
 /**
- * TODO DOC
+ * Creates a cluster-wide proxy with the given name and service.
  */
-@Generated("21e81359c7f9c21e050ec3386fa2dee1")
+@Generated("cdf359635efe8763e87e744b2036a6ac")
 public final class ClientCreateProxyCodec {
     //hex: 0x000400
     public static final int REQUEST_MESSAGE_TYPE = 1024;
     //hex: 0x000401
     public static final int RESPONSE_MESSAGE_TYPE = 1025;
     private static final int REQUEST_INITIAL_FRAME_SIZE = PARTITION_ID_FIELD_OFFSET + INT_SIZE_IN_BYTES;
-    private static final int RESPONSE_INITIAL_FRAME_SIZE = RESPONSE_BACKUP_ACKS_FIELD_OFFSET + INT_SIZE_IN_BYTES;
+    private static final int RESPONSE_INITIAL_FRAME_SIZE = RESPONSE_BACKUP_ACKS_FIELD_OFFSET + BYTE_SIZE_IN_BYTES;
 
     private ClientCreateProxyCodec() {
     }
@@ -75,24 +75,18 @@ public final class ClientCreateProxyCodec {
          * "hz:impl:xaService"
          */
         public java.lang.String serviceName;
-
-        /**
-         * TODO DOC
-         */
-        public com.hazelcast.cluster.Address target;
     }
 
-    public static ClientMessage encodeRequest(java.lang.String name, java.lang.String serviceName, com.hazelcast.cluster.Address target) {
+    public static ClientMessage encodeRequest(java.lang.String name, java.lang.String serviceName) {
         ClientMessage clientMessage = ClientMessage.createForEncode();
         clientMessage.setRetryable(false);
-        clientMessage.setAcquiresResource(false);
         clientMessage.setOperationName("Client.CreateProxy");
         ClientMessage.Frame initialFrame = new ClientMessage.Frame(new byte[REQUEST_INITIAL_FRAME_SIZE], UNFRAGMENTED_MESSAGE);
         encodeInt(initialFrame.content, TYPE_FIELD_OFFSET, REQUEST_MESSAGE_TYPE);
+        encodeInt(initialFrame.content, PARTITION_ID_FIELD_OFFSET, -1);
         clientMessage.add(initialFrame);
         StringCodec.encode(clientMessage, name);
         StringCodec.encode(clientMessage, serviceName);
-        AddressCodec.encode(clientMessage, target);
         return clientMessage;
     }
 
@@ -103,7 +97,6 @@ public final class ClientCreateProxyCodec {
         iterator.next();
         request.name = StringCodec.decode(iterator);
         request.serviceName = StringCodec.decode(iterator);
-        request.target = AddressCodec.decode(iterator);
         return request;
     }
 

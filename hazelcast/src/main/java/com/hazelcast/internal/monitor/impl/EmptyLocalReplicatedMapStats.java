@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2008-2019, Hazelcast, Inc. All Rights Reserved.
+ * Copyright (c) 2008-2020, Hazelcast, Inc. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -17,10 +17,9 @@
 package com.hazelcast.internal.monitor.impl;
 
 import com.hazelcast.config.ReplicatedMapConfig;
-import com.hazelcast.internal.json.JsonObject;
+import com.hazelcast.nearcache.NearCacheStats;
 import com.hazelcast.query.LocalIndexStats;
 import com.hazelcast.replicatedmap.LocalReplicatedMapStats;
-import com.hazelcast.nearcache.NearCacheStats;
 
 import java.util.Map;
 
@@ -32,28 +31,7 @@ import java.util.Map;
 @SuppressWarnings("checkstyle:methodcount")
 public class EmptyLocalReplicatedMapStats implements LocalReplicatedMapStats {
 
-    private final JsonObject jsonObject;
-
     public EmptyLocalReplicatedMapStats() {
-        JsonObject root = new JsonObject();
-        root.add("getCount", 0L);
-        root.add("putCount", 0L);
-        root.add("removeCount", 0L);
-        root.add("numberOfOtherOperations", 0L);
-        root.add("numberOfEvents", 0L);
-        root.add("lastAccessTime", 0L);
-        root.add("lastUpdateTime", 0L);
-        root.add("hits", 0L);
-        root.add("ownedEntryCount", 0L);
-        root.add("ownedEntryMemoryCost", 0L);
-        root.add("creationTime", 0L);
-        root.add("totalGetLatencies", 0L);
-        root.add("totalPutLatencies", 0L);
-        root.add("totalRemoveLatencies", 0L);
-        root.add("maxGetLatency", 0L);
-        root.add("maxPutLatency", 0L);
-        root.add("maxRemoveLatency", 0L);
-        jsonObject = root;
     }
 
     @Override
@@ -214,16 +192,6 @@ public class EmptyLocalReplicatedMapStats implements LocalReplicatedMapStats {
     @Override
     public long getMaxSetLatency() {
         throw new UnsupportedOperationException("Set operation on replicated maps is not supported.");
-    }
-
-    @Override
-    public JsonObject toJson() {
-        return jsonObject;
-    }
-
-    @Override
-    public void fromJson(JsonObject json) {
-
     }
 
     @Override

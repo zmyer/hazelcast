@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2008-2019, Hazelcast, Inc. All Rights Reserved.
+ * Copyright (c) 2008-2020, Hazelcast, Inc. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -23,7 +23,9 @@ import com.hazelcast.cp.internal.HazelcastRaftTestSupport;
 import com.hazelcast.cp.internal.RaftGroupId;
 import com.hazelcast.cp.internal.RaftInvocationManager;
 import com.hazelcast.spi.impl.InternalCompletableFuture;
+import com.hazelcast.test.ChangeLoggingRule;
 import org.junit.Before;
+import org.junit.ClassRule;
 import org.junit.Test;
 
 import java.util.concurrent.Callable;
@@ -32,16 +34,21 @@ import java.util.concurrent.Future;
 
 import static com.hazelcast.cp.internal.session.AbstractProxySessionManager.NO_SESSION_ID;
 import static com.hazelcast.internal.util.ConcurrencyUtil.CALLER_RUNS;
+import static com.hazelcast.test.Accessors.getNodeEngineImpl;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotEquals;
 import static org.junit.Assert.assertTrue;
+import static org.mockito.Mockito.atLeast;
 import static org.mockito.Mockito.atLeastOnce;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 public abstract class AbstractProxySessionManagerTest extends HazelcastRaftTestSupport {
+
+    @ClassRule
+    public static ChangeLoggingRule changeLoggingRule = new ChangeLoggingRule("log4j2-debug-cp.xml");
 
     private static final int sessionTTLSeconds = 10;
 
@@ -133,10 +140,13 @@ public abstract class AbstractProxySessionManagerTest extends HazelcastRaftTestS
         AbstractProxySessionManager sessionManager = getSessionManager();
         long sessionId = sessionManager.acquireSession(groupId);
 
-        assertTrueEventually(() -> verify(sessionManager, atLeastOnce()).heartbeat(groupId, sessionId));
-
         SessionAccessor sessionAccessor = getSessionAccessor();
-        assertTrueAllTheTime(() -> assertTrue(sessionAccessor.isActive(groupId, sessionId)), sessionTTLSeconds);
+        int heartbeatCount = 5;
+        for (int i = 0; i < heartbeatCount; i++) {
+            int times = i + 1;
+            assertTrueEventually(() -> verify(sessionManager, atLeast(times)).heartbeat(groupId, sessionId));
+            assertTrue(sessionAccessor.isActive(groupId, sessionId));
+        }
     }
 
     @Test

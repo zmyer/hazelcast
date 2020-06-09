@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2008-2019, Hazelcast, Inc. All Rights Reserved.
+ * Copyright (c) 2008-2020, Hazelcast, Inc. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -57,14 +57,9 @@ public interface ExecutionService {
     String CLIENT_EXECUTOR = "hz:client";
 
     /**
-     * Name of the client executor.
+     * Name of the client query executor.
      */
     String CLIENT_QUERY_EXECUTOR = "hz:client-query";
-
-    /**
-     * Name of the client management executor.
-     */
-    String CLIENT_MANAGEMENT_EXECUTOR = "hz:client-management";
 
     /**
      * Name of the client transaction executor.
@@ -104,6 +99,12 @@ public interface ExecutionService {
      * @see MapLoader#loadAllKeys()
      */
     String MAP_LOAD_ALL_KEYS_EXECUTOR = "hz:map-loadAllKeys";
+
+    /**
+     * Name of the Management Center executor. Used to execute blocking tasks
+     * related with operations run by Management Center.
+     */
+    String MC_EXECUTOR = "hz:mc";
 
     /**
      * @param name          for the executor service

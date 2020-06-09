@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2008-2019, Hazelcast, Inc. All Rights Reserved.
+ * Copyright (c) 2008-2020, Hazelcast, Inc. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -102,7 +102,7 @@ public abstract class TopicProxySupport extends AbstractDistributedObject<TopicS
 
     public @Nonnull
     UUID addMessageListenerInternal(@Nonnull MessageListener listener) {
-        return topicService.addMessageListener(name, listener, false);
+        return topicService.addMessageListener(name, listener);
     }
 
     public boolean removeMessageListenerInternal(@Nonnull UUID registrationId) {

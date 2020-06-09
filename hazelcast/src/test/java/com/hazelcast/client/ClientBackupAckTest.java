@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2008-2019, Hazelcast, Inc. All Rights Reserved.
+ * Copyright (c) 2008-2020, Hazelcast, Inc. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -17,11 +17,8 @@
 package com.hazelcast.client;
 
 import com.hazelcast.client.config.ClientConfig;
-import com.hazelcast.client.impl.clientside.HazelcastClientInstanceImpl;
-import com.hazelcast.client.impl.spi.ClientListenerService;
 import com.hazelcast.client.impl.spi.EventHandler;
-import com.hazelcast.client.impl.spi.impl.SmartClientInvocationService;
-import com.hazelcast.client.impl.spi.impl.listener.SmartClientListenerService;
+import com.hazelcast.client.impl.spi.impl.ClientInvocationServiceImpl;
 import com.hazelcast.client.test.ClientTestSupport;
 import com.hazelcast.client.test.TestHazelcastFactory;
 import com.hazelcast.core.HazelcastInstance;
@@ -82,11 +79,9 @@ public class ClientBackupAckTest extends ClientTestSupport {
     }
 
     private boolean isEnabled(HazelcastInstance client) {
-        HazelcastClientInstanceImpl clientInstanceImpl = getHazelcastClientInstanceImpl(client);
-        ClientListenerService listenerService = clientInstanceImpl.getListenerService();
-        Collection<EventHandler> values = ((SmartClientListenerService) listenerService).getEventHandlers().values();
+        Collection<EventHandler> values = getAllEventHandlers(client).values();
         for (EventHandler value : values) {
-            if (value instanceof SmartClientInvocationService.BackupEventHandler) {
+            if (value instanceof ClientInvocationServiceImpl.BackupEventHandler) {
                 return true;
             }
         }

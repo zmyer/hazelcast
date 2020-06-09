@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2008-2019, Hazelcast, Inc. All Rights Reserved.
+ * Copyright (c) 2008-2020, Hazelcast, Inc. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -20,7 +20,6 @@ import com.hazelcast.client.LoadBalancer;
 import com.hazelcast.client.util.RandomLB;
 import com.hazelcast.client.util.RoundRobinLB;
 import com.hazelcast.config.AliasedDiscoveryConfig;
-import com.hazelcast.internal.config.AliasedDiscoveryConfigUtils;
 import com.hazelcast.config.ConfigXmlGenerator.XmlGenerator;
 import com.hazelcast.config.CredentialsFactoryConfig;
 import com.hazelcast.config.DiscoveryConfig;
@@ -29,6 +28,7 @@ import com.hazelcast.config.EntryListenerConfig;
 import com.hazelcast.config.EvictionConfig;
 import com.hazelcast.config.GlobalSerializerConfig;
 import com.hazelcast.config.ListenerConfig;
+import com.hazelcast.config.LoginModuleConfig;
 import com.hazelcast.config.NativeMemoryConfig;
 import com.hazelcast.config.NearCacheConfig;
 import com.hazelcast.config.NearCachePreloaderConfig;
@@ -38,8 +38,12 @@ import com.hazelcast.config.SSLConfig;
 import com.hazelcast.config.SerializationConfig;
 import com.hazelcast.config.SerializerConfig;
 import com.hazelcast.config.SocketInterceptorConfig;
+import com.hazelcast.config.security.JaasAuthenticationConfig;
+import com.hazelcast.config.security.KerberosIdentityConfig;
+import com.hazelcast.config.security.RealmConfig;
 import com.hazelcast.config.security.TokenIdentityConfig;
 import com.hazelcast.config.security.UsernamePasswordIdentityConfig;
+import com.hazelcast.internal.config.AliasedDiscoveryConfigUtils;
 import com.hazelcast.internal.util.Preconditions;
 import com.hazelcast.logging.ILogger;
 import com.hazelcast.logging.Logger;
@@ -55,13 +59,14 @@ import javax.xml.transform.stream.StreamResult;
 import javax.xml.transform.stream.StreamSource;
 import java.io.StringReader;
 import java.io.StringWriter;
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 import java.util.Map;
 
 import static com.hazelcast.client.config.impl.ClientAliasedDiscoveryConfigUtils.aliasedDiscoveryConfigsFrom;
-import static com.hazelcast.internal.util.StringUtil.isNullOrEmpty;
 import static com.hazelcast.internal.nio.IOUtil.closeResource;
+import static com.hazelcast.internal.util.StringUtil.isNullOrEmpty;
 
 /**
  * The ClientConfigXmlGenerator is responsible for transforming a
@@ -97,7 +102,7 @@ public final class ClientConfigXmlGenerator {
         gen.open("hazelcast-client", "xmlns", "http://www.hazelcast.com/schema/client-config",
                 "xmlns:xsi", "http://www.w3.org/2001/XMLSchema-instance",
                 "xsi:schemaLocation", "http://www.hazelcast.com/schema/client-config "
-                        + "http://www.hazelcast.com/schema/client-config/hazelcast-client-config-4.0.xsd");
+                        + "http://www.hazelcast.com/schema/client-config/hazelcast-client-config-4.1.xsd");
 
         //InstanceName
         gen.node("instance-name", clientConfig.getInstanceName());
@@ -108,10 +113,6 @@ public final class ClientConfigXmlGenerator {
         gen.appendProperties(clientConfig.getProperties());
         //Network
         network(gen, clientConfig.getNetworkConfig());
-        //ExecutorPoolSize
-        if (clientConfig.getExecutorPoolSize() > 0) {
-            gen.node("executor-pool-size", clientConfig.getExecutorPoolSize());
-        }
         //Backup Ack To Client
         gen.node("backup-ack-to-client-enabled", clientConfig.isBackupAckToClientEnabled());
         //Security
@@ -136,6 +137,8 @@ public final class ClientConfigXmlGenerator {
         userCodeDeployment(gen, clientConfig.getUserCodeDeploymentConfig());
         //FlakeIdGenerator
         flakeIdGenerator(gen, clientConfig.getFlakeIdGeneratorConfigMap());
+        //Metrics
+        metrics(gen, clientConfig.getMetricsConfig());
 
         //close HazelcastClient
         gen.close();
@@ -214,7 +217,7 @@ public final class ClientConfigXmlGenerator {
     }
 
     private static void security(XmlGenerator gen, ClientSecurityConfig security) {
-        if (security == null || !security.hasIdentityConfig()) {
+        if (security == null) {
             return;
         }
         gen.open("security");
@@ -233,6 +236,62 @@ public final class ClientConfigXmlGenerator {
             gen.open("credentials-factory", "class-name", cfConfig.getClassName())
             .appendProperties(cfConfig.getProperties())
             .close();
+        }
+        kerberosIdentityGenerator(gen, security.getKerberosIdentityConfig());
+        Map<String, RealmConfig> realms = security.getRealmConfigs();
+        if (realms != null && !realms.isEmpty()) {
+            gen.open("realms");
+            for (Map.Entry<String, RealmConfig> realmEntry : realms.entrySet()) {
+                securityRealmGenerator(gen, realmEntry.getKey(), realmEntry.getValue());
+            }
+            gen.close();
+        }
+        gen.close();
+    }
+
+    private static void kerberosIdentityGenerator(XmlGenerator gen, KerberosIdentityConfig c) {
+        if (c == null) {
+            return;
+        }
+        gen.open("kerberos")
+            .nodeIfContents("realm", c.getRealm())
+            .nodeIfContents("security-realm", c.getSecurityRealm())
+            .nodeIfContents("service-name-prefix", c.getServiceNamePrefix())
+            .nodeIfContents("spn", c.getSpn())
+            .close();
+    }
+
+    private static void securityRealmGenerator(XmlGenerator gen, String name, RealmConfig c) {
+        gen.open("realm", "name", name);
+        if (c.isAuthenticationConfigured()) {
+            gen.open("authentication");
+            jaasAuthenticationGenerator(gen, c.getJaasAuthenticationConfig());
+            gen.close();
+        }
+        gen.close();
+    }
+
+    private static void jaasAuthenticationGenerator(XmlGenerator gen, JaasAuthenticationConfig c) {
+        if (c == null) {
+            return;
+        }
+        appendLoginModules(gen, "jaas", c.getLoginModuleConfigs());
+    }
+
+    private static void appendLoginModules(XmlGenerator gen, String tag, List<LoginModuleConfig> loginModuleConfigs) {
+        gen.open(tag);
+        for (LoginModuleConfig lm : loginModuleConfigs) {
+            List<String> attrs = new ArrayList<>();
+            attrs.add("class-name");
+            attrs.add(lm.getClassName());
+
+            if (lm.getUsage() != null) {
+                attrs.add("usage");
+                attrs.add(lm.getUsage().name());
+            }
+            gen.open("login-module", attrs.toArray())
+                    .appendProperties(lm.getProperties())
+                    .close();
         }
         gen.close();
     }
@@ -304,7 +363,7 @@ public final class ClientConfigXmlGenerator {
             }
             for (SerializerConfig serializer : serializers) {
                 gen.node("serializer", null,
-                        "type-class", classNameOrImplClass(serializer.getTypeClassName(), serializer.getTypeClass()),
+                        "type-class", classNameOrClass(serializer.getTypeClassName(), serializer.getTypeClass()),
                         "class-name", classNameOrImplClass(serializer.getClassName(), serializer.getImplementation()));
             }
             //close serializers
@@ -370,6 +429,7 @@ public final class ClientConfigXmlGenerator {
             String mapName = entry.getKey();
             Map<String, QueryCacheConfig> queryCachesPerMap = entry.getValue();
             for (QueryCacheConfig queryCache : queryCachesPerMap.values()) {
+                EvictionConfig evictionConfig = queryCache.getEvictionConfig();
                 gen.open("query-cache", "mapName", mapName, "name", queryCache.getName())
                         .node("include-value", queryCache.isIncludeValue())
                         .node("in-memory-format", queryCache.getInMemoryFormat())
@@ -378,10 +438,11 @@ public final class ClientConfigXmlGenerator {
                         .node("delay-seconds", queryCache.getDelaySeconds())
                         .node("batch-size", queryCache.getBatchSize())
                         .node("buffer-size", queryCache.getBufferSize())
-                        .node("eviction", null, "size", queryCache.getEvictionConfig().getSize(),
-                                "max-size-policy", queryCache.getEvictionConfig().getMaxSizePolicy(),
-                                "eviction-policy", queryCache.getEvictionConfig().getEvictionPolicy(),
-                                "comparator-class-name", queryCache.getEvictionConfig().getComparatorClassName());
+                        .node("eviction", null, "size", evictionConfig.getSize(),
+                                "max-size-policy", evictionConfig.getMaxSizePolicy(),
+                                "eviction-policy", evictionConfig.getEvictionPolicy(),
+                                "comparator-class-name",
+                            classNameOrImplClass(evictionConfig.getComparatorClassName(), evictionConfig.getComparator()));
                 queryCachePredicate(gen, queryCache.getPredicateConfig());
                 entryListeners(gen, queryCache.getEntryListenerConfigs());
                 IndexUtils.generateXml(gen, queryCache.getIndexConfigs());
@@ -556,7 +617,8 @@ public final class ClientConfigXmlGenerator {
                 .node("eviction", null, "size", eviction.getSize(),
                         "max-size-policy", eviction.getMaxSizePolicy(),
                         "eviction-policy", eviction.getEvictionPolicy(),
-                        "comparator-class-name", eviction.getComparatorClassName())
+                        "comparator-class-name", classNameOrImplClass(
+                            eviction.getComparatorClassName(), eviction.getComparator()))
                 .node("preloader", null, "enabled", preloader.isEnabled(),
                         "directory", preloader.getDirectory(),
                         "store-initial-delay-seconds", preloader.getStoreInitialDelaySeconds(),
@@ -573,7 +635,7 @@ public final class ClientConfigXmlGenerator {
                 .node("initial-backoff-millis", connectionRetry.getInitialBackoffMillis())
                 .node("max-backoff-millis", connectionRetry.getMaxBackoffMillis())
                 .node("multiplier", connectionRetry.getMultiplier())
-                .node("fail-on-max-backoff", connectionRetry.isFailOnMaxBackoff())
+                .node("cluster-connect-timeout-millis", connectionRetry.getClusterConnectTimeoutMillis())
                 .node("jitter", connectionRetry.getJitter())
                 .close();
 
@@ -581,9 +643,23 @@ public final class ClientConfigXmlGenerator {
         gen.close();
     }
 
+    private static String classNameOrClass(String className, Class clazz) {
+        return !isNullOrEmpty(className) ? className
+            : clazz != null ? clazz.getName()
+            : null;
+    }
+
     private static String classNameOrImplClass(String className, Object impl) {
         return !isNullOrEmpty(className) ? className
                 : impl != null ? impl.getClass().getName()
                 : null;
+    }
+
+    private static void metrics(XmlGenerator gen, ClientMetricsConfig metricsConfig) {
+        gen.open("metrics", "enabled", metricsConfig.isEnabled())
+           .open("jmx", "enabled", metricsConfig.getJmxConfig().isEnabled())
+           .close()
+           .node("collection-frequency-seconds", metricsConfig.getCollectionFrequencySeconds())
+           .close();
     }
 }

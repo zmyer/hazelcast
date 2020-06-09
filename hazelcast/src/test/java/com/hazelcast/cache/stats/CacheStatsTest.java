@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2008-2019, Hazelcast, Inc. All Rights Reserved.
+ * Copyright (c) 2008-2020, Hazelcast, Inc. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -26,7 +26,7 @@ import com.hazelcast.config.EvictionConfig;
 import com.hazelcast.config.EvictionPolicy;
 import com.hazelcast.config.MaxSizePolicy;
 import com.hazelcast.core.HazelcastInstance;
-import com.hazelcast.spi.properties.GroupProperty;
+import com.hazelcast.spi.properties.ClusterProperty;
 import com.hazelcast.test.AssertTask;
 import com.hazelcast.test.HazelcastParallelClassRunner;
 import com.hazelcast.test.TestHazelcastInstanceFactory;
@@ -79,14 +79,10 @@ public class CacheStatsTest extends CacheTestSupport {
 
     @Test
     public void testStatisticsDisabled() {
-        long now = System.currentTimeMillis();
-
         CacheConfig cacheConfig = createCacheConfig();
         cacheConfig.setStatisticsEnabled(false);
         ICache<Integer, String> cache = createCache(cacheConfig);
         CacheStatistics stats = cache.getLocalCacheStatistics();
-
-        assertTrue(stats.getCreationTime() >= now);
 
         final int ENTRY_COUNT = 100;
 
@@ -743,7 +739,7 @@ public class CacheStatsTest extends CacheTestSupport {
                 );
 
         Config config = new Config();
-        config.setProperty(GroupProperty.PARTITION_COUNT.getName(), Integer.toString(partitionCount));
+        config.setProperty(ClusterProperty.PARTITION_COUNT.getName(), Integer.toString(partitionCount));
         config.addCacheConfig(cacheConfig);
 
         HazelcastInstance hz1 = getHazelcastInstance(config);

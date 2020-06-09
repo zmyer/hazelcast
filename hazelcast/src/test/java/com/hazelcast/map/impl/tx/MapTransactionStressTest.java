@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2008-2019, Hazelcast, Inc. All Rights Reserved.
+ * Copyright (c) 2008-2020, Hazelcast, Inc. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -17,8 +17,9 @@
 package com.hazelcast.map.impl.tx;
 
 import com.hazelcast.config.Config;
+import com.hazelcast.config.ConfigAccessor;
 import com.hazelcast.config.ServiceConfig;
-import com.hazelcast.config.ServicesConfig;
+import com.hazelcast.internal.config.ServicesConfig;
 import com.hazelcast.core.DistributedObject;
 import com.hazelcast.core.HazelcastInstance;
 import com.hazelcast.map.IMap;
@@ -194,7 +195,7 @@ public class MapTransactionStressTest extends HazelcastTestSupport {
 
     private Config createConfigWithDummyTxService() {
         Config config = getConfig();
-        ServicesConfig servicesConfig = config.getServicesConfig();
+        ServicesConfig servicesConfig = ConfigAccessor.getServicesConfig(config);
         servicesConfig.addServiceConfig(new ServiceConfig().setName(DUMMY_TX_SERVICE)
                 .setEnabled(true).setImplementation(new DummyTransactionalService(DUMMY_TX_SERVICE)));
         return config;
@@ -286,7 +287,7 @@ public class MapTransactionStressTest extends HazelcastTestSupport {
         }
 
         @Override
-        public DistributedObject createDistributedObject(String objectName, boolean local) {
+        public DistributedObject createDistributedObject(String objectName, UUID source, boolean local) {
             return new DummyTransactionalObject(serviceName, objectName, null);
         }
 

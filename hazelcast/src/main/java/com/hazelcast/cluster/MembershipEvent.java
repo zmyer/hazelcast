@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2008-2019, Hazelcast, Inc. All Rights Reserved.
+ * Copyright (c) 2008-2020, Hazelcast, Inc. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -25,12 +25,10 @@ import static java.lang.String.format;
 
 /**
  * Membership event fired when a new member is added to the cluster and/or when a member leaves the cluster
- * or when there is a member attribute change via {@link Member#setAttribute(String, String)}
  * and similar methods.
  *
  * @see MembershipListener
  */
-//FGTODO: 2019/11/22 下午4:00 zmyer
 @SuppressFBWarnings("SE_BAD_FIELD")
 public class MembershipEvent extends EventObject {
 
@@ -44,13 +42,6 @@ public class MembershipEvent extends EventObject {
      * unresponsive by other members for a extended time.
      */
     public static final int MEMBER_REMOVED = 2;
-
-    /**
-     * This event type is fired if a member attribute has been changed or removed.
-     *
-     * @since 3.2
-     */
-    public static final int MEMBER_ATTRIBUTE_CHANGED = 5;
 
     private static final long serialVersionUID = -2010865371829087371L;
 
@@ -77,8 +68,6 @@ public class MembershipEvent extends EventObject {
      * you cannot get a deterministic view of the members. This method solves that problem.
      * <p>
      * The set is immutable and ordered. For more information see {@link Cluster#getMembers()}.
-     * <p>
-     * Warning: If the event is triggered by a member attribute change then {@link #members} is empty.
      *
      * @return the members at the moment after this event.
      */
@@ -99,7 +88,6 @@ public class MembershipEvent extends EventObject {
      * Returns the membership event type;
      * #MEMBER_ADDED
      * #MEMBER_REMOVED
-     * #MEMBER_ATTRIBUTE_CHANGED
      *
      * @return the membership event type
      */
@@ -126,13 +114,10 @@ public class MembershipEvent extends EventObject {
             case MEMBER_REMOVED:
                 type = "removed";
                 break;
-            case MEMBER_ATTRIBUTE_CHANGED:
-                type = "attributed_changes";
-                break;
             default:
                 throw new IllegalStateException();
         }
 
-        return format("MembershipEvent {member=%s,type=%s}", member, type);
+        return format("MembershipEvent {member=%s, type=%s, members=%s}", member, type, members);
     }
 }

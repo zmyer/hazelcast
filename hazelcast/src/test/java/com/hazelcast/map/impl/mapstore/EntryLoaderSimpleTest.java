@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2008-2019, Hazelcast, Inc. All Rights Reserved.
+ * Copyright (c) 2008-2020, Hazelcast, Inc. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,19 +16,24 @@
 
 package com.hazelcast.map.impl.mapstore;
 
+import com.hazelcast.cluster.Address;
 import com.hazelcast.config.Config;
 import com.hazelcast.config.InMemoryFormat;
 import com.hazelcast.config.MapStoreConfig;
 import com.hazelcast.core.EntryView;
 import com.hazelcast.core.HazelcastInstance;
 import com.hazelcast.internal.partition.InternalPartitionService;
+import com.hazelcast.internal.serialization.Data;
 import com.hazelcast.internal.serialization.InternalSerializationService;
+import com.hazelcast.logging.ILogger;
 import com.hazelcast.map.IMap;
+import com.hazelcast.map.impl.MapContainer;
+import com.hazelcast.map.impl.MapKeyLoader;
 import com.hazelcast.map.impl.MapService;
+import com.hazelcast.map.impl.MapServiceContext;
 import com.hazelcast.map.impl.record.Record;
+import com.hazelcast.map.impl.recordstore.DefaultRecordStore;
 import com.hazelcast.map.impl.recordstore.RecordStore;
-import com.hazelcast.cluster.Address;
-import com.hazelcast.nio.serialization.Data;
 import com.hazelcast.query.Predicates;
 import com.hazelcast.spi.impl.NodeEngineImpl;
 import com.hazelcast.test.HazelcastParallelParametersRunnerFactory;
@@ -51,11 +56,16 @@ import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
 
+import static com.hazelcast.test.Accessors.getNodeEngineImpl;
+import static com.hazelcast.test.Accessors.getPartitionService;
+import static com.hazelcast.test.Accessors.getSerializationService;
 import static java.util.Arrays.asList;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
+import static org.mockito.Mockito.mock;
 
 @RunWith(Parameterized.class)
 @UseParametersRunnerFactory(HazelcastParallelParametersRunnerFactory.class)
@@ -368,5 +378,26 @@ public class EntryLoaderSimpleTest extends HazelcastTestSupport {
             }
         }
         throw new IllegalStateException("Address " + address + " not found in the cluster");
+    }
+
+    @Test
+    public void testLoadEntryAtCurrentTime() {
+        testEntryLoader.putExternally("key", "value", 42);
+
+        MapService service = getNodeEngineImpl(instances[0]).getService(MapService.SERVICE_NAME);
+        MapServiceContext mapServiceContext = service.getMapServiceContext();
+        Config config = mapServiceContext.getNodeEngine().getConfig();
+        MapContainer mapContainer = new MapContainer("anyName", config, mapServiceContext);
+        Data key = mapServiceContext.toData("key");
+        final AtomicBoolean invoked = new AtomicBoolean();
+        DefaultRecordStore recordStore = new DefaultRecordStore(mapContainer, 0, mock(MapKeyLoader.class), mock(ILogger.class)) {
+            @Override
+            protected long expirationTimeToTtl(long definedExpirationTime) {
+                invoked.set(true);
+                return 0;
+            }
+        };
+        assertNull(recordStore.loadRecordOrNull(key, false, null));
+        assertTrue(invoked.get());
     }
 }

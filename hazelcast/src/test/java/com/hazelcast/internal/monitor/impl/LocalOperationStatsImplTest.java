@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2008-2019, Hazelcast, Inc. All Rights Reserved.
+ * Copyright (c) 2008-2020, Hazelcast, Inc. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -21,7 +21,7 @@ import com.hazelcast.core.HazelcastInstance;
 import com.hazelcast.instance.impl.Node;
 import com.hazelcast.internal.management.dto.SlowOperationDTO;
 import com.hazelcast.internal.management.dto.SlowOperationInvocationDTO;
-import com.hazelcast.spi.properties.GroupProperty;
+import com.hazelcast.spi.properties.ClusterProperty;
 import com.hazelcast.test.HazelcastParallelClassRunner;
 import com.hazelcast.test.HazelcastTestSupport;
 import com.hazelcast.test.annotation.ParallelJVMTest;
@@ -34,6 +34,7 @@ import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
 
+import static com.hazelcast.test.Accessors.getNode;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
@@ -56,7 +57,7 @@ public class LocalOperationStatsImplTest extends HazelcastTestSupport {
     @Test
     public void testNodeConstructor() {
         Config config = new Config();
-        config.setProperty(GroupProperty.MC_MAX_VISIBLE_SLOW_OPERATION_COUNT.getName(), "139");
+        config.setProperty(ClusterProperty.MC_MAX_VISIBLE_SLOW_OPERATION_COUNT.getName(), "139");
 
         HazelcastInstance hazelcastInstance = createHazelcastInstance(config);
         Node node = getNode(hazelcastInstance);
@@ -71,7 +72,7 @@ public class LocalOperationStatsImplTest extends HazelcastTestSupport {
     @Test
     public void testSerialization() {
         Config config = new Config();
-        config.setProperty(GroupProperty.MC_MAX_VISIBLE_SLOW_OPERATION_COUNT.getName(), "127");
+        config.setProperty(ClusterProperty.MC_MAX_VISIBLE_SLOW_OPERATION_COUNT.getName(), "127");
 
         SlowOperationInvocationDTO slowOperationInvocationDTO = new SlowOperationInvocationDTO();
         slowOperationInvocationDTO.id = 12345;

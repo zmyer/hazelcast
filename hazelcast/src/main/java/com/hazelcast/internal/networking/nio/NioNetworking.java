@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2008-2019, Hazelcast, Inc. All Rights Reserved.
+ * Copyright (c) 2008-2020, Hazelcast, Inc. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,23 +16,22 @@
 
 package com.hazelcast.internal.networking.nio;
 
-import com.hazelcast.instance.EndpointQualifier;
 import com.hazelcast.internal.metrics.DynamicMetricsProvider;
+import com.hazelcast.internal.metrics.MetricDescriptor;
 import com.hazelcast.internal.metrics.MetricsCollectionContext;
 import com.hazelcast.internal.metrics.MetricsRegistry;
-import com.hazelcast.internal.metrics.MetricDescriptor;
 import com.hazelcast.internal.metrics.Probe;
 import com.hazelcast.internal.metrics.ProbeLevel;
 import com.hazelcast.internal.networking.Channel;
 import com.hazelcast.internal.networking.ChannelCloseListener;
 import com.hazelcast.internal.networking.ChannelErrorHandler;
 import com.hazelcast.internal.networking.ChannelInitializer;
-import com.hazelcast.internal.networking.ChannelInitializerProvider;
 import com.hazelcast.internal.networking.InboundHandler;
 import com.hazelcast.internal.networking.Networking;
 import com.hazelcast.internal.networking.OutboundHandler;
 import com.hazelcast.internal.networking.nio.iobalancer.IOBalancer;
 import com.hazelcast.internal.util.ConcurrencyDetection;
+import com.hazelcast.internal.util.ThreadAffinity;
 import com.hazelcast.internal.util.concurrent.BackoffIdleStrategy;
 import com.hazelcast.logging.ILogger;
 import com.hazelcast.logging.LoggingService;
@@ -48,8 +47,22 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.logging.Level;
 
+import static com.hazelcast.internal.metrics.MetricDescriptorConstants.NETWORKING_METRIC_NIO_NETWORKING_BYTES_RECEIVED;
+import static com.hazelcast.internal.metrics.MetricDescriptorConstants.NETWORKING_METRIC_NIO_NETWORKING_BYTES_SEND;
+import static com.hazelcast.internal.metrics.MetricDescriptorConstants.NETWORKING_METRIC_NIO_NETWORKING_PACKETS_RECEIVED;
+import static com.hazelcast.internal.metrics.MetricDescriptorConstants.NETWORKING_METRIC_NIO_NETWORKING_PACKETS_SEND;
+import static com.hazelcast.internal.metrics.MetricDescriptorConstants.TCP_DISCRIMINATOR_PIPELINEID;
+import static com.hazelcast.internal.metrics.MetricDescriptorConstants.TCP_DISCRIMINATOR_THREAD;
+import static com.hazelcast.internal.metrics.MetricDescriptorConstants.TCP_PREFIX;
+import static com.hazelcast.internal.metrics.MetricDescriptorConstants.TCP_PREFIX_BALANCER;
+import static com.hazelcast.internal.metrics.MetricDescriptorConstants.TCP_PREFIX_CONNECTION_IN;
+import static com.hazelcast.internal.metrics.MetricDescriptorConstants.TCP_PREFIX_CONNECTION_OUT;
+import static com.hazelcast.internal.metrics.MetricDescriptorConstants.TCP_PREFIX_INPUTTHREAD;
+import static com.hazelcast.internal.metrics.MetricDescriptorConstants.TCP_PREFIX_OUTPUTTHREAD;
+import static com.hazelcast.internal.metrics.ProbeUnit.BYTES;
 import static com.hazelcast.internal.networking.nio.SelectorMode.SELECT;
 import static com.hazelcast.internal.networking.nio.SelectorMode.SELECT_NOW_STRING;
+import static com.hazelcast.internal.networking.nio.SelectorMode.SELECT_WITH_FIX;
 import static com.hazelcast.internal.nio.IOUtil.closeResource;
 import static com.hazelcast.internal.util.HashUtil.hashToIndex;
 import static com.hazelcast.internal.util.ThreadUtil.createThreadPoolName;
@@ -103,24 +116,25 @@ public final class NioNetworking implements Networking, DynamicMetricsProvider {
     private final BackoffIdleStrategy idleStrategy;
     private final boolean selectorWorkaroundTest;
     private final boolean selectionKeyWakeupEnabled;
+    private final ThreadAffinity outputThreadAffinity;
     private volatile ExecutorService closeListenerExecutor;
     private final ConcurrencyDetection concurrencyDetection;
     private final boolean writeThroughEnabled;
+    private final ThreadAffinity inputThreadAffinity;
     private volatile IOBalancer ioBalancer;
     private volatile NioThread[] inputThreads;
     private volatile NioThread[] outputThreads;
     private volatile ScheduledFuture publishFuture;
-
     // Currently this is a coarse grained aggregation of the bytes/send received.
     // In the future you probably want to split this up in member and client and potentially
     // wan specific.
-    @Probe
+    @Probe(name = NETWORKING_METRIC_NIO_NETWORKING_BYTES_SEND, unit = BYTES)
     private volatile long bytesSend;
-    @Probe
+    @Probe(name = NETWORKING_METRIC_NIO_NETWORKING_BYTES_RECEIVED, unit = BYTES)
     private volatile long bytesReceived;
-    @Probe
+    @Probe(name = NETWORKING_METRIC_NIO_NETWORKING_PACKETS_SEND)
     private volatile long packetsSend;
-    @Probe
+    @Probe(name = NETWORKING_METRIC_NIO_NETWORKING_PACKETS_RECEIVED)
     private volatile long packetsReceived;
 
     public NioNetworking(Context ctx) {
@@ -131,13 +145,27 @@ public final class NioNetworking implements Networking, DynamicMetricsProvider {
         this.outputThreadCount = ctx.outputThreadCount;
         this.logger = loggingService.getLogger(NioNetworking.class);
         this.errorHandler = ctx.errorHandler;
+        this.inputThreadAffinity = ctx.inputThreadAffinity;
+        this.outputThreadAffinity = ctx.outputThreadAffinity;
         this.balancerIntervalSeconds = ctx.balancerIntervalSeconds;
         this.selectorMode = ctx.selectorMode;
         this.selectorWorkaroundTest = ctx.selectorWorkaroundTest;
         this.idleStrategy = ctx.idleStrategy;
         this.concurrencyDetection = ctx.concurrencyDetection;
-        this.writeThroughEnabled = ctx.writeThroughEnabled;
-        this.selectionKeyWakeupEnabled = ctx.selectionKeyWakeupEnabled;
+        // selector mode SELECT_WITH_FIX requires that a single thread
+        // accesses a selector & its selectionKeys. Selection key wake-up
+        // and write through break this requirement, therefore must be
+        // disabled with SELECT_WITH_FIX.
+        this.writeThroughEnabled = ctx.writeThroughEnabled && selectorMode != SELECT_WITH_FIX;
+        this.selectionKeyWakeupEnabled = ctx.selectionKeyWakeupEnabled && selectorMode != SELECT_WITH_FIX;
+        if (selectorMode == SELECT_WITH_FIX
+                && (ctx.writeThroughEnabled || ctx.selectionKeyWakeupEnabled)) {
+            logger.warning("Selector mode SELECT_WITH_FIX is incompatible with write-through and selection key wakeup "
+                    + "optimizations and they have been disabled. Start Hazelcast with options "
+                    + "\"-Dhazelcast.io.selectionKeyWakeupEnabled=false -Dhazelcast.io.write.through=false\" to "
+                    + "explicitly disable selection key wakeup and write-through optimizations and avoid logging this "
+                    + "warning.");
+        }
     }
 
     @SuppressFBWarnings(value = "EI_EXPOSE_REP", justification = "used only for testing")
@@ -192,6 +220,7 @@ public final class NioNetworking implements Networking, DynamicMetricsProvider {
                     idleStrategy);
             thread.id = i;
             thread.setSelectorWorkaroundTest(selectorWorkaroundTest);
+            thread.setThreadAffinity(inputThreadAffinity);
             inThreads[i] = thread;
             thread.start();
         }
@@ -207,6 +236,7 @@ public final class NioNetworking implements Networking, DynamicMetricsProvider {
                     idleStrategy);
             thread.id = i;
             thread.setSelectorWorkaroundTest(selectorWorkaroundTest);
+            thread.setThreadAffinity(outputThreadAffinity);
             outThreads[i] = thread;
             thread.start();
         }
@@ -268,17 +298,14 @@ public final class NioNetworking implements Networking, DynamicMetricsProvider {
     }
 
     @Override
-    public Channel register(EndpointQualifier endpointQualifier,
-                            ChannelInitializerProvider channelInitializerProvider,
+    public Channel register(ChannelInitializer channelInitializer,
                             SocketChannel socketChannel,
                             boolean clientMode) throws IOException {
         if (!started.get()) {
             throw new IllegalArgumentException("Can't register a channel when networking isn't started");
         }
 
-        ChannelInitializer initializer = channelInitializerProvider.provide(endpointQualifier);
-        assert initializer != null : "Found NULL channel initializer for endpoint-qualifier " + endpointQualifier;
-        NioChannel channel = new NioChannel(socketChannel, clientMode, initializer, closeListenerExecutor);
+        NioChannel channel = new NioChannel(socketChannel, clientMode, channelInitializer, closeListenerExecutor);
 
         socketChannel.configureBlocking(false);
 
@@ -332,45 +359,60 @@ public final class NioNetworking implements Networking, DynamicMetricsProvider {
 
             MetricDescriptor descriptorIn = descriptor
                     .copy()
-                    .withPrefix("tcp.connection.in")
-                    .withDiscriminator("pipelineId", pipelineId);
+                    .withPrefix(TCP_PREFIX_CONNECTION_IN)
+                    .withDiscriminator(TCP_DISCRIMINATOR_PIPELINEID, pipelineId);
             context.collect(descriptorIn, channel.inboundPipeline());
 
             MetricDescriptor descriptorOut = descriptor
                     .copy()
-                    .withPrefix("tcp.connection.out")
-                    .withDiscriminator("pipelineId", pipelineId);
+                    .withPrefix(TCP_PREFIX_CONNECTION_OUT)
+                    .withDiscriminator(TCP_DISCRIMINATOR_PIPELINEID, pipelineId);
             context.collect(descriptorOut, channel.outboundPipeline());
         }
 
-        for (NioThread nioThread : inputThreads) {
-            MetricDescriptor descriptorInThread = descriptor
-                    .copy()
-                    .withPrefix("tcp.inputThread")
-                    .withDiscriminator("thread", nioThread.getName());
-            context.collect(descriptorInThread, nioThread);
+        NioThread[] inputThreads = this.inputThreads;
+        if (inputThreads != null) {
+            for (NioThread nioThread : inputThreads) {
+                MetricDescriptor descriptorInThread = descriptor
+                        .copy()
+                        .withPrefix(TCP_PREFIX_INPUTTHREAD)
+                        .withDiscriminator(TCP_DISCRIMINATOR_THREAD, nioThread.getName());
+                context.collect(descriptorInThread, nioThread);
+            }
         }
 
-        for (NioThread nioThread : outputThreads) {
-            MetricDescriptor descriptorOutThread = descriptor
-                    .copy()
-                    .withPrefix("tcp.outputThread")
-                    .withDiscriminator("thread", nioThread.getName());
-            context.collect(descriptorOutThread, nioThread);
+        NioThread[] outputThreads = this.outputThreads;
+        if (outputThreads != null) {
+            for (NioThread nioThread : outputThreads) {
+                MetricDescriptor descriptorOutThread = descriptor
+                        .copy()
+                        .withPrefix(TCP_PREFIX_OUTPUTTHREAD)
+                        .withDiscriminator(TCP_DISCRIMINATOR_THREAD, nioThread.getName());
+                context.collect(descriptorOutThread, nioThread);
+            }
         }
 
         IOBalancer ioBalancer = this.ioBalancer;
         if (ioBalancer != null) {
             MetricDescriptor descriptorBalancer = descriptor
                     .copy()
-                    .withPrefix("tcp.balancer");
+                    .withPrefix(TCP_PREFIX_BALANCER);
             context.collect(descriptorBalancer, ioBalancer);
         }
 
         MetricDescriptor descriptorTcp = descriptor
                 .copy()
-                .withPrefix("tcp");
+                .withPrefix(TCP_PREFIX);
         context.collect(descriptorTcp, this);
+    }
+
+    // package private accessors for testing
+    boolean isWriteThroughEnabled() {
+        return writeThroughEnabled;
+    }
+
+    boolean isSelectionKeyWakeupEnabled() {
+        return selectionKeyWakeupEnabled;
     }
 
     private class ChannelCloseListenerImpl implements ChannelCloseListener {
@@ -440,6 +482,9 @@ public final class NioNetworking implements Networking, DynamicMetricsProvider {
         private int inputThreadCount = 1;
         private int outputThreadCount = 1;
         private int balancerIntervalSeconds;
+        private ThreadAffinity inputThreadAffinity = ThreadAffinity.DISABLED;
+        private ThreadAffinity outputThreadAffinity = ThreadAffinity.DISABLED;
+
         // The selector mode determines how IO threads will block (or not) on the Selector:
         //  select:         this is the default mode, uses Selector.select(long timeout)
         //  selectnow:      use Selector.selectNow()
@@ -465,8 +510,9 @@ public final class NioNetworking implements Networking, DynamicMetricsProvider {
             }
         }
 
-        public void setSelectionKeyWakeupEnabled(boolean selectionKeyWakeupEnabled) {
+        public Context selectionKeyWakeupEnabled(boolean selectionKeyWakeupEnabled) {
             this.selectionKeyWakeupEnabled = selectionKeyWakeupEnabled;
+            return this;
         }
 
         public Context writeThroughEnabled(boolean writeThroughEnabled) {
@@ -510,12 +556,36 @@ public final class NioNetworking implements Networking, DynamicMetricsProvider {
         }
 
         public Context inputThreadCount(int inputThreadCount) {
+            if (inputThreadAffinity.isEnabled()) {
+                return this;
+            }
             this.inputThreadCount = inputThreadCount;
             return this;
         }
 
         public Context outputThreadCount(int outputThreadCount) {
+            if (outputThreadAffinity.isEnabled()) {
+                return this;
+            }
             this.outputThreadCount = outputThreadCount;
+            return this;
+        }
+
+        public Context inputThreadAffinity(ThreadAffinity inputThreadAffinity) {
+            this.inputThreadAffinity = inputThreadAffinity;
+
+            if (inputThreadAffinity.isEnabled()) {
+                inputThreadCount = inputThreadAffinity.getThreadCount();
+            }
+            return this;
+        }
+
+        public Context outputThreadAffinity(ThreadAffinity outputThreadAffinity) {
+            this.outputThreadAffinity = outputThreadAffinity;
+
+            if (outputThreadAffinity.isEnabled()) {
+                outputThreadCount = outputThreadAffinity.getThreadCount();
+            }
             return this;
         }
 

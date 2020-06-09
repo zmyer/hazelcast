@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2008-2019, Hazelcast, Inc. All Rights Reserved.
+ * Copyright (c) 2008-2020, Hazelcast, Inc. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -131,6 +131,7 @@ import com.hazelcast.map.impl.query.QueryResult;
 import com.hazelcast.map.impl.query.QueryResultRow;
 import com.hazelcast.map.impl.query.ResultSegment;
 import com.hazelcast.map.impl.query.Target;
+import com.hazelcast.map.impl.querycache.accumulator.AccumulatorInfo;
 import com.hazelcast.map.impl.querycache.accumulator.ConsumeAccumulatorOperation;
 import com.hazelcast.map.impl.querycache.subscriber.operation.DestroyQueryCacheOperation;
 import com.hazelcast.map.impl.querycache.subscriber.operation.MadePublishableOperation;
@@ -167,8 +168,8 @@ public final class MapDataSerializerHook implements DataSerializerHook {
     public static final int REMOVE = 2;
     public static final int PUT_BACKUP = 3;
     public static final int REMOVE_BACKUP = 4;
-    public static final int KEY_SET = 5;
-    public static final int VALUES = 6;
+    public static final int CREATE_ACCUMULATOR_INFO = 5;
+    public static final int DATA_COLLECTION = 6;
     public static final int ENTRIES = 7;
     public static final int ENTRY_VIEW = 8;
     public static final int QUERY_RESULT_ROW = 9;
@@ -309,8 +310,11 @@ public final class MapDataSerializerHook implements DataSerializerHook {
     public static final int PUT_TRANSIENT_WITH_EXPIRY = 145;
     public static final int PUT_IF_ABSENT_WITH_EXPIRY = 146;
     public static final int PUT_TRANSIENT_BACKUP = 147;
+    public static final int COMPUTE_IF_PRESENT_PROCESSOR = 148;
+    public static final int COMPUTE_IF_ABSENT_PROCESSOR = 149;
+    public static final int KEY_VALUE_CONSUMING_PROCESSOR = 150;
 
-    private static final int LEN = PUT_TRANSIENT_BACKUP + 1;
+    private static final int LEN = KEY_VALUE_CONSUMING_PROCESSOR + 1;
 
     @Override
     public int getFactoryId() {
@@ -327,8 +331,8 @@ public final class MapDataSerializerHook implements DataSerializerHook {
         constructors[PUT_BACKUP] = arg -> new PutBackupOperation();
         constructors[REMOVE_BACKUP] = arg -> new RemoveBackupOperation();
         constructors[EVICT_BACKUP] = arg -> new EvictBackupOperation();
-        constructors[KEY_SET] = arg -> new MapKeySet();
-        constructors[VALUES] = arg -> new MapValueCollection();
+        constructors[CREATE_ACCUMULATOR_INFO] = arg -> new AccumulatorInfo();
+        constructors[DATA_COLLECTION] = arg -> new DataCollection();
         constructors[ENTRIES] = arg -> new MapEntries();
         constructors[ENTRY_VIEW] = arg -> (IdentifiedDataSerializable) EntryViews.createSimpleEntryView();
         constructors[QUERY_RESULT_ROW] = arg -> new QueryResultRow();
@@ -466,6 +470,9 @@ public final class MapDataSerializerHook implements DataSerializerHook {
         constructors[PUT_TRANSIENT_WITH_EXPIRY] = arg -> new PutTransientWithExpiryOperation();
         constructors[PUT_IF_ABSENT_WITH_EXPIRY] = arg -> new PutIfAbsentWithExpiryOperation();
         constructors[PUT_TRANSIENT_BACKUP] = arg -> new PutTransientBackupOperation();
+        constructors[COMPUTE_IF_PRESENT_PROCESSOR] = arg -> new ComputeIfPresentEntryProcessor<>();
+        constructors[COMPUTE_IF_ABSENT_PROCESSOR] = arg -> new ComputeIfAbsentEntryProcessor<>();
+        constructors[KEY_VALUE_CONSUMING_PROCESSOR] = arg -> new KeyValueConsumingEntryProcessor<>();
 
         return new ArrayDataSerializableFactory(constructors);
     }

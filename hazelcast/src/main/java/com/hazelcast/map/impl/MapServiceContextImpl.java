@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2008-2019, Hazelcast, Inc. All Rights Reserved.
+ * Copyright (c) 2008-2020, Hazelcast, Inc. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -72,7 +72,7 @@ import com.hazelcast.map.impl.querycache.QueryCacheContext;
 import com.hazelcast.map.impl.recordstore.DefaultRecordStore;
 import com.hazelcast.map.impl.recordstore.RecordStore;
 import com.hazelcast.map.listener.MapPartitionLostListener;
-import com.hazelcast.nio.serialization.Data;
+import com.hazelcast.internal.serialization.Data;
 import com.hazelcast.partition.PartitioningStrategy;
 import com.hazelcast.query.impl.DefaultIndexProvider;
 import com.hazelcast.query.impl.IndexCopyBehavior;
@@ -92,12 +92,14 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Predicate;
 
+import static com.hazelcast.internal.util.ConcurrencyUtil.CALLER_RUNS;
 import static com.hazelcast.internal.util.SetUtil.immutablePartitionIdSet;
 import static com.hazelcast.map.impl.ListenerAdapters.createListenerAdapter;
 import static com.hazelcast.map.impl.MapListenerFlagOperator.setAndGetListenerFlags;
@@ -105,10 +107,10 @@ import static com.hazelcast.map.impl.MapService.SERVICE_NAME;
 import static com.hazelcast.query.impl.predicates.QueryOptimizerFactory.newOptimizer;
 import static com.hazelcast.spi.impl.executionservice.ExecutionService.QUERY_EXECUTOR;
 import static com.hazelcast.spi.impl.operationservice.Operation.GENERIC_PARTITION_ID;
-import static com.hazelcast.spi.properties.GroupProperty.AGGREGATION_ACCUMULATION_PARALLEL_EVALUATION;
-import static com.hazelcast.spi.properties.GroupProperty.INDEX_COPY_BEHAVIOR;
-import static com.hazelcast.spi.properties.GroupProperty.OPERATION_CALL_TIMEOUT_MILLIS;
-import static com.hazelcast.spi.properties.GroupProperty.QUERY_PREDICATE_PARALLEL_EVALUATION;
+import static com.hazelcast.spi.properties.ClusterProperty.AGGREGATION_ACCUMULATION_PARALLEL_EVALUATION;
+import static com.hazelcast.spi.properties.ClusterProperty.INDEX_COPY_BEHAVIOR;
+import static com.hazelcast.spi.properties.ClusterProperty.OPERATION_CALL_TIMEOUT_MILLIS;
+import static com.hazelcast.spi.properties.ClusterProperty.QUERY_PREDICATE_PARALLEL_EVALUATION;
 import static java.lang.Thread.currentThread;
 
 /**
@@ -400,8 +402,10 @@ class MapServiceContextImpl implements MapServiceContext {
 
         nodeEngine.getWanReplicationService().removeWanEventCounters(MapService.SERVICE_NAME, mapName);
         mapContainer.getMapStoreContext().stop();
-        localMapStatsProvider.destroyLocalMapStatsImpl(mapContainer.getName());
+
+        // Statistics are destroyed after container to prevent their leak.
         destroyPartitionsAndMapContainer(mapContainer);
+        localMapStatsProvider.destroyLocalMapStatsImpl(mapContainer.getName());
     }
 
     /**
@@ -685,6 +689,11 @@ class MapServiceContextImpl implements MapServiceContext {
     }
 
     @Override
+    public CompletableFuture<UUID> addEventListenerAsync(Object mapListener, EventFilter eventFilter, String mapName) {
+        return addListenerInternalAsync(mapListener, eventFilter, mapName);
+    }
+
+    @Override
     public UUID addPartitionLostListener(MapPartitionLostListener listener, String mapName) {
         ListenerAdapter listenerAdapter = new InternalMapPartitionLostListenerAdapter(listener);
         EventFilter filter = new MapPartitionLostEventFilter();
@@ -692,12 +701,17 @@ class MapServiceContextImpl implements MapServiceContext {
         return registration.getId();
     }
 
+    @Override
+    public CompletableFuture<UUID> addPartitionLostListenerAsync(MapPartitionLostListener listener, String mapName) {
+        ListenerAdapter listenerAdapter = new InternalMapPartitionLostListenerAdapter(listener);
+        EventFilter filter = new MapPartitionLostEventFilter();
+        return eventService.registerListenerAsync(SERVICE_NAME, mapName, filter, listenerAdapter)
+                           .thenApplyAsync(EventRegistration::getId, CALLER_RUNS);
+    }
+
     private EventRegistration addListenerInternal(Object listener, EventFilter filter, String mapName, boolean local) {
         ListenerAdapter listenerAdaptor = createListenerAdapter(listener);
-        if (!(filter instanceof EventListenerFilter)) {
-            int enabledListeners = setAndGetListenerFlags(listenerAdaptor);
-            filter = new EventListenerFilter(enabledListeners, filter);
-        }
+        filter = adoptEventFilter(filter, listenerAdaptor);
 
         if (local) {
             return eventService.registerLocalListener(SERVICE_NAME, mapName, filter, listenerAdaptor);
@@ -706,14 +720,39 @@ class MapServiceContextImpl implements MapServiceContext {
         }
     }
 
+    private CompletableFuture<UUID> addListenerInternalAsync(Object listener, EventFilter filter, String mapName) {
+        ListenerAdapter listenerAdaptor = createListenerAdapter(listener);
+        filter = adoptEventFilter(filter, listenerAdaptor);
+        return eventService.registerListenerAsync(SERVICE_NAME, mapName, filter, listenerAdaptor)
+                           .thenApplyAsync(EventRegistration::getId, CALLER_RUNS);
+    }
+
+    private EventFilter adoptEventFilter(EventFilter filter, ListenerAdapter listenerAdaptor) {
+        if (!(filter instanceof EventListenerFilter)) {
+            int enabledListeners = setAndGetListenerFlags(listenerAdaptor);
+            filter = new EventListenerFilter(enabledListeners, filter);
+        }
+        return filter;
+    }
+
     @Override
     public boolean removeEventListener(String mapName, UUID registrationId) {
         return eventService.deregisterListener(SERVICE_NAME, mapName, registrationId);
     }
 
     @Override
+    public CompletableFuture<Boolean> removeEventListenerAsync(String mapName, UUID registrationId) {
+        return eventService.deregisterListenerAsync(SERVICE_NAME, mapName, registrationId);
+    }
+
+    @Override
     public boolean removePartitionLostListener(String mapName, UUID registrationId) {
         return eventService.deregisterListener(SERVICE_NAME, mapName, registrationId);
+    }
+
+    @Override
+    public CompletableFuture<Boolean> removePartitionLostListenerAsync(String mapName, UUID registrationId) {
+        return eventService.deregisterListenerAsync(SERVICE_NAME, mapName, registrationId);
     }
 
     @Override
@@ -794,6 +833,14 @@ class MapServiceContextImpl implements MapServiceContext {
         EventRegistration registration = getNodeEngine().getEventService().
                 registerListener(MapService.SERVICE_NAME, mapName, eventFilter, listenerAdaptor);
         return registration.getId();
+    }
+
+    @Override
+    public CompletableFuture<UUID> addListenerAdapterAsync(ListenerAdapter listenerAdaptor, EventFilter eventFilter,
+                                                           String mapName) {
+        return getNodeEngine().getEventService()
+                              .registerListenerAsync(MapService.SERVICE_NAME, mapName, eventFilter, listenerAdaptor)
+                              .thenApplyAsync(EventRegistration::getId, CALLER_RUNS);
     }
 
     @Override

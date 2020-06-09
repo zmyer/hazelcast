@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2008-2019, Hazelcast, Inc. All Rights Reserved.
+ * Copyright (c) 2008-2020, Hazelcast, Inc. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -19,6 +19,7 @@ package com.hazelcast.map.impl.operation;
 import com.hazelcast.internal.util.collection.InflatableSet;
 import com.hazelcast.internal.util.collection.InflatableSet.Builder;
 import com.hazelcast.map.EntryProcessor;
+import com.hazelcast.map.impl.MapContainer;
 import com.hazelcast.map.impl.MapDataSerializerHook;
 import com.hazelcast.map.impl.MapService;
 import com.hazelcast.map.impl.MapServiceContext;
@@ -28,7 +29,7 @@ import com.hazelcast.map.impl.query.QueryResultRow;
 import com.hazelcast.map.impl.query.QueryRunner;
 import com.hazelcast.nio.ObjectDataInput;
 import com.hazelcast.nio.ObjectDataOutput;
-import com.hazelcast.nio.serialization.Data;
+import com.hazelcast.internal.serialization.Data;
 import com.hazelcast.query.Predicate;
 import com.hazelcast.query.Predicates;
 import com.hazelcast.spi.impl.NodeEngine;
@@ -133,6 +134,10 @@ public class PartitionWideEntryWithPredicateOperationFactory extends PartitionAw
 
         MapService mapService = nodeEngine.getService(SERVICE_NAME);
         MapServiceContext mapServiceContext = mapService.getMapServiceContext();
+        MapContainer mapContainer = mapServiceContext.getMapContainer(name);
+        if (!mapContainer.shouldUseGlobalIndex()) {
+            return null;
+        }
 
         QueryRunner runner = mapServiceContext.getMapQueryRunner(name);
         Query query = Query.of().mapName(name).predicate(predicate).iterationType(IterationType.KEY).build();

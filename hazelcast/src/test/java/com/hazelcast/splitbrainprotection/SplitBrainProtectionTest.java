@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2008-2019, Hazelcast, Inc. All Rights Reserved.
+ * Copyright (c) 2008-2020, Hazelcast, Inc. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -24,14 +24,10 @@ import com.hazelcast.config.MapConfig;
 import com.hazelcast.config.SplitBrainProtectionConfig;
 import com.hazelcast.core.HazelcastInstance;
 import com.hazelcast.core.HazelcastInstanceAware;
-import com.hazelcast.internal.services.MemberAttributeServiceEvent;
-import com.hazelcast.internal.services.MembershipAwareService;
 import com.hazelcast.map.IMap;
-import com.hazelcast.spi.impl.NodeEngineImpl;
-import com.hazelcast.spi.properties.GroupProperty;
+import com.hazelcast.spi.properties.ClusterProperty;
 import com.hazelcast.splitbrainprotection.impl.ProbabilisticSplitBrainProtectionFunction;
 import com.hazelcast.splitbrainprotection.impl.RecentlyActiveSplitBrainProtectionFunction;
-import com.hazelcast.splitbrainprotection.impl.SplitBrainProtectionServiceImpl;
 import com.hazelcast.test.AssertTask;
 import com.hazelcast.test.HazelcastSerialClassRunner;
 import com.hazelcast.test.HazelcastTestSupport;
@@ -49,7 +45,6 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
-import static org.mockito.Mockito.mock;
 
 /**
  * Tests split brain protection related configurations.
@@ -57,6 +52,25 @@ import static org.mockito.Mockito.mock;
 @RunWith(HazelcastSerialClassRunner.class)
 @Category({QuickTest.class, ParallelJVMTest.class})
 public class SplitBrainProtectionTest extends HazelcastTestSupport {
+
+    @Test
+    public void testSplitBrainProtectionNotChecked_whenIsNotEnabled() {
+        String disabledSBPName = "disabled-quorum";
+        SplitBrainProtectionConfig disabledSBPConfig = new SplitBrainProtectionConfig()
+                .setName(disabledSBPName)
+                .setMinimumClusterSize(3);
+
+        MapConfig mapConfig = new MapConfig(randomMapName())
+                .setSplitBrainProtectionName(disabledSBPName);
+
+        Config config = new Config()
+                .addSplitBrainProtectionConfig(disabledSBPConfig)
+                .addMapConfig(mapConfig);
+        HazelcastInstance instance = createHazelcastInstance(config);
+
+        instance.getSplitBrainProtectionService().ensureNoSplitBrain(disabledSBPName, disabledSBPConfig.getProtectOn());
+        instance.getMap(mapConfig.getName()).put("key", "value");
+    }
 
     @Test
     public void testSplitBrainProtectionIsSetCorrectlyOnNodeInitialization() {
@@ -105,7 +119,7 @@ public class SplitBrainProtectionTest extends HazelcastTestSupport {
 
         Config config = new Config()
                 .addSplitBrainProtectionConfig(splitBrainProtectionConfig)
-                .setProperty(GroupProperty.HEARTBEAT_INTERVAL_SECONDS.getName(), "1");
+                .setProperty(ClusterProperty.HEARTBEAT_INTERVAL_SECONDS.getName(), "1");
 
         HazelcastInstance instance = createHazelcastInstance(config);
 
@@ -130,7 +144,7 @@ public class SplitBrainProtectionTest extends HazelcastTestSupport {
 
         Config config = new Config()
                 .addSplitBrainProtectionConfig(splitBrainProtectionConfig)
-                .setProperty(GroupProperty.HEARTBEAT_INTERVAL_SECONDS.getName(), "1");
+                .setProperty(ClusterProperty.HEARTBEAT_INTERVAL_SECONDS.getName(), "1");
 
         HazelcastInstance instance = createHazelcastInstance(config);
 
@@ -142,36 +156,6 @@ public class SplitBrainProtectionTest extends HazelcastTestSupport {
                 assertTrue(splitBrainProtection.hasMinimumSize());
             }
         });
-    }
-
-    @Test
-    public void testSplitBrainProtectionIgnoresMemberAttributeEvents() {
-        final RecordingSplitBrainProtectionFunction function = new RecordingSplitBrainProtectionFunction();
-
-        SplitBrainProtectionConfig splitBrainProtectionConfig = new SplitBrainProtectionConfig()
-                .setName(randomString())
-                .setEnabled(true)
-                .setFunctionImplementation(function);
-
-        Config config = new Config()
-                .addSplitBrainProtectionConfig(splitBrainProtectionConfig);
-
-        HazelcastInstance hazelcastInstance = createHazelcastInstance(config);
-        NodeEngineImpl nodeEngine = getNodeEngineImpl(hazelcastInstance);
-        MembershipAwareService service = nodeEngine.getService(SplitBrainProtectionServiceImpl.SERVICE_NAME);
-
-        assertTrueEventually(new AssertTask() {
-            @Override
-            public void run() {
-                assertTrue(function.wasCalled);
-            }
-        });
-        function.wasCalled = false;
-
-        MemberAttributeServiceEvent event = mock(MemberAttributeServiceEvent.class);
-        service.memberAttributeChanged(event);
-
-        assertFalse(function.wasCalled);
     }
 
     @Test(expected = SplitBrainProtectionException.class)
@@ -412,7 +396,7 @@ public class SplitBrainProtectionTest extends HazelcastTestSupport {
     @Test(expected = InvalidConfigurationException.class)
     public void givenProbabilisticSplitBrainProtection_whenAcceptableHeartbeatPause_greaterThanMaxNoHeartbeat_exceptionIsThrown() {
         Config config = new Config();
-        config.setProperty(GroupProperty.MAX_NO_HEARTBEAT_SECONDS.getName(), "10");
+        config.setProperty(ClusterProperty.MAX_NO_HEARTBEAT_SECONDS.getName(), "10");
         SplitBrainProtectionConfig probabilisticSplitBrainProtectionConfig = SplitBrainProtectionConfig.newProbabilisticSplitBrainProtectionConfigBuilder("prob-split-brain-protection", 3)
                 .withAcceptableHeartbeatPauseMillis(13000)
                 .build();
@@ -425,7 +409,7 @@ public class SplitBrainProtectionTest extends HazelcastTestSupport {
     @Test(expected = InvalidConfigurationException.class)
     public void givenProbabilisticSplitBrainProtection_whenAcceptableHeartbeatPause_lessThanHeartbeatInterval_exceptionIsThrown() {
         Config config = new Config();
-        config.setProperty(GroupProperty.HEARTBEAT_INTERVAL_SECONDS.getName(), "5");
+        config.setProperty(ClusterProperty.HEARTBEAT_INTERVAL_SECONDS.getName(), "5");
         SplitBrainProtectionConfig probabilisticSplitBrainProtectionConfig = SplitBrainProtectionConfig.newProbabilisticSplitBrainProtectionConfigBuilder("prob-split-brain-protection", 3)
                 .withAcceptableHeartbeatPauseMillis(3000)
                 .build();
@@ -438,7 +422,7 @@ public class SplitBrainProtectionTest extends HazelcastTestSupport {
     @Test(expected = InvalidConfigurationException.class)
     public void givenRecentlyActiveSplitBrainProtection_whenHeartbeatTolerance_greaterThanMaxNoHeartbeat_exceptionIsThrown() {
         Config config = new Config();
-        config.setProperty(GroupProperty.MAX_NO_HEARTBEAT_SECONDS.getName(), "10");
+        config.setProperty(ClusterProperty.MAX_NO_HEARTBEAT_SECONDS.getName(), "10");
         SplitBrainProtectionConfig recentlyActiveSplitBrainProtectionConfig = SplitBrainProtectionConfig
                 .newRecentlyActiveSplitBrainProtectionConfigBuilder("test-splitBrainProtection", 3, 13000)
                 .build();
@@ -451,7 +435,7 @@ public class SplitBrainProtectionTest extends HazelcastTestSupport {
     @Test(expected = InvalidConfigurationException.class)
     public void givenRecentlyActiveSplitBrainProtection_whenHeartbeatTolerance_lessThanHeartbeatInterval_exceptionIsThrown() {
         Config config = new Config();
-        config.setProperty(GroupProperty.HEARTBEAT_INTERVAL_SECONDS.getName(), "5");
+        config.setProperty(ClusterProperty.HEARTBEAT_INTERVAL_SECONDS.getName(), "5");
         SplitBrainProtectionConfig recentlyActiveSplitBrainProtectionConfig = SplitBrainProtectionConfig
                 .newRecentlyActiveSplitBrainProtectionConfigBuilder("test-splitBrainProtection", 3, 3000)
                 .build();

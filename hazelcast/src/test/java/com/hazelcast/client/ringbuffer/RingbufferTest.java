@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2008-2019, Hazelcast, Inc. All Rights Reserved.
+ * Copyright (c) 2008-2020, Hazelcast, Inc. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -26,11 +26,10 @@ import com.hazelcast.core.HazelcastInstance;
 import com.hazelcast.ringbuffer.ReadResultSet;
 import com.hazelcast.ringbuffer.Ringbuffer;
 import com.hazelcast.ringbuffer.StaleSequenceException;
-import com.hazelcast.ringbuffer.impl.client.PortableReadResultSet;
+import com.hazelcast.ringbuffer.impl.ReadResultSetImpl;
 import com.hazelcast.test.HazelcastSerialClassRunner;
 import com.hazelcast.test.HazelcastTestSupport;
 import com.hazelcast.test.annotation.QuickTest;
-import com.hazelcast.internal.util.RootCauseMatcher;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Rule;
@@ -42,6 +41,8 @@ import org.junit.runner.RunWith;
 import java.util.concurrent.CompletionStage;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 
 import static com.hazelcast.ringbuffer.OverflowPolicy.OVERWRITE;
 import static java.util.Arrays.asList;
@@ -88,27 +89,60 @@ public class RingbufferTest extends HazelcastTestSupport {
         hazelcastFactory.terminateAll();
     }
 
+    @Test(expected = IllegalArgumentException.class)
+    public void readManyAsync_whenStartSequenceIsNegative() {
+        clientRingbuffer.readManyAsync(-1, 1, 10, null);
+    }
+
     @Test
-    public void readManyAsync_whenHitsStale_shouldNotBeBlocked() throws Exception {
-        CompletionStage<ReadResultSet<String>> f = clientRingbuffer.readManyAsync(0, 1, 10, null);
+    public void readManyAsync_whenStartSequenceIsNoLongerAvailable_getsClamped() throws Exception {
         serverRingbuffer.addAllAsync(asList("0", "1", "2", "3", "4", "5", "6", "7", "8", "9", "10"), OVERWRITE);
-        expectedException.expect(new RootCauseMatcher(StaleSequenceException.class));
-        f.toCompletableFuture().get();
+        CompletionStage<ReadResultSet<String>> f = clientRingbuffer.readManyAsync(0, 1, 10, null);
+
+        ReadResultSet rs = f.toCompletableFuture().get();
+        assertEquals(10, rs.readCount());
+        assertEquals("1", rs.get(0));
+        assertEquals("10", rs.get(9));
+    }
+
+    @Test
+    public void readManyAsync_whenStartSequenceIsEqualToTailSequence() throws Exception {
+        serverRingbuffer.addAllAsync(asList("0", "1", "2", "3", "4", "5", "6", "7", "8", "9", "10"), OVERWRITE);
+        CompletionStage<ReadResultSet<String>> f = clientRingbuffer.readManyAsync(10, 1, 10, null);
+
+        ReadResultSet rs = f.toCompletableFuture().get();
+        assertEquals(1, rs.readCount());
+        assertEquals("10", rs.get(0));
+    }
+
+    @Test(expected = TimeoutException.class)
+    public void readManyAsync_whenStartSequenceIsJustBeyondTailSequence() throws Exception {
+        serverRingbuffer.addAllAsync(asList("0", "1", "2", "3", "4", "5", "6", "7", "8", "9", "10"), OVERWRITE);
+        CompletionStage<ReadResultSet<String>> f = clientRingbuffer.readManyAsync(11, 1, 10, null);
+
+        //test that the read blocks (should at least fail some of the time, if not the case)
+        f.toCompletableFuture().get(250, TimeUnit.MILLISECONDS);
+    }
+
+    @Test(expected = TimeoutException.class)
+    public void readManyAsync_whenStartSequenceIsWellBeyondTailSequence() throws Exception {
+        serverRingbuffer.addAllAsync(asList("0", "1", "2", "3", "4", "5", "6", "7", "8", "9", "10"), OVERWRITE);
+        CompletionStage<ReadResultSet<String>> f = clientRingbuffer.readManyAsync(19, 1, 10, null);
+
+        //test that the read blocks (should at least fail some of the time, if not the case)
+        f.toCompletableFuture().get(250, TimeUnit.MILLISECONDS);
     }
 
     @Test
     public void readOne_whenHitsStale_shouldNotBeBlocked() throws Exception {
         final CountDownLatch latch = new CountDownLatch(1);
-        Thread consumer = new Thread(new Runnable() {
-            @Override
-            public void run() {
-                try {
-                    clientRingbuffer.readOne(0);
-                } catch (InterruptedException e) {
-                    e.printStackTrace();
-                } catch (StaleSequenceException e) {
-                    latch.countDown();
-                }
+        Thread consumer = new Thread(() -> {
+            try {
+                clientRingbuffer.readOne(0);
+            } catch (InterruptedException e) {
+                e.printStackTrace();
+            } catch (StaleSequenceException e) {
+                latch.countDown();
             }
         });
         consumer.start();
@@ -197,7 +231,7 @@ public class RingbufferTest extends HazelcastTestSupport {
         Future<ReadResultSet<String>> f = clientRingbuffer.readManyAsync(0, 3, 3, null).toCompletableFuture();
 
         ReadResultSet rs = f.get();
-        assertInstanceOf(PortableReadResultSet.class, rs);
+        assertInstanceOf(ReadResultSetImpl.class, rs);
 
         assertEquals(3, rs.readCount());
         assertEquals("1", rs.get(0));
@@ -218,7 +252,7 @@ public class RingbufferTest extends HazelcastTestSupport {
         Future<ReadResultSet<String>> f = clientRingbuffer.readManyAsync(0, 3, 3, null).toCompletableFuture();
 
         ReadResultSet rs = f.get();
-        assertInstanceOf(PortableReadResultSet.class, rs);
+        assertInstanceOf(ReadResultSetImpl.class, rs);
 
         assertEquals(3, rs.readCount());
         assertEquals("1", rs.get(0));
@@ -239,7 +273,7 @@ public class RingbufferTest extends HazelcastTestSupport {
                 .readManyAsync(0, 3, 3, new StartsWithStringFilter("good")).toCompletableFuture();
 
         ReadResultSet rs = f.get();
-        assertInstanceOf(PortableReadResultSet.class, rs);
+        assertInstanceOf(ReadResultSetImpl.class, rs);
 
         assertEquals(5, rs.readCount());
         assertEquals("good1", rs.get(0));
@@ -264,7 +298,7 @@ public class RingbufferTest extends HazelcastTestSupport {
                 .readManyAsync(0, 3, 3, new StartsWithStringFilter("good")).toCompletableFuture();
 
         ReadResultSet rs = f.get();
-        assertInstanceOf(PortableReadResultSet.class, rs);
+        assertInstanceOf(ReadResultSetImpl.class, rs);
 
         assertEquals(5, rs.readCount());
         assertEquals("good1", rs.get(0));

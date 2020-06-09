@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2008-2019, Hazelcast, Inc. All Rights Reserved.
+ * Copyright (c) 2008-2020, Hazelcast, Inc. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -58,10 +58,8 @@ public class EventLostEvent implements IMapEvent {
 
     /**
      * Intentionally returns {@code null}.
-     * Used in {@link com.hazelcast.map.impl.querycache.subscriber.InternalQueryCacheListenerAdapter}.
      *
      * @return {@code null}
-     * @see com.hazelcast.map.impl.querycache.subscriber.InternalQueryCacheListenerAdapter
      */
     @Override
     public EntryEventType getEventType() {

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2008-2019, Hazelcast, Inc. All Rights Reserved.
+ * Copyright (c) 2008-2020, Hazelcast, Inc. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -36,6 +36,7 @@ public interface ConsumerEx<T> extends Consumer<T>, Serializable {
 
     /**
      * Exception-declaring version of {@link Consumer#accept}
+     * @throws Exception in case of any exceptional case
      */
     void acceptEx(T t) throws Exception;
 
@@ -62,6 +63,7 @@ public interface ConsumerEx<T> extends Consumer<T>, Serializable {
 
     /**
      * Returns a consumer that does nothing.
+     * @param <T> the consumer input type
      */
     static <T> ConsumerEx<T> noop() {
         return x -> {

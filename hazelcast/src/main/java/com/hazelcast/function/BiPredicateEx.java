@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2008-2019, Hazelcast, Inc. All Rights Reserved.
+ * Copyright (c) 2008-2020, Hazelcast, Inc. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -37,6 +37,7 @@ public interface BiPredicateEx<T, U> extends BiPredicate<T, U>, Serializable {
 
     /**
      * Exception-declaring version of {@link BiPredicate#test}.
+     * @throws Exception in case of any exceptional case
      */
     boolean testEx(T t, U u) throws Exception;
 

@@ -1,4 +1,4 @@
-# Copyright (c) 2008-2019, Hazelcast, Inc. All Rights Reserved.
+# Copyright (c) 2008-2020, Hazelcast, Inc. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -33,22 +33,15 @@
 #    ’hazelcast-default.yaml’, which is included in the the Hazelcast jar
 
 hazelcast:
-  cluster:
-    name: dev
-    password: dev-pass
+  cluster-name: my-cluster
   license-key: HAZELCAST_ENTERPRISE_LICENSE_KEY
   instance-name: dummy
 
   management-center:
-    enabled: true
-    update-interval: 5
     scripting-enabled: false
-    url: http://mywebserver:8080
-    mutual-auth:
-      enabled: true
-      factory-class-name: com.hazelcast.examples.MySSLContextFactory
-      properties:
-        foo: bar
+    trusted-interfaces:
+      - 10.10.1.*
+      - 10.10.2.*
 
   properties:
     foo: bar
@@ -58,7 +51,6 @@ hazelcast:
       batch-publisher:
         tokyoPublisherId:
           cluster-name: tokyo
-          class-name: com.hazelcast.enterprise.wan.impl.replication.WanBatchReplication
           queue-capacity: 1000
           queue-full-behavior: THROW_EXCEPTION
           initial-publisher-state: STOPPED
@@ -68,7 +60,7 @@ hazelcast:
           acknowledge-type: ACK_ON_RECEIPT
           target-endpoints: "10.3.5.1:5701, 10.3.5.2:5701"
           snapshot-enabled: true
-          wan-sync:
+          sync:
             consistency-check-strategy: MERKLE_TREES
 
         istanbul:
@@ -94,12 +86,14 @@ hazelcast:
             zones: us-east1-b,us-east1-c
           azure:
             enabled: false
+            instance-metadata-available: false
             client-id: CLIENT_ID
-            client-secret: CLIENT_SECRET
             tenant-id: TENANT_ID
+            client-secret: CLIENT_SECRET
             subscription-id: SUB_ID
-            cluster-id: HZLCAST001
-            group-name: RESOURCE-GROUP-NAME
+            resource-group: RESOURCE-GROUP-NAME
+            scale-set: SCALE-SET-NAME
+            tag: TAG-NAME=HZLCAST001
           kubernetes:
             enabled: false
             namespace: MY-KUBERNETES-NAMESPACE
@@ -312,18 +306,40 @@ hazelcast:
 
       wan-replication-ref:
         my-wan-cluster:
-          merge-policy: hz.PASS_THROUGH
+          merge-policy-class-name: hz.PASS_THROUGH
           filters:
             - com.example.WanTestFilter1
             - com.example.WanTestFilter2
           republishing-enabled: false
 
       indexes:
+        # unordered/hash index on the name attribute
         - type: HASH
           attributes:
             - "name"
+        # ordered/tree index on the age attribute
         - attributes:
           - "age"
+        # composite unordered/hash index on the name and age attributes
+        - type: HASH
+          attributes:
+            - "name"
+            - "age"
+        # composite ordered/tree index on the age and name attributes
+        - attributes:
+          - "age"
+          - "name"
+        # bitmap index on the age attribute
+        - type: BITMAP
+          attributes:
+            - "age"
+        # bitmap index on the name attribute with options
+        - type: BITMAP
+          attributes:
+            - "name"
+          bitmap-index-options:
+            unique-key: id
+            unique-key-transformation: RAW
 
       attributes:
         currency:
@@ -494,7 +510,7 @@ hazelcast:
         size: 50
       wan-replication-ref:
         name: my-wan-cluster
-        merge-policy: hz.PASS_THROUGH
+        merge-policy-class-name: hz.PASS_THROUGH
         filters:
           - com.example.WanTestFilter1
           - com.example.WanTestFilter2
@@ -515,13 +531,15 @@ hazelcast:
     default:
       prefetch-count: 100
       prefetch-validity-millis: 600000
-      id-offset: 0
+      epoch-start: 1514764800000
       node-id-offset: 0
+      bits-sequence: 6
+      bits-node-id: 16
+      allowed-future-millis: 15000
       statistics-enabled: false
 
   listeners:
     - com.hazelcast.examples.MembershipListener
-    - com.hazelcast.examples.InstanceListener
     - com.hazelcast.examples.MigrationListener
     - com.hazelcast.examples.PartitionLostListener
 
@@ -572,16 +590,6 @@ hazelcast:
     page-size: 123
     metadata-space-percentage: 12.5
 
-  services:
-    enable-defaults: false
-    service:
-      enabled: true
-      name: custom-service
-      class-name: com.hazelcast.examples.MyService
-      properties:
-        prop1: prop1-value
-        prop2: prop2-value
-
   security:
     enabled: false
     realms:
@@ -608,6 +616,87 @@ hazelcast:
               usage: REQUIRED
               properties:
                 property: value
+      - name: ldapRealm
+        authentication:
+          ldap:
+             url: ldap://ldap.my-company.example
+             socket-factory-class-name: socketFactoryClassName
+             parse-dn: true
+             role-context: roleContext
+             role-filter: roleFilter
+             role-mapping-attribute: roleMappingAttribute
+             role-mapping-mode: reverse
+             role-name-attribute: roleNameAttribute
+             role-recursion-max-depth: 25
+             role-search-scope: object
+             user-name-attribute: userNameAttribute
+             system-user-dn: systemUserDn
+             system-user-password: systemUserPassword
+             system-authentication: simple
+             security-realm: realmName
+             password-attribute: passwordAttribute
+             user-context: userContext
+             user-filter: userFilter
+             user-search-scope: one-level
+      - name: tlsRealm
+        authentication:
+          tls:
+             roleAttribute: cn
+      - name: usernamePasswordIdentityRealm
+        identity:
+          username-password:
+             username: user
+             password: Hazelcast
+      - name: tokenIdentityRealm
+        identity:
+          token:
+             encoding: base64
+             value: SGF6ZWxjYXN0
+      - name: kerberosRealm
+        authentication:
+          kerberos:
+            skip-role: true
+            relax-flags-check: true
+            security-realm: krb5Acceptor
+            ldap:
+              url: ldap://127.0.0.1/
+              system-authentication: GSSAPI
+              security-realm: krb5Initiator
+              skip-authentication: true
+              user-filter: "(krb5PrincipalName={login})"
+              role-mapping-attribute: cn
+        identity:
+          kerberos:
+            realm: HAZELCAST.COM
+            security-realm: krb5Initiator
+            service-name-prefix: hz/
+            spn: hz/127.0.0.1@HAZELCAST.COM
+      - name: krb5Acceptor
+        authentication:
+          jaas:
+            - class-name: com.sun.security.auth.module.Krb5LoginModule
+              usage: REQUIRED
+              properties:
+                isInitiator: false
+                useTicketCache: false
+                doNotPrompt: true
+                useKeyTab: true
+                storeKey: true
+                principal: hz/127.0.0.1@HAZELCAST.COM
+                keyTab: /opt/hz-localhost.keytab
+      - name: krb5Initiator
+        authentication:
+          jaas:
+            - class-name: com.sun.security.auth.module.Krb5LoginModule
+              usage: REQUIRED
+              properties:
+                isInitiator: true
+                useTicketCache: false
+                doNotPrompt: true
+                useKeyTab: true
+                storeKey: true
+                principal: hz/127.0.0.1@HAZELCAST.COM
+                keyTab: /opt/hz-localhost.keytab
     member-authentication:
       realm: mr
     client-authentication:
@@ -724,6 +813,16 @@ hazelcast:
           principal: "*"
           actions:
             - all
+      ring-buffer:
+        - name: "*"
+          principal: "*"
+          actions:
+            - all
+      reliable-topic:
+        - name: "*"
+          principal: "*"
+          actions:
+            - all
     client-block-unmapped-actions: true
 
   member-attributes:
@@ -808,3 +907,12 @@ hazelcast:
         lock-acquire-limit: 1
       lock2:
         lock-acquire-limit: 2
+
+  metrics:
+    enabled: false
+    management-center:
+      enabled: false
+      retention-seconds: 42
+    jmx:
+      enabled: false
+    collection-frequency-seconds: 24

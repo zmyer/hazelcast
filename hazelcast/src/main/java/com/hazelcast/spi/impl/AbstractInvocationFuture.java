@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2008-2019, Hazelcast, Inc. All Rights Reserved.
+ * Copyright (c) 2008-2020, Hazelcast, Inc. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -37,7 +37,6 @@ import java.util.concurrent.CompletionException;
 import java.util.concurrent.CompletionStage;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Executor;
-import java.util.concurrent.ForkJoinPool;
 import java.util.concurrent.RejectedExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
@@ -59,10 +58,8 @@ import static java.util.concurrent.locks.LockSupport.unpark;
 
 /**
  * Custom implementation of {@link java.util.concurrent.CompletableFuture}.
- *
  * @param <V>
  */
-//FGTODO: 2019/11/26 下午5:40 zmyer
 @SuppressFBWarnings(value = "DLS_DEAD_STORE_OF_CLASS_LITERAL", justification = "Recommended way to prevent classloading bug")
 @SuppressWarnings({"checkstyle:methodcount", "checkstyle:ClassDataAbstractionCoupling", "checkstyle:ClassFanOutComplexity"})
 public abstract class AbstractInvocationFuture<V> extends InternalCompletableFuture<V> {
@@ -84,23 +81,11 @@ public abstract class AbstractInvocationFuture<V> extends InternalCompletableFut
     private static final AtomicReferenceFieldUpdater<AbstractInvocationFuture, Object> STATE_UPDATER =
             newUpdater(AbstractInvocationFuture.class, Object.class, "state");
 
-    // Default executor for async callbacks: ForkJoinPool.commonPool() or a thread-per-task executor when
-    // the common pool does not support parallelism
-    private static final Executor DEFAULT_ASYNC_EXECUTOR;
-
     // reduce the risk of rare disastrous classloading in first call to
     // LockSupport.park: https://bugs.openjdk.java.net/browse/JDK-8074773
     static {
         @SuppressWarnings("unused")
         Class<?> ensureLoaded = LockSupport.class;
-
-        Executor asyncExecutor;
-        if (ForkJoinPool.getCommonPoolParallelism() > 1) {
-            asyncExecutor = ForkJoinPool.commonPool();
-        } else {
-            asyncExecutor = command -> new Thread(command).start();
-        }
-        DEFAULT_ASYNC_EXECUTOR = asyncExecutor;
     }
 
     protected final ILogger logger;
@@ -178,12 +163,12 @@ public abstract class AbstractInvocationFuture<V> extends InternalCompletableFut
 
     @Override
     public InternalCompletableFuture<Void> thenAcceptAsync(@Nonnull Consumer<? super V> action,
-                                                           @Nonnull Executor executor) {
+                                                   @Nonnull Executor executor) {
         requireNonNull(action);
         requireNonNull(executor);
         final InternalCompletableFuture<Void> future = newCompletableFuture();
         if (isDone()) {
-            unblockAccept(action, executor, future);
+           unblockAccept(action, executor, future);
         } else {
             Object result = registerWaiter(new AcceptNode<>(future, action), executor);
             if (result != UNRESOLVED) {
@@ -231,7 +216,7 @@ public abstract class AbstractInvocationFuture<V> extends InternalCompletableFut
 
     @Override
     public <U> InternalCompletableFuture<U> handleAsync(@Nonnull BiFunction<? super V, Throwable, ? extends U> fn,
-                                                        @Nonnull Executor executor) {
+                                                @Nonnull Executor executor) {
         requireNonNull(fn);
         requireNonNull(executor);
         final InternalCompletableFuture<U> future = newCompletableFuture();
@@ -258,7 +243,7 @@ public abstract class AbstractInvocationFuture<V> extends InternalCompletableFut
 
     @Override
     public InternalCompletableFuture<V> whenCompleteAsync(@Nonnull BiConsumer<? super V, ? super Throwable> action,
-                                                          @Nonnull Executor executor) {
+                                                  @Nonnull Executor executor) {
         requireNonNull(action);
         requireNonNull(executor);
         final InternalCompletableFuture<V> future = newCompletableFuture();
@@ -285,7 +270,7 @@ public abstract class AbstractInvocationFuture<V> extends InternalCompletableFut
 
     @Override
     public <U> InternalCompletableFuture<U> thenComposeAsync(@Nonnull Function<? super V, ? extends CompletionStage<U>> fn,
-                                                             @Nonnull Executor executor) {
+                                                     @Nonnull Executor executor) {
         requireNonNull(fn);
         requireNonNull(executor);
         final InternalCompletableFuture<U> future = newCompletableFuture();
@@ -302,20 +287,20 @@ public abstract class AbstractInvocationFuture<V> extends InternalCompletableFut
 
     @Override
     public <U, R> InternalCompletableFuture<R> thenCombine(@Nonnull CompletionStage<? extends U> other,
-                                                           @Nonnull BiFunction<? super V, ? super U, ? extends R> fn) {
+                                                 @Nonnull BiFunction<? super V, ? super U, ? extends R> fn) {
         return thenCombineAsync(other, fn, CALLER_RUNS);
     }
 
     @Override
     public <U, R> InternalCompletableFuture<R> thenCombineAsync(@Nonnull CompletionStage<? extends U> other,
-                                                                @Nonnull BiFunction<? super V, ? super U, ? extends R> fn) {
+                                                        @Nonnull BiFunction<? super V, ? super U, ? extends R> fn) {
         return thenCombineAsync(other, fn, defaultExecutor());
     }
 
     @Override
     public <U, R> InternalCompletableFuture<R> thenCombineAsync(@Nonnull CompletionStage<? extends U> other,
-                                                                @Nonnull BiFunction<? super V, ? super U, ? extends R> fn,
-                                                                @Nonnull Executor executor) {
+                                                        @Nonnull BiFunction<? super V, ? super U, ? extends R> fn,
+                                                        @Nonnull Executor executor) {
         requireNonNull(other);
         requireNonNull(fn);
         requireNonNull(executor);
@@ -333,20 +318,20 @@ public abstract class AbstractInvocationFuture<V> extends InternalCompletableFut
 
     @Override
     public <U> InternalCompletableFuture<Void> thenAcceptBoth(@Nonnull CompletionStage<? extends U> other,
-                                                              @Nonnull BiConsumer<? super V, ? super U> action) {
+                                                      @Nonnull BiConsumer<? super V, ? super U> action) {
         return thenAcceptBothAsync(other, action, CALLER_RUNS);
     }
 
     @Override
     public <U> InternalCompletableFuture<Void> thenAcceptBothAsync(@Nonnull CompletionStage<? extends U> other,
-                                                                   @Nonnull BiConsumer<? super V, ? super U> action) {
+                                                           @Nonnull BiConsumer<? super V, ? super U> action) {
         return thenAcceptBothAsync(other, action, defaultExecutor());
     }
 
     @Override
     public <U> InternalCompletableFuture<Void> thenAcceptBothAsync(@Nonnull CompletionStage<? extends U> other,
-                                                                   @Nonnull BiConsumer<? super V, ? super U> action,
-                                                                   @Nonnull Executor executor) {
+                                                           @Nonnull BiConsumer<? super V, ? super U> action,
+                                                           @Nonnull Executor executor) {
         requireNonNull(action);
         requireNonNull(executor);
         final InternalCompletableFuture<Void> future = newCompletableFuture();
@@ -376,8 +361,8 @@ public abstract class AbstractInvocationFuture<V> extends InternalCompletableFut
 
     @Override
     public InternalCompletableFuture<Void> runAfterBothAsync(@Nonnull CompletionStage<?> other,
-                                                             @Nonnull Runnable action,
-                                                             @Nonnull Executor executor) {
+                                                     @Nonnull Runnable action,
+                                                     @Nonnull Executor executor) {
         requireNonNull(other);
         requireNonNull(action);
         requireNonNull(executor);
@@ -398,20 +383,20 @@ public abstract class AbstractInvocationFuture<V> extends InternalCompletableFut
 
     @Override
     public <U> InternalCompletableFuture<U> applyToEither(@Nonnull CompletionStage<? extends V> other,
-                                                          @Nonnull Function<? super V, U> fn) {
+                                                  @Nonnull Function<? super V, U> fn) {
         return applyToEitherAsync(other, fn, CALLER_RUNS);
     }
 
     @Override
     public <U> InternalCompletableFuture<U> applyToEitherAsync(@Nonnull CompletionStage<? extends V> other,
-                                                               @Nonnull Function<? super V, U> fn) {
+                                                       @Nonnull Function<? super V, U> fn) {
         return applyToEitherAsync(other, fn, defaultExecutor());
     }
 
     @Override
     public <U> InternalCompletableFuture<U> applyToEitherAsync(@Nonnull CompletionStage<? extends V> other,
-                                                               @Nonnull Function<? super V, U> fn,
-                                                               @Nonnull Executor executor) {
+                                                       @Nonnull Function<? super V, U> fn,
+                                                       @Nonnull Executor executor) {
         requireNonNull(other);
         requireNonNull(fn);
         requireNonNull(executor);
@@ -436,20 +421,20 @@ public abstract class AbstractInvocationFuture<V> extends InternalCompletableFut
 
     @Override
     public InternalCompletableFuture<Void> acceptEither(@Nonnull CompletionStage<? extends V> other,
-                                                        @Nonnull Consumer<? super V> action) {
+                                                @Nonnull Consumer<? super V> action) {
         return acceptEitherAsync(other, action, CALLER_RUNS);
     }
 
     @Override
     public InternalCompletableFuture<Void> acceptEitherAsync(@Nonnull CompletionStage<? extends V> other,
-                                                             @Nonnull Consumer<? super V> action) {
+                                                     @Nonnull Consumer<? super V> action) {
         return acceptEitherAsync(other, action, defaultExecutor());
     }
 
     @Override
     public InternalCompletableFuture<Void> acceptEitherAsync(@Nonnull CompletionStage<? extends V> other,
-                                                             @Nonnull Consumer<? super V> action,
-                                                             @Nonnull Executor executor) {
+                                                     @Nonnull Consumer<? super V> action,
+                                                     @Nonnull Executor executor) {
         requireNonNull(other);
         requireNonNull(action);
         requireNonNull(executor);
@@ -484,8 +469,8 @@ public abstract class AbstractInvocationFuture<V> extends InternalCompletableFut
 
     @Override
     public InternalCompletableFuture<Void> runAfterEitherAsync(@Nonnull CompletionStage<?> other,
-                                                               @Nonnull Runnable action,
-                                                               @Nonnull Executor executor) {
+                                                       @Nonnull Runnable action,
+                                                       @Nonnull Executor executor) {
         requireNonNull(other);
         requireNonNull(action);
         requireNonNull(executor);
@@ -688,7 +673,7 @@ public abstract class AbstractInvocationFuture<V> extends InternalCompletableFut
             final Object oldState = state;
             if (compareAndSetState(oldState, value)) {
                 onComplete();
-                unblockAll(oldState, DEFAULT_ASYNC_EXECUTOR);
+                unblockAll(oldState, defaultExecutor());
                 break;
             }
         }
@@ -701,6 +686,11 @@ public abstract class AbstractInvocationFuture<V> extends InternalCompletableFut
         while (index instanceof WaitNode) {
             dependents++;
             index = ((WaitNode) index).next;
+        }
+        if (index instanceof Waiter) {
+            // the first dependent registered with a default executor
+            // is not wrapped in a WaitNode
+            dependents++;
         }
         return dependents;
     }
@@ -722,8 +712,8 @@ public abstract class AbstractInvocationFuture<V> extends InternalCompletableFut
     }
 
     private void unblockAccept(@Nonnull final Consumer<? super V> consumer,
-                               @Nonnull Executor executor,
-                               @Nonnull InternalCompletableFuture<Void> future) {
+                                                    @Nonnull Executor executor,
+                                                    @Nonnull InternalCompletableFuture<Void> future) {
         final Object value = resolve(state);
         if (cascadeException(value, future)) {
             return;
@@ -743,8 +733,9 @@ public abstract class AbstractInvocationFuture<V> extends InternalCompletableFut
     }
 
     /**
-     * @param waiter   the current wait node, see javadoc of {@link #state state field}
-     * @param executor the {@link Executor} on which to execute the action associated with {@code waiter}
+     *
+     * @param waiter    the current wait node, see javadoc of {@link #state state field}
+     * @param executor  the {@link Executor} on which to execute the action associated with {@code waiter}
      */
     @SuppressWarnings("checkstyle:CyclomaticComplexity")
     protected void unblockOtherNode(Object waiter, Executor executor) {
@@ -779,11 +770,11 @@ public abstract class AbstractInvocationFuture<V> extends InternalCompletableFut
     }
 
     /**
-     * @param value the resolved state of this future
-     * @return an {@link ExceptionalResult} wrapping a {@link Throwable} in case value is resolved
-     * to an exception, or the normal completion value. Subclasses may choose to treat
-     * specific normal completion values in a special way (eg deserialize when the completion
-     * value is an instance of {@code Data}.
+     * @param   value   the resolved state of this future
+     * @return  an {@link ExceptionalResult} wrapping a {@link Throwable} in case value is resolved
+     *          to an exception, or the normal completion value. Subclasses may choose to treat
+     *          specific normal completion values in a special way (eg deserialize when the completion
+     *          value is an instance of {@code Data}.
      */
     protected Object resolve(Object value) {
         return value;
@@ -816,8 +807,8 @@ public abstract class AbstractInvocationFuture<V> extends InternalCompletableFut
     }
 
     protected void unblockRun(@Nonnull final Runnable runnable,
-                              @Nonnull Executor executor,
-                              @Nonnull CompletableFuture<Void> future) {
+                                                 @Nonnull Executor executor,
+                                                 @Nonnull CompletableFuture<Void> future) {
         final Object value = resolve(state);
         if (cascadeException(value, future)) {
             return;
@@ -826,8 +817,8 @@ public abstract class AbstractInvocationFuture<V> extends InternalCompletableFut
     }
 
     protected <U> void unblockHandle(@Nonnull BiFunction<? super V, Throwable, ? extends U> fn,
-                                     @Nonnull Executor executor,
-                                     @Nonnull CompletableFuture<U> future) {
+                                                     @Nonnull Executor executor,
+                                                     @Nonnull CompletableFuture<U> future) {
         final Object result = resolve(state);
         V value;
         Throwable throwable;
@@ -912,13 +903,9 @@ public abstract class AbstractInvocationFuture<V> extends InternalCompletableFut
         }
     }
 
-    public Executor defaultExecutor() {
-        return DEFAULT_ASYNC_EXECUTOR;
-    }
-
     protected <U> void unblockCompose(@Nonnull final Function<? super V, ? extends CompletionStage<U>> function,
-                                      @Nonnull Executor executor,
-                                      @Nonnull CompletableFuture<U> future) {
+                                                      @Nonnull Executor executor,
+                                                      @Nonnull CompletableFuture<U> future) {
         Object result = resolve(state);
         if (cascadeException(result, future)) {
             return;
@@ -946,9 +933,9 @@ public abstract class AbstractInvocationFuture<V> extends InternalCompletableFut
 
     @SuppressWarnings("checkstyle:npathcomplexity")
     protected <U, R> void unblockCombine(@Nonnull CompletionStage<? extends U> other,
-                                         @Nonnull final BiFunction<? super V, ? super U, ? extends R> function,
-                                         @Nonnull Executor executor,
-                                         @Nonnull InternalCompletableFuture<R> future) {
+                                                         @Nonnull final BiFunction<? super V, ? super U, ? extends R> function,
+                                                         @Nonnull Executor executor,
+                                                         @Nonnull InternalCompletableFuture<R> future) {
         Object result = resolve(state);
         final CompletableFuture<? extends U> otherFuture =
                 (other instanceof CompletableFuture) ? (CompletableFuture<? extends U>) other : other.toCompletableFuture();
@@ -1002,9 +989,9 @@ public abstract class AbstractInvocationFuture<V> extends InternalCompletableFut
 
     @SuppressWarnings("checkstyle:npathcomplexity")
     private <U> void unblockAcceptBoth(@Nonnull CompletableFuture<? extends U> otherFuture,
-                                       @Nonnull final BiConsumer<? super V, ? super U> action,
-                                       @Nonnull Executor executor,
-                                       @Nonnull InternalCompletableFuture<Void> future) {
+                                         @Nonnull final BiConsumer<? super V, ? super U> action,
+                                         @Nonnull Executor executor,
+                                         @Nonnull InternalCompletableFuture<Void> future) {
         final Object value = resolve(state);
         // in case this future is completed exceptionally, the result is also exceptionally completed
         // without checking whether otherFuture is completed or not
@@ -1049,9 +1036,9 @@ public abstract class AbstractInvocationFuture<V> extends InternalCompletableFut
     }
 
     private void unblockRunAfterBoth(@Nonnull CompletableFuture<?> otherFuture,
-                                     @Nonnull final Runnable action,
-                                     @Nonnull Executor executor,
-                                     @Nonnull CompletableFuture<Void> future) {
+                                       @Nonnull final Runnable action,
+                                       @Nonnull Executor executor,
+                                       @Nonnull CompletableFuture<Void> future) {
         Object result = resolve(state);
         // in case this future is completed exceptionally, the result is also exceptionally completed
         // without checking whether otherFuture is completed or not
@@ -1133,7 +1120,7 @@ public abstract class AbstractInvocationFuture<V> extends InternalCompletableFut
             }
 
             Object newState;
-            if (oldState == UNRESOLVED && (executor == null || executor == DEFAULT_ASYNC_EXECUTOR)) {
+            if (oldState == UNRESOLVED && (executor == null || executor == defaultExecutor())) {
                 // nothing is syncing on this future, so instead of creating a WaitNode, we just try to cas the waiter
                 newState = waiter;
             } else {
@@ -1209,7 +1196,7 @@ public abstract class AbstractInvocationFuture<V> extends InternalCompletableFut
             }
             if (compareAndSetState(oldState, value)) {
                 onComplete();
-                unblockAll(oldState, DEFAULT_ASYNC_EXECUTOR);
+                unblockAll(oldState, defaultExecutor());
                 return true;
             }
         }
@@ -1306,7 +1293,7 @@ public abstract class AbstractInvocationFuture<V> extends InternalCompletableFut
      *
      * @param resolved  a resolved state, as returned from {@link #resolve(Object)}
      * @param dependent a dependent {@link CompletableFuture}
-     * @return {@code true} in case the dependent was completed exceptionally, otherwise {@code false}
+     * @return          {@code true} in case the dependent was completed exceptionally, otherwise {@code false}
      */
     private static boolean cascadeException(Object resolved, CompletableFuture dependent) {
         if (resolved instanceof ExceptionalResult) {
@@ -1376,30 +1363,30 @@ public abstract class AbstractInvocationFuture<V> extends InternalCompletableFut
          * Wraps the {@link #cause} so that the remote/async throwable is not lost,
          * however is delivered as the cause to an throwable with a local stack trace
          * that makes sense to user code that is synchronizing on {@code joinInternal()}.
-         * <p>
+         *
          * Exception wrapping rules:
          * <ul>
-         * <li>
-         * {@link CancellationException}s and {@link com.hazelcast.core.OperationTimeoutException}s
-         * are returned as-is, since they anyway only report the local stack trace.
-         * </li>
-         * <li>
-         * if cause is an instance of {@link RuntimeException} then the cause
-         * is wrapped in a new throwable of the same class. The resulting throwable has the local
-         * stack trace and reports the async stack trace as the cause
-         * </li>
-         * <li>
-         * if cause is an instance of {@link ExecutionException} or {@link InvocationTargetException}
-         * with a non-null cause, then unwrap and apply the rules for the cause
-         * </li>
-         * <li>
-         * if cause is an {@link Error}, then it is wrapped in an {@link Error} of the same class
-         * with a local stack trace.
-         * </li>
-         * <li>
-         * otherwise, wrap cause in a {@link HazelcastException} reporting the local stack trace,
-         * while the remote stack trace is reported in its cause exception.
-         * </li>
+         *     <li>
+         *         {@link CancellationException}s and {@link com.hazelcast.core.OperationTimeoutException}s
+         *         are returned as-is, since they anyway only report the local stack trace.
+         *     </li>
+         *     <li>
+         *         if cause is an instance of {@link RuntimeException} then the cause
+         *         is wrapped in a new throwable of the same class. The resulting throwable has the local
+         *         stack trace and reports the async stack trace as the cause
+         *     </li>
+         *     <li>
+         *         if cause is an instance of {@link ExecutionException} or {@link InvocationTargetException}
+         *         with a non-null cause, then unwrap and apply the rules for the cause
+         *     </li>
+         *     <li>
+         *         if cause is an {@link Error}, then it is wrapped in an {@link Error} of the same class
+         *         with a local stack trace.
+         *     </li>
+         *     <li>
+         *         otherwise, wrap cause in a {@link HazelcastException} reporting the local stack trace,
+         *         while the remote stack trace is reported in its cause exception.
+         *     </li>
          * </ul>
          *
          * @return
@@ -1441,11 +1428,11 @@ public abstract class AbstractInvocationFuture<V> extends InternalCompletableFut
     }
 
     // a WaitNode for a Function<V, R>
-    protected static final class ApplyNode<V, R> implements UniWaiter {
+    protected final class ApplyNode<V, R> implements UniWaiter {
         final CompletableFuture<R> future;
         final Function<V, R> function;
 
-        public ApplyNode(CompletableFuture<R> future, Function<V, R> function) {
+        ApplyNode(CompletableFuture<R> future, Function<V, R> function) {
             this.future = future;
             this.function = function;
         }
@@ -1458,9 +1445,12 @@ public abstract class AbstractInvocationFuture<V> extends InternalCompletableFut
             if (executor == null) {
                 future.complete(function.apply((V) value));
             } else {
-                executor.execute(() -> {
-                    future.complete(function.apply((V) value));
-                });
+                try {
+                    executor.execute(() -> future.complete(function.apply((V) value)));
+                } catch (RejectedExecutionException e) {
+                    future.completeExceptionally(wrapToInstanceNotActiveException(e));
+                    throw e;
+                }
             }
         }
     }
@@ -1491,7 +1481,7 @@ public abstract class AbstractInvocationFuture<V> extends InternalCompletableFut
     }
 
     // a WaitNode for a BiFunction<V, Throwable, R>
-    private static final class HandleNode<V, R> implements BiWaiter<V, Throwable> {
+    private final class HandleNode<V, R> implements BiWaiter<V, Throwable> {
         final CompletableFuture<R> future;
         final BiFunction<V, Throwable, R> biFunction;
 
@@ -1503,18 +1493,23 @@ public abstract class AbstractInvocationFuture<V> extends InternalCompletableFut
         @Override
         public void execute(Executor executor, V value, Throwable throwable) {
             Executor e = (executor == null) ? CALLER_RUNS : executor;
-            e.execute(() -> {
-                try {
-                    future.complete(biFunction.apply(value, throwable));
-                } catch (Throwable t) {
-                    future.completeExceptionally(t);
-                }
-            });
+            try {
+                e.execute(() -> {
+                    try {
+                        future.complete(biFunction.apply(value, throwable));
+                    } catch (Throwable t) {
+                        future.completeExceptionally(t);
+                    }
+                });
+            } catch (RejectedExecutionException exception) {
+                future.completeExceptionally(wrapToInstanceNotActiveException(exception));
+                throw exception;
+            }
         }
     }
 
     // a WaitNode for a BiConsumer<V, T>
-    private static final class WhenCompleteNode<V, T extends Throwable> implements BiWaiter<V, T> {
+    private final class WhenCompleteNode<V, T extends Throwable> implements BiWaiter<V, T> {
         final CompletableFuture<V> future;
         final BiConsumer<V, T> biConsumer;
 
@@ -1526,15 +1521,20 @@ public abstract class AbstractInvocationFuture<V> extends InternalCompletableFut
         @Override
         public void execute(Executor executor, V value, T throwable) {
             Executor e = (executor == null) ? CALLER_RUNS : executor;
-            e.execute(() -> {
-                try {
-                    biConsumer.accept(value, throwable);
-                } catch (Throwable t) {
-                    completeDependentExceptionally(future, throwable, t);
-                    return;
-                }
-                complete(value, throwable);
-            });
+            try {
+                e.execute(() -> {
+                    try {
+                        biConsumer.accept(value, throwable);
+                    } catch (Throwable t) {
+                        completeDependentExceptionally(future, throwable, t);
+                        return;
+                    }
+                    complete(value, throwable);
+                });
+            } catch (RejectedExecutionException exception) {
+                future.completeExceptionally(wrapToInstanceNotActiveException(exception));
+                throw exception;
+            }
         }
 
         private void complete(V value, T throwable) {
@@ -1547,7 +1547,7 @@ public abstract class AbstractInvocationFuture<V> extends InternalCompletableFut
     }
 
     // a WaitNode for a Consumer<? super V>
-    private static final class AcceptNode<T> implements UniWaiter {
+    private final class AcceptNode<T> implements UniWaiter {
         final CompletableFuture<Void> future;
         final Consumer<T> consumer;
 
@@ -1562,19 +1562,24 @@ public abstract class AbstractInvocationFuture<V> extends InternalCompletableFut
                 return;
             }
             Executor e = (executor == null) ? CALLER_RUNS : executor;
-            e.execute(() -> {
-                try {
-                    consumer.accept((T) value);
-                    future.complete(null);
-                } catch (Throwable t) {
-                    future.completeExceptionally(t);
-                }
-            });
+            try {
+                e.execute(() -> {
+                    try {
+                        consumer.accept((T) value);
+                        future.complete(null);
+                    } catch (Throwable t) {
+                        future.completeExceptionally(t);
+                    }
+                });
+            } catch (RejectedExecutionException exception) {
+                future.completeExceptionally(wrapToInstanceNotActiveException(exception));
+                throw exception;
+            }
         }
     }
 
     // a WaitNode for a Runnable
-    protected static final class RunNode implements UniWaiter {
+    protected final class RunNode implements UniWaiter {
         final CompletableFuture<Void> future;
         final Runnable runnable;
 
@@ -1589,22 +1594,27 @@ public abstract class AbstractInvocationFuture<V> extends InternalCompletableFut
                 return;
             }
             Executor e = (executor == null) ? CALLER_RUNS : executor;
-            e.execute(() -> {
-                try {
-                    runnable.run();
-                    future.complete(null);
-                } catch (Throwable t) {
-                    future.completeExceptionally(t);
-                }
-            });
+            try {
+                e.execute(() -> {
+                    try {
+                        runnable.run();
+                        future.complete(null);
+                    } catch (Throwable t) {
+                        future.completeExceptionally(t);
+                    }
+                });
+            } catch (RejectedExecutionException exception) {
+                future.completeExceptionally(wrapToInstanceNotActiveException(exception));
+                throw exception;
+            }
         }
     }
 
-    protected static final class ComposeNode<T, U> implements UniWaiter {
+    protected final class ComposeNode<T, U> implements UniWaiter {
         final CompletableFuture<U> future;
         final Function<? super T, ? extends CompletionStage<U>> function;
 
-        public ComposeNode(CompletableFuture<U> future, Function<? super T, ? extends CompletionStage<U>> function) {
+        ComposeNode(CompletableFuture<U> future, Function<? super T, ? extends CompletionStage<U>> function) {
             this.future = future;
             this.function = function;
         }
@@ -1615,31 +1625,36 @@ public abstract class AbstractInvocationFuture<V> extends InternalCompletableFut
                 return;
             }
             Executor e = (executor == null) ? CALLER_RUNS : executor;
-            e.execute(() -> {
-                try {
-                    CompletionStage<U> r = function.apply((T) resolved);
-                    r.whenComplete((v, t) -> {
-                        if (t == null) {
-                            future.complete(v);
-                        } else {
-                            future.completeExceptionally(t);
-                        }
-                    });
-                } catch (Throwable t) {
-                    future.completeExceptionally(t);
-                }
-            });
+            try {
+                e.execute(() -> {
+                    try {
+                        CompletionStage<U> r = function.apply((T) resolved);
+                        r.whenComplete((v, t) -> {
+                            if (t == null) {
+                                future.complete(v);
+                            } else {
+                                future.completeExceptionally(t);
+                            }
+                        });
+                    } catch (Throwable t) {
+                        future.completeExceptionally(t);
+                    }
+                });
+            } catch (RejectedExecutionException exception) {
+                future.completeExceptionally(wrapToInstanceNotActiveException(exception));
+                throw exception;
+            }
         }
     }
 
     // common superclass of waiters for two futures (combine, acceptBoth, runAfterBoth)
-    protected abstract static class AbstractBiNode<T, U, R> implements UniWaiter {
+    protected abstract class AbstractBiNode<T, U, R> implements UniWaiter {
         final CompletableFuture<R> result;
         final CompletableFuture<? extends U> otherFuture;
         final AtomicBoolean executed;
 
         AbstractBiNode(CompletableFuture<R> future,
-                       CompletableFuture<? extends U> otherFuture) {
+                           CompletableFuture<? extends U> otherFuture) {
             this.result = future;
             this.otherFuture = otherFuture;
             this.executed = new AtomicBoolean();
@@ -1681,25 +1696,30 @@ public abstract class AbstractInvocationFuture<V> extends InternalCompletableFut
             }
             U otherValue = otherFuture.join();
             Executor e = (executor == null) ? CALLER_RUNS : executor;
-            e.execute(() -> {
-                try {
-                    R r = process((T) resolved, otherValue);
-                    result.complete(r);
-                } catch (Throwable t) {
-                    result.completeExceptionally(t);
-                }
-            });
+            try {
+                e.execute(() -> {
+                    try {
+                        R r = process((T) resolved, otherValue);
+                        result.complete(r);
+                    } catch (Throwable t) {
+                        result.completeExceptionally(t);
+                    }
+                });
+            } catch (RejectedExecutionException exception) {
+                result.completeExceptionally(wrapToInstanceNotActiveException(exception));
+                throw exception;
+            }
         }
 
         abstract R process(T t, U u);
     }
 
-    private static final class CombineNode<T, U, R> extends AbstractBiNode<T, U, R> {
+    private final class CombineNode<T, U, R> extends AbstractBiNode<T, U, R> {
         final BiFunction<? super T, ? super U, ? extends R> function;
 
         CombineNode(CompletableFuture<R> future,
-                    CompletableFuture<? extends U> otherFuture,
-                    BiFunction<? super T, ? super U, ? extends R> function) {
+                           CompletableFuture<? extends U> otherFuture,
+                           BiFunction<? super T, ? super U, ? extends R> function) {
             super(future, otherFuture);
             this.function = function;
         }
@@ -1710,12 +1730,12 @@ public abstract class AbstractInvocationFuture<V> extends InternalCompletableFut
         }
     }
 
-    private static final class AcceptBothNode<T, U> extends AbstractBiNode<T, U, Void> {
+    private final class AcceptBothNode<T, U> extends AbstractBiNode<T, U, Void> {
         final BiConsumer<? super T, ? super U> action;
 
         AcceptBothNode(CompletableFuture<Void> future,
-                       CompletableFuture<? extends U> otherFuture,
-                       BiConsumer<? super T, ? super U> action) {
+                           CompletableFuture<? extends U> otherFuture,
+                              BiConsumer<? super T, ? super U> action) {
             super(future, otherFuture);
             this.action = action;
         }
@@ -1727,12 +1747,12 @@ public abstract class AbstractInvocationFuture<V> extends InternalCompletableFut
         }
     }
 
-    private static final class RunAfterBothNode<T, U> extends AbstractBiNode<T, U, Void> {
+    private final class RunAfterBothNode<T, U> extends AbstractBiNode<T, U, Void> {
         final Runnable action;
 
         RunAfterBothNode(CompletableFuture<Void> future,
-                         CompletableFuture<? extends U> otherFuture,
-                         Runnable action) {
+                           CompletableFuture<? extends U> otherFuture,
+                              Runnable action) {
             super(future, otherFuture);
             this.action = action;
         }
@@ -1745,7 +1765,7 @@ public abstract class AbstractInvocationFuture<V> extends InternalCompletableFut
     }
 
     // common superclass of waiters for either of two futures (applyEither, acceptEither, runAfterEither)
-    protected abstract static class AbstractEitherNode<T, R> implements UniWaiter, BiConsumer<T, Throwable> {
+    protected abstract class AbstractEitherNode<T, R> implements UniWaiter, BiConsumer<T, Throwable> {
         final CompletableFuture<R> result;
         final AtomicBoolean executed;
 
@@ -1763,14 +1783,19 @@ public abstract class AbstractInvocationFuture<V> extends InternalCompletableFut
                 return;
             }
             Executor e = (executor == null) ? CALLER_RUNS : executor;
-            e.execute(() -> {
-                try {
-                    R r = process((T) resolved);
-                    result.complete(r);
-                } catch (Throwable t) {
-                    result.completeExceptionally(t);
-                }
-            });
+            try {
+                e.execute(() -> {
+                    try {
+                        R r = process((T) resolved);
+                        result.complete(r);
+                    } catch (Throwable t) {
+                        result.completeExceptionally(t);
+                    }
+                });
+            } catch (RejectedExecutionException exception) {
+                result.completeExceptionally(wrapToInstanceNotActiveException(exception));
+                throw exception;
+            }
         }
 
         @Override
@@ -1792,7 +1817,7 @@ public abstract class AbstractInvocationFuture<V> extends InternalCompletableFut
         abstract R process(T t);
     }
 
-    private static final class RunAfterEither<T> extends AbstractEitherNode<T, Void> {
+    private final class RunAfterEither<T> extends AbstractEitherNode<T, Void> {
         final Runnable action;
 
         RunAfterEither(CompletableFuture<Void> future, Runnable action) {
@@ -1807,7 +1832,7 @@ public abstract class AbstractInvocationFuture<V> extends InternalCompletableFut
         }
     }
 
-    private static final class AcceptEither<T> extends AbstractEitherNode<T, Void> {
+    private final class AcceptEither<T> extends AbstractEitherNode<T, Void> {
         final Consumer<T> action;
 
         AcceptEither(CompletableFuture<Void> future, Consumer<T> action) {
@@ -1822,7 +1847,7 @@ public abstract class AbstractInvocationFuture<V> extends InternalCompletableFut
         }
     }
 
-    private static final class ApplyEither<T, R> extends AbstractEitherNode<T, R> {
+    private final class ApplyEither<T, R> extends AbstractEitherNode<T, R> {
         final Function<T, R> action;
 
         ApplyEither(CompletableFuture<R> future, Function<T, R> action) {
@@ -1847,8 +1872,8 @@ public abstract class AbstractInvocationFuture<V> extends InternalCompletableFut
      * {@code exceptionFromParent}. Otherwise, the dependent future is completed exceptionally with
      * the exception thrown from user action ({@code exceptionFromAction}).
      */
-    public static void completeDependentExceptionally(CompletableFuture future, Throwable exceptionFromParent,
-                                                      Throwable exceptionFromAction) {
+    private static void completeDependentExceptionally(CompletableFuture future, Throwable exceptionFromParent,
+                                                       Throwable exceptionFromAction) {
         assert (exceptionFromParent != null || exceptionFromAction != null);
         if (exceptionFromParent == null) {
             future.completeExceptionally(exceptionFromAction);
@@ -1862,7 +1887,7 @@ public abstract class AbstractInvocationFuture<V> extends InternalCompletableFut
      * {@code CompletionException}, if {@code throwable} is not {@code null}, or with the given
      * {@code value}.
      */
-    public static <V> void completeDependent(CompletableFuture<V> future, V value, Throwable throwable) {
+    private static <V> void completeDependent(CompletableFuture<V> future, V value, Throwable throwable) {
         if (throwable == null) {
             future.complete(value);
         } else {
@@ -1910,10 +1935,10 @@ public abstract class AbstractInvocationFuture<V> extends InternalCompletableFut
 
     private static RuntimeException wrapRuntimeException(RuntimeException cause) {
         if (cause instanceof WrappableException) {
-            return ((WrappableException) cause).wrap();
+            return  ((WrappableException) cause).wrap();
         }
         RuntimeException wrapped = tryWrapInSameClass(cause);
-        return wrapped == null ? new HazelcastException(cause) : wrapped;
+        return wrapped == null ?  new HazelcastException(cause) : wrapped;
     }
 
     private static Error wrapError(Error cause) {

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2008-2019, Hazelcast, Inc. All Rights Reserved.
+ * Copyright (c) 2008-2020, Hazelcast, Inc. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -34,6 +34,8 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 import java.util.logging.Level;
 
+import static com.hazelcast.internal.util.ExceptionUtil.rethrow;
+
 /**
  * This utility class contains convenience methods to work with multiple
  * futures at the same time, e.g.
@@ -49,7 +51,7 @@ public final class FutureUtil {
     public static final ExceptionHandler RETHROW_EVERYTHING = new ExceptionHandler() {
         @Override
         public void handleException(Throwable throwable) {
-            throw ExceptionUtil.rethrow(throwable);
+            throw rethrow(throwable);
         }
     };
 
@@ -138,7 +140,7 @@ public final class FutureUtil {
             if (throwable instanceof TimeoutException) {
                 throw new TransactionTimedOutException(throwable);
             }
-            throw ExceptionUtil.rethrow(throwable);
+            throw rethrow(throwable);
         }
     };
 
@@ -359,6 +361,23 @@ public final class FutureUtil {
         }
     }
 
+    @PrivateApi
+    public static <V> V getValue(Future<V> future) {
+        if (future instanceof InternalCompletableFuture) {
+            return ((InternalCompletableFuture<V>) future).joinInternal();
+        }
+
+        try {
+            return future.get();
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            throw rethrow(e);
+        } catch (ExecutionException e) {
+            throw rethrow(e);
+        }
+
+    }
+
     private static <V> V executeWithDeadline(Future<V> future, long timeoutNanos) throws Exception {
         if (timeoutNanos <= 0) {
             // Maybe we just finished in time
@@ -414,7 +433,7 @@ public final class FutureUtil {
     }
 
     /**
-     * Rethrow exeception of the fist future that completed with an exception
+     * Rethrow exception of the fist future that completed with an exception
      *
      * @param futures
      * @throws Exception

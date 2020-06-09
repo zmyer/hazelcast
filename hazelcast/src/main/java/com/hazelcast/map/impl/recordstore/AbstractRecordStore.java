@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2008-2019, Hazelcast, Inc. All Rights Reserved.
+ * Copyright (c) 2008-2020, Hazelcast, Inc. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -17,12 +17,14 @@
 package com.hazelcast.map.impl.recordstore;
 
 import com.hazelcast.config.EventJournalConfig;
+import com.hazelcast.config.EvictionPolicy;
 import com.hazelcast.config.InMemoryFormat;
 import com.hazelcast.config.MetadataPolicy;
 import com.hazelcast.internal.locksupport.LockStore;
 import com.hazelcast.internal.locksupport.LockSupportService;
 import com.hazelcast.internal.monitor.LocalRecordStoreStats;
 import com.hazelcast.internal.monitor.impl.LocalRecordStoreStatsImpl;
+import com.hazelcast.internal.serialization.Data;
 import com.hazelcast.internal.serialization.SerializationService;
 import com.hazelcast.internal.util.Clock;
 import com.hazelcast.internal.util.comparators.ValueComparator;
@@ -37,7 +39,6 @@ import com.hazelcast.map.impl.mapstore.MapStoreContext;
 import com.hazelcast.map.impl.record.Record;
 import com.hazelcast.map.impl.record.RecordFactory;
 import com.hazelcast.map.impl.record.Records;
-import com.hazelcast.nio.serialization.Data;
 import com.hazelcast.spi.impl.NodeEngine;
 import com.hazelcast.wan.impl.CallerProvenance;
 
@@ -50,6 +51,7 @@ import static com.hazelcast.map.impl.ExpirationTimeSetter.setExpirationTimes;
  * Contains record store common parts.
  */
 abstract class AbstractRecordStore implements RecordStore<Record> {
+
     protected final int partitionId;
     protected final String name;
     protected final LockStore lockStore;
@@ -60,8 +62,8 @@ abstract class AbstractRecordStore implements RecordStore<Record> {
     protected final ValueComparator valueComparator;
     protected final MapServiceContext mapServiceContext;
     protected final MapDataStore<Data, Object> mapDataStore;
-    protected final CompositeMutationObserver<Record> mutationObserver;
     protected final SerializationService serializationService;
+    protected final CompositeMutationObserver<Record> mutationObserver;
     protected final LocalRecordStoreStatsImpl stats = new LocalRecordStoreStatsImpl();
 
     protected Storage<Data, Record> storage;
@@ -104,7 +106,7 @@ abstract class AbstractRecordStore implements RecordStore<Record> {
         }
 
         // Add observer for indexing
-        indexingObserver = new IndexingMutationObserver<>(serializationService, this);
+        indexingObserver = new IndexingMutationObserver<>(this, serializationService);
         mutationObserver.add(indexingObserver);
     }
 
@@ -121,6 +123,11 @@ abstract class AbstractRecordStore implements RecordStore<Record> {
     @Override
     public InMemoryFormat getInMemoryFormat() {
         return inMemoryFormat;
+    }
+
+    @Override
+    public EvictionPolicy getEvictionPolicy() {
+        return getMapContainer().getMapConfig().getEvictionConfig().getEvictionPolicy();
     }
 
     protected boolean persistenceEnabledFor(@Nonnull CallerProvenance provenance) {
@@ -141,7 +148,7 @@ abstract class AbstractRecordStore implements RecordStore<Record> {
 
     @Override
     public Record createRecord(Data key, Object value, long ttlMillis, long maxIdle, long now) {
-        Record record = recordFactory.newRecord(key, value);
+        Record record = recordFactory.newRecord(value);
         record.setCreationTime(now);
         record.setLastUpdateTime(now);
 
@@ -151,9 +158,11 @@ abstract class AbstractRecordStore implements RecordStore<Record> {
     }
 
     @Override
-    public Record createRecord(Record sourceRecord, long nowInMillis) {
-        Record newRecord = recordFactory.newRecord(sourceRecord.getKey(), sourceRecord.getValue());
-        Records.copyMetadataFrom(sourceRecord, newRecord);
+    public Record createRecord(Data key, Record fromRecord, long nowInMillis) {
+        Record newRecord = recordFactory.newRecord(fromRecord == null ? null : fromRecord.getValue());
+        if (fromRecord != null) {
+            Records.copyMetadataFrom(fromRecord, newRecord);
+        }
         updateStatsOnPut(false, nowInMillis);
         return newRecord;
     }
@@ -279,5 +288,4 @@ abstract class AbstractRecordStore implements RecordStore<Record> {
         stats.setLastAccessTime(now);
         stats.increaseHits();
     }
-
 }

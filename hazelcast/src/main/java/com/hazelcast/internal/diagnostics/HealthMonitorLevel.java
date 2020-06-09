@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2008-2019, Hazelcast, Inc. All Rights Reserved.
+ * Copyright (c) 2008-2020, Hazelcast, Inc. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,14 +16,13 @@
 
 package com.hazelcast.internal.diagnostics;
 
-import com.hazelcast.spi.properties.GroupProperty;
+import com.hazelcast.spi.properties.ClusterProperty;
 
 /**
  * Health monitor can be configured with system properties.
- * <p>
- * {@link GroupProperty#HEALTH_MONITORING_LEVEL}
+ *
+ * {@link ClusterProperty#HEALTH_MONITORING_LEVEL}
  */
-//FGTODO: 2019/12/5 下午1:28 zmyer
 public enum HealthMonitorLevel {
 
     /**

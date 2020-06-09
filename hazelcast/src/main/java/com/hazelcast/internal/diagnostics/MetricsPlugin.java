@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2008-2019, Hazelcast, Inc. All Rights Reserved.
+ * Copyright (c) 2008-2020, Hazelcast, Inc. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,12 +16,12 @@
 
 package com.hazelcast.internal.diagnostics;
 
-import com.hazelcast.internal.metrics.MetricsRegistry;
 import com.hazelcast.internal.metrics.MetricDescriptor;
-import com.hazelcast.internal.metrics.ProbeLevel;
+import com.hazelcast.internal.metrics.MetricsRegistry;
 import com.hazelcast.internal.metrics.collectors.MetricsCollector;
 import com.hazelcast.logging.ILogger;
 import com.hazelcast.spi.impl.NodeEngineImpl;
+import com.hazelcast.spi.properties.ClusterProperty;
 import com.hazelcast.spi.properties.HazelcastProperties;
 import com.hazelcast.spi.properties.HazelcastProperty;
 
@@ -38,9 +38,8 @@ public class MetricsPlugin extends DiagnosticsPlugin {
      * The period in seconds the {@link MetricsPlugin} runs.
      * <p>
      * The MetricsPlugin periodically writes the contents of the MetricsRegistry
-     * to the logfile. For debugging purposes make sure the minimum metrics
-     * level is set to {@link com.hazelcast.internal.metrics.ProbeLevel#DEBUG}
-     * with {@link com.hazelcast.config.MetricsConfig#setMinimumLevel(ProbeLevel)}.
+     * to the logfile. For debugging purposes make sure
+     * {@link ClusterProperty#METRICS_DEBUG} is set to {@code true}.
      * <p>
      * This plugin is very cheap to use.
      * <p>
@@ -92,21 +91,21 @@ public class MetricsPlugin extends DiagnosticsPlugin {
         @Override
         public void collectLong(MetricDescriptor descriptor, long value) {
             if (descriptor.isTargetIncluded(DIAGNOSTICS)) {
-                writer.writeSectionKeyValue(SECTION_NAME, timeMillis, descriptor.toString(), value);
+                writer.writeSectionKeyValue(SECTION_NAME, timeMillis, descriptor.metricString(), value);
             }
         }
 
         @Override
         public void collectDouble(MetricDescriptor descriptor, double value) {
             if (descriptor.isTargetIncluded(DIAGNOSTICS)) {
-                writer.writeSectionKeyValue(SECTION_NAME, timeMillis, descriptor.toString(), value);
+                writer.writeSectionKeyValue(SECTION_NAME, timeMillis, descriptor.metricString(), value);
             }
         }
 
         @Override
         public void collectException(MetricDescriptor descriptor, Exception e) {
             if (descriptor.isTargetIncluded(DIAGNOSTICS)) {
-                writer.writeSectionKeyValue(SECTION_NAME, timeMillis, descriptor.toString(),
+                writer.writeSectionKeyValue(SECTION_NAME, timeMillis, descriptor.metricString(),
                         e.getClass().getName() + ':' + e.getMessage());
             }
         }
@@ -114,7 +113,7 @@ public class MetricsPlugin extends DiagnosticsPlugin {
         @Override
         public void collectNoValue(MetricDescriptor descriptor) {
             if (descriptor.isTargetIncluded(DIAGNOSTICS)) {
-                writer.writeSectionKeyValue(SECTION_NAME, timeMillis, descriptor.toString(), "NA");
+                writer.writeSectionKeyValue(SECTION_NAME, timeMillis, descriptor.metricString(), "NA");
             }
         }
     }

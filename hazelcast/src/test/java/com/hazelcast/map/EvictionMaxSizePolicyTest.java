@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2008-2019, Hazelcast, Inc. All Rights Reserved.
+ * Copyright (c) 2008-2020, Hazelcast, Inc. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -39,7 +39,7 @@ import com.hazelcast.map.impl.proxy.MapProxyImpl;
 import com.hazelcast.map.impl.recordstore.DefaultRecordStore;
 import com.hazelcast.map.impl.recordstore.RecordStore;
 import com.hazelcast.spi.impl.NodeEngine;
-import com.hazelcast.spi.properties.GroupProperty;
+import com.hazelcast.spi.properties.ClusterProperty;
 import com.hazelcast.test.AssertTask;
 import com.hazelcast.test.HazelcastParallelClassRunner;
 import com.hazelcast.test.HazelcastTestSupport;
@@ -159,8 +159,8 @@ public class EvictionMaxSizePolicyTest extends HazelcastTestSupport {
         LocalMapStats localMapStats1 = map1.getLocalMapStats();
         LocalMapStats localMapStats2 = map2.getLocalMapStats();
 
-        assertEquals(localMapStats1.getOwnedEntryCount(), localMapStats2.getBackupEntryCount());
-        assertEquals(localMapStats2.getOwnedEntryCount(), localMapStats1.getBackupEntryCount());
+        assertEqualsEventually(() -> localMapStats2.getBackupEntryCount(), localMapStats1.getOwnedEntryCount());
+        assertEqualsEventually(() -> localMapStats1.getBackupEntryCount(), localMapStats2.getOwnedEntryCount());
     }
 
     @Test
@@ -403,7 +403,7 @@ public class EvictionMaxSizePolicyTest extends HazelcastTestSupport {
 
     Config createConfig(MaxSizePolicy maxSizePolicy, int maxSize, String mapName) {
         Config config = getConfig();
-        config.setProperty(GroupProperty.PARTITION_COUNT.getName(), String.valueOf(PARTITION_COUNT));
+        config.setProperty(ClusterProperty.PARTITION_COUNT.getName(), String.valueOf(PARTITION_COUNT));
 
         MapConfig mapConfig = config.getMapConfig(mapName);
         EvictionConfig evictionConfig = mapConfig.getEvictionConfig();

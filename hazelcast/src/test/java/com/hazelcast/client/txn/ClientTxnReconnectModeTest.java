@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2008-2019, Hazelcast, Inc. All Rights Reserved.
+ * Copyright (c) 2008-2020, Hazelcast, Inc. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -64,7 +64,7 @@ public class ClientTxnReconnectModeTest {
     @Test(expected = OperationTimeoutException.class)
     public void testNewTransactionContext_ReconnectMode_ON() throws Throwable {
         ClientConfig config = new ClientConfig();
-        config.getConnectionStrategyConfig().getConnectionRetryConfig().setFailOnMaxBackoff(false);
+        config.getConnectionStrategyConfig().getConnectionRetryConfig().setClusterConnectTimeoutMillis(Long.MAX_VALUE);
         config.getNetworkConfig().setSmartRouting(smartRouting);
         config.getConnectionStrategyConfig().setAsyncStart(true);
         config.setProperty(ClientProperty.INVOCATION_TIMEOUT_SECONDS.getName(), "3");
@@ -80,7 +80,7 @@ public class ClientTxnReconnectModeTest {
     @Test(expected = HazelcastClientOfflineException.class)
     public void testNewTransactionContext_ReconnectMode_ASYNC() throws Throwable {
         ClientConfig config = new ClientConfig();
-        config.getConnectionStrategyConfig().getConnectionRetryConfig().setFailOnMaxBackoff(false);
+        config.getConnectionStrategyConfig().getConnectionRetryConfig().setClusterConnectTimeoutMillis(Long.MAX_VALUE);
         config.getNetworkConfig().setSmartRouting(smartRouting);
         config.getConnectionStrategyConfig().setAsyncStart(true);
 
@@ -96,7 +96,7 @@ public class ClientTxnReconnectModeTest {
     @Test(expected = HazelcastClientNotActiveException.class)
     public void testNewTransactionContext_After_shutdown() throws Throwable {
         ClientConfig config = new ClientConfig();
-        config.getConnectionStrategyConfig().getConnectionRetryConfig().setFailOnMaxBackoff(false);
+        config.getConnectionStrategyConfig().getConnectionRetryConfig().setClusterConnectTimeoutMillis(Long.MAX_VALUE);
         config.getNetworkConfig().setSmartRouting(smartRouting);
         config.getConnectionStrategyConfig().setAsyncStart(true);
 

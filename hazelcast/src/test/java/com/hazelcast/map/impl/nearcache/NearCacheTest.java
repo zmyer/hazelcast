@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2008-2019, Hazelcast, Inc. All Rights Reserved.
+ * Copyright (c) 2008-2020, Hazelcast, Inc. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -23,19 +23,18 @@ import com.hazelcast.config.InvalidConfigurationException;
 import com.hazelcast.config.MapConfig;
 import com.hazelcast.config.MaxSizePolicy;
 import com.hazelcast.config.NearCacheConfig;
-import com.hazelcast.core.ExecutionCallback;
 import com.hazelcast.core.HazelcastInstance;
-import com.hazelcast.map.IMap;
 import com.hazelcast.internal.nearcache.NearCache;
 import com.hazelcast.internal.partition.InternalPartitionService;
-import com.hazelcast.map.impl.proxy.NearCachedMapProxyImpl;
+import com.hazelcast.map.IMap;
 import com.hazelcast.map.LocalMapStats;
+import com.hazelcast.map.impl.proxy.NearCachedMapProxyImpl;
 import com.hazelcast.nearcache.NearCacheStats;
 import com.hazelcast.query.Predicate;
 import com.hazelcast.query.PredicateBuilder.EntryObject;
 import com.hazelcast.query.Predicates;
 import com.hazelcast.query.SampleTestObjects.Employee;
-import com.hazelcast.spi.properties.GroupProperty;
+import com.hazelcast.spi.properties.ClusterProperty;
 import com.hazelcast.test.HazelcastParallelParametersRunnerFactory;
 import com.hazelcast.test.TestHazelcastInstanceFactory;
 import com.hazelcast.test.annotation.ParallelJVMTest;
@@ -54,6 +53,7 @@ import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 
+import static com.hazelcast.test.Accessors.getPartitionService;
 import static java.lang.String.format;
 import static java.lang.String.valueOf;
 import static org.junit.Assert.assertEquals;
@@ -126,8 +126,8 @@ public class NearCacheTest extends NearCacheTestSupport {
 
     @Override
     protected Config getConfig() {
-        Config config = super.getConfig();
-        config.setProperty(GroupProperty.MAP_INVALIDATION_MESSAGE_BATCH_ENABLED.getName(), valueOf(batchInvalidationEnabled));
+        Config config = smallInstanceConfig();
+        config.setProperty(ClusterProperty.MAP_INVALIDATION_MESSAGE_BATCH_ENABLED.getName(), valueOf(batchInvalidationEnabled));
         config.setProperty(NearCache.PROP_EXPIRATION_TASK_INITIAL_DELAY_SECONDS, "0");
         config.setProperty(NearCache.PROP_EXPIRATION_TASK_PERIOD_SECONDS, "1");
         return config;
@@ -314,6 +314,36 @@ public class NearCacheTest extends NearCacheTestSupport {
 
         assertTrueEventually(
                 () -> assertEquals("Invalidation is not working on putAll()", 0, getNearCacheSize(map))
+        );
+    }
+
+    @Test
+    public void testNearCacheInvalidationByUsingMapSetAll() {
+        int clusterSize = 3;
+        int mapSize = 5000;
+        String mapName = randomMapName();
+
+        Config config = getConfig();
+        config.getMapConfig(mapName).setNearCacheConfig(newNearCacheConfig().setInvalidateOnChange(true));
+        TestHazelcastInstanceFactory factory = createHazelcastInstanceFactory(clusterSize);
+
+        HazelcastInstance[] instances = factory.newInstances(config);
+        final IMap<Integer, Integer> map = instances[0].getMap(mapName);
+
+        populateMap(map, mapSize);
+        populateNearCache(map, mapSize);
+
+        // more-or-less (count / no_of_nodes) should be in the Near Cache now
+        assertTrue(getNearCacheSize(map) > (mapSize / clusterSize - mapSize * 0.1));
+
+        Map<Integer, Integer> invalidationMap = new HashMap<>(mapSize);
+        populateMap(invalidationMap, mapSize);
+
+        // this should invalidate the Near Cache
+        map.setAll(invalidationMap);
+
+        assertTrueEventually(
+            () -> assertEquals("Invalidation is not working on setAll()", 0, getNearCacheSize(map))
         );
     }
 
@@ -545,17 +575,6 @@ public class NearCacheTest extends NearCacheTestSupport {
         populateNearCache(map, mapSize);
 
         final CountDownLatch latch = new CountDownLatch(10);
-        ExecutionCallback<Integer> callback = new ExecutionCallback<Integer>() {
-            @Override
-            public void onResponse(Integer response) {
-                latch.countDown();
-            }
-
-            @Override
-            public void onFailure(Throwable t) {
-            }
-        };
-
         int randomKey = random.nextInt(mapSize);
         map.submitToKey(randomKey,
                 entry -> {
@@ -563,7 +582,8 @@ public class NearCacheTest extends NearCacheTestSupport {
                     int newValue = currentValue + 1;
                     entry.setValue(newValue);
                     return newValue;
-                }, callback);
+                })
+            .thenRunAsync(latch::countDown);
 
         latch.await(3, TimeUnit.SECONDS);
 
@@ -673,8 +693,8 @@ public class NearCacheTest extends NearCacheTestSupport {
         NearCacheConfig nearCacheConfig = newNearCacheConfig();
         nearCacheConfig.setInMemoryFormat(InMemoryFormat.OBJECT);
         nearCacheConfig.getEvictionConfig()
-                       .setMaxSizePolicy(MaxSizePolicy.ENTRY_COUNT)
-                       .setSize(10);
+                .setMaxSizePolicy(MaxSizePolicy.ENTRY_COUNT)
+                .setSize(10);
 
         Config config = getConfig();
         config.addMapConfig(new MapConfig(mapName).setNearCacheConfig(nearCacheConfig));
@@ -728,7 +748,7 @@ public class NearCacheTest extends NearCacheTestSupport {
         int size = 1000;
         final String mapName = randomMapName();
         Config config = createNearCachedMapConfig(mapName);
-        config.setProperty(GroupProperty.PARTITION_COUNT.getName(), "1");
+        config.setProperty(ClusterProperty.PARTITION_COUNT.getName(), "1");
 
         TestHazelcastInstanceFactory factory = createHazelcastInstanceFactory();
         final HazelcastInstance instance1 = factory.newHazelcastInstance(config);
@@ -753,7 +773,7 @@ public class NearCacheTest extends NearCacheTestSupport {
         int size = 1000;
         final String mapName = randomMapName();
         Config config = createNearCachedMapConfig(mapName);
-        config.setProperty(GroupProperty.PARTITION_COUNT.getName(), "1");
+        config.setProperty(ClusterProperty.PARTITION_COUNT.getName(), "1");
 
         TestHazelcastInstanceFactory factory = createHazelcastInstanceFactory();
         final HazelcastInstance instance1 = factory.newHazelcastInstance(config);
@@ -836,7 +856,7 @@ public class NearCacheTest extends NearCacheTestSupport {
         nearCacheConfig.setCacheLocalEntries(true);
 
         config.getMapConfig(mapName)
-              .setNearCacheConfig(nearCacheConfig);
+                .setNearCacheConfig(nearCacheConfig);
 
         HazelcastInstance node = createHazelcastInstance(config);
         IMap map = node.getMap(mapName);

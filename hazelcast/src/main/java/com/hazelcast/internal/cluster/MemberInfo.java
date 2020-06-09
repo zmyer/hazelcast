@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2008-2019, Hazelcast, Inc. All Rights Reserved.
+ * Copyright (c) 2008-2020, Hazelcast, Inc. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -54,12 +54,17 @@ public class MemberInfo implements IdentifiedDataSerializable {
     public MemberInfo() {
     }
 
-    public MemberInfo(Address address, UUID uuid, Map<String, String> attributes, MemberVersion version) {
-        this(address, uuid, attributes, false, version, NA_MEMBER_LIST_JOIN_VERSION, Collections.emptyMap());
+    public MemberInfo(Address address, UUID uuid, Map<String, String> attributes, boolean liteMember, MemberVersion version) {
+        this(address, uuid, attributes, liteMember, version, NA_MEMBER_LIST_JOIN_VERSION, Collections.emptyMap());
     }
 
     public MemberInfo(Address address, UUID uuid, Map<String, String> attributes, boolean liteMember, MemberVersion version,
                       Map<EndpointQualifier, Address> addressMap) {
+        this(address, uuid, attributes, liteMember, version, NA_MEMBER_LIST_JOIN_VERSION, addressMap);
+    }
+
+    public MemberInfo(Address address, UUID uuid, Map<String, String> attributes, boolean liteMember, MemberVersion version,
+                      boolean isAddressMapExists, Map<EndpointQualifier, Address> addressMap) {
         this(address, uuid, attributes, liteMember, version, NA_MEMBER_LIST_JOIN_VERSION, addressMap);
     }
 
@@ -154,30 +159,27 @@ public class MemberInfo implements IdentifiedDataSerializable {
     }
 
     @Override
-    public int hashCode() {
-        final int prime = 31;
-        int result = 1;
-        result = prime * result + ((address == null) ? 0 : address.hashCode());
-        return result;
+    public boolean equals(Object o) {
+        if (this == o) {
+            return true;
+        }
+        if (o == null || getClass() != o.getClass()) {
+            return false;
+        }
+
+        MemberInfo that = (MemberInfo) o;
+
+        if (!address.equals(that.address)) {
+            return false;
+        }
+        return uuid != null ? uuid.equals(that.uuid) : that.uuid == null;
     }
 
     @Override
-    public boolean equals(Object obj) {
-        if (this == obj) {
-            return true;
-        }
-        if (obj == null) {
-            return false;
-        }
-        if (getClass() != obj.getClass()) {
-            return false;
-        }
-        MemberInfo other = (MemberInfo) obj;
-        if (address == null) {
-            return other.address == null;
-        } else {
-            return address.equals(other.address);
-        }
+    public int hashCode() {
+        int result = address.hashCode();
+        result = 31 * result + (uuid != null ? uuid.hashCode() : 0);
+        return result;
     }
 
     @Override

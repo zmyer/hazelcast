@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2008-2019, Hazelcast, Inc. All Rights Reserved.
+ * Copyright (c) 2008-2020, Hazelcast, Inc. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -19,8 +19,6 @@ package com.hazelcast.client.impl.spi;
 import com.hazelcast.cache.impl.ICacheService;
 import com.hazelcast.cache.impl.JCacheDetector;
 import com.hazelcast.cardinality.impl.CardinalityEstimatorService;
-import com.hazelcast.client.HazelcastClientOfflineException;
-import com.hazelcast.client.LoadBalancer;
 import com.hazelcast.client.cache.impl.ClientCacheProxyFactory;
 import com.hazelcast.client.config.ClientConfig;
 import com.hazelcast.client.config.ProxyFactoryConfig;
@@ -46,23 +44,18 @@ import com.hazelcast.client.impl.proxy.ClientScheduledExecutorProxy;
 import com.hazelcast.client.impl.proxy.ClientSetProxy;
 import com.hazelcast.client.impl.proxy.ClientTopicProxy;
 import com.hazelcast.client.impl.proxy.txn.xa.XAResourceProxy;
-import com.hazelcast.client.impl.spi.impl.AbstractClientInvocationService;
 import com.hazelcast.client.impl.spi.impl.ClientInvocation;
 import com.hazelcast.client.impl.spi.impl.ClientServiceNotFoundException;
 import com.hazelcast.client.impl.spi.impl.ListenerMessageCodec;
 import com.hazelcast.client.impl.spi.impl.listener.LazyDistributedObjectEvent;
-import com.hazelcast.cluster.Address;
-import com.hazelcast.cluster.Member;
 import com.hazelcast.collection.impl.list.ListService;
 import com.hazelcast.collection.impl.queue.QueueService;
 import com.hazelcast.collection.impl.set.SetService;
-import com.hazelcast.config.ListenerConfig;
 import com.hazelcast.core.DistributedObject;
 import com.hazelcast.core.DistributedObjectEvent;
 import com.hazelcast.core.DistributedObjectListener;
 import com.hazelcast.core.HazelcastException;
 import com.hazelcast.core.HazelcastInstance;
-import com.hazelcast.core.OperationTimeoutException;
 import com.hazelcast.durableexecutor.impl.DistributedDurableExecutorService;
 import com.hazelcast.executor.impl.DistributedExecutorService;
 import com.hazelcast.flakeidgen.impl.FlakeIdGeneratorService;
@@ -70,7 +63,6 @@ import com.hazelcast.internal.crdt.pncounter.PNCounterService;
 import com.hazelcast.internal.longregister.LongRegisterService;
 import com.hazelcast.internal.longregister.client.ClientLongRegisterProxy;
 import com.hazelcast.internal.nio.ClassLoaderUtil;
-import com.hazelcast.internal.nio.Connection;
 import com.hazelcast.internal.services.DistributedObjectNamespace;
 import com.hazelcast.internal.services.ObjectNamespace;
 import com.hazelcast.map.impl.MapService;
@@ -83,7 +75,6 @@ import com.hazelcast.topic.impl.reliable.ReliableTopicService;
 import com.hazelcast.transaction.impl.xa.XAService;
 
 import javax.annotation.Nonnull;
-import java.io.IOException;
 import java.lang.reflect.Constructor;
 import java.util.AbstractMap;
 import java.util.Collection;
@@ -94,12 +85,10 @@ import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
-import java.util.concurrent.ExecutionException;
 
 import static com.hazelcast.internal.util.ExceptionUtil.rethrow;
 import static com.hazelcast.internal.util.Preconditions.checkNotNull;
 import static com.hazelcast.internal.util.ServiceLoader.classIterator;
-import static java.lang.Thread.currentThread;
 
 /**
  * The ProxyManager handles client proxy instantiation and retrieval at start and runtime by registering
@@ -116,34 +105,9 @@ public final class ProxyManager {
     private final ConcurrentMap<String, ClientProxyFactory> proxyFactories = new ConcurrentHashMap<>();
     private final ConcurrentMap<ObjectNamespace, ClientProxyFuture> proxies = new ConcurrentHashMap<>();
 
-    private final ListenerMessageCodec distributedObjectListenerCodec = new ListenerMessageCodec() {
-        @Override
-        public ClientMessage encodeAddRequest(boolean localOnly) {
-            return ClientAddDistributedObjectListenerCodec.encodeRequest(localOnly);
-        }
-
-        @Override
-        public UUID decodeAddResponse(ClientMessage clientMessage) {
-            return ClientAddDistributedObjectListenerCodec.decodeResponse(clientMessage).response;
-        }
-
-        @Override
-        public ClientMessage encodeRemoveRequest(UUID realRegistrationId) {
-            return ClientRemoveDistributedObjectListenerCodec.encodeRequest(realRegistrationId);
-        }
-
-        @Override
-        public boolean decodeRemoveResponse(ClientMessage clientMessage) {
-            return ClientRemoveDistributedObjectListenerCodec.decodeResponse(clientMessage).response;
-        }
-    };
-
     private final HazelcastClientInstanceImpl client;
 
     private ClientContext context;
-    private long invocationRetryPauseMillis;
-    private long invocationTimeoutMillis;
-
 
     public ProxyManager(HazelcastClientInstanceImpl client) {
         this.client = client;
@@ -151,15 +115,6 @@ public final class ProxyManager {
 
     @SuppressWarnings("checkstyle:methodlength")
     public void init(ClientConfig config, ClientContext clientContext) {
-        List<ListenerConfig> listenerConfigs = client.getClientConfig().getListenerConfigs();
-        if (listenerConfigs != null && !listenerConfigs.isEmpty()) {
-            for (ListenerConfig listenerConfig : listenerConfigs) {
-                if (listenerConfig.getImplementation() instanceof DistributedObjectListener) {
-                    addDistributedObjectListener((DistributedObjectListener) listenerConfig.getImplementation());
-                }
-            }
-        }
-
         context = clientContext;
         // register defaults
         register(MapService.SERVICE_NAME, createServiceProxyFactory(MapService.class));
@@ -203,9 +158,6 @@ public final class ProxyManager {
         }
 
         readProxyDescriptors();
-        AbstractClientInvocationService invocationService = (AbstractClientInvocationService) client.getInvocationService();
-        invocationTimeoutMillis = invocationService.getInvocationTimeoutMillis();
-        invocationRetryPauseMillis = invocationService.getInvocationRetryPauseMillis();
     }
 
     private void readProxyDescriptors() {
@@ -300,7 +252,7 @@ public final class ProxyManager {
         try {
             ClientProxy clientProxy = createClientProxy(id, factory);
             if (remote) {
-                initializeWithRetry(clientProxy);
+                initialize(clientProxy);
             } else {
                 clientProxy.onInitialize();
             }
@@ -374,69 +326,11 @@ public final class ProxyManager {
         return factory.create(id, context);
     }
 
-    private void initializeWithRetry(ClientProxy clientProxy) throws Exception {
-        long startMillis = System.currentTimeMillis();
-        while (System.currentTimeMillis() < startMillis + invocationTimeoutMillis) {
-            try {
-                initialize(clientProxy);
-                return;
-            } catch (Exception e) {
-                boolean retryable = isRetryable(e);
-
-                if (!retryable && e instanceof ExecutionException) {
-                    retryable = isRetryable(e.getCause());
-                }
-
-                if (retryable) {
-                    try {
-                        Thread.sleep(invocationRetryPauseMillis);
-                    } catch (InterruptedException ignored) {
-                        currentThread().interrupt();
-                    }
-                } else {
-                    throw e;
-                }
-            }
-        }
-        long elapsedTime = System.currentTimeMillis() - startMillis;
-        throw new OperationTimeoutException("Initializing  " + clientProxy.getServiceName() + ":"
-                + clientProxy.getName() + " is timed out after " + elapsedTime
-                + " ms. Configured invocation timeout is " + invocationTimeoutMillis + " ms");
-    }
-
-    private boolean isRetryable(final Throwable t) {
-        return ClientInvocation.isRetrySafeException(t);
-    }
-
     private void initialize(ClientProxy clientProxy) throws Exception {
-        Address initializationTarget = findNextAddressToSendCreateRequest();
-        if (initializationTarget == null) {
-            throw new IOException("Not able to find a member to create proxy on!");
-        }
         ClientMessage clientMessage = ClientCreateProxyCodec.encodeRequest(clientProxy.getDistributedObjectName(),
-                clientProxy.getServiceName(), initializationTarget);
-        new ClientInvocation(client, clientMessage, clientProxy.getServiceName(), initializationTarget).invoke().get();
+                clientProxy.getServiceName());
+        new ClientInvocation(client, clientMessage, clientProxy.getServiceName()).invoke().get();
         clientProxy.onInitialize();
-    }
-
-    public Address findNextAddressToSendCreateRequest() {
-        int clusterSize = client.getClientClusterService().getSize();
-        if (clusterSize == 0) {
-            throw new HazelcastClientOfflineException("Client connecting to cluster");
-        }
-        Member liteMember = null;
-
-        final LoadBalancer loadBalancer = client.getLoadBalancer();
-        for (int i = 0; i < clusterSize; i++) {
-            Member member = loadBalancer.next();
-            if (member != null && !member.isLiteMember()) {
-                return member.getAddress();
-            } else if (liteMember == null) {
-                liteMember = member;
-            }
-        }
-
-        return liteMember != null ? liteMember.getAddress() : null;
     }
 
     public Collection<? extends DistributedObject> getDistributedObjects() {
@@ -456,10 +350,10 @@ public final class ProxyManager {
 
     public UUID addDistributedObjectListener(@Nonnull DistributedObjectListener listener) {
         final EventHandler<ClientMessage> eventHandler = new DistributedObjectEventHandler(listener, this);
-        return client.getListenerService().registerListener(distributedObjectListenerCodec, eventHandler);
+        return client.getListenerService().registerListener(new DistributeObjectListenerMessageCodec(), eventHandler);
     }
 
-    public void createDistributedObjectsOnCluster(Connection ownerConnection) {
+    public void createDistributedObjectsOnCluster() {
         List<Map.Entry<String, String>> proxyEntries = new LinkedList<>();
         for (ObjectNamespace objectNamespace : proxies.keySet()) {
             String name = objectNamespace.getObjectName();
@@ -470,7 +364,7 @@ public final class ProxyManager {
             return;
         }
         ClientMessage clientMessage = ClientCreateProxiesCodec.encodeRequest(proxyEntries);
-        new ClientInvocation(client, clientMessage, null, ownerConnection).invokeUrgent();
+        new ClientInvocation(client, clientMessage, null).invokeUrgent();
         createCachesOnCluster();
     }
 
@@ -494,12 +388,12 @@ public final class ProxyManager {
         }
 
         @Override
-        public void handleDistributedObjectEvent(String name, String serviceName, String eventTypeName) {
+        public void handleDistributedObjectEvent(String name, String serviceName, String eventTypeName, UUID source) {
             final ObjectNamespace ns = new DistributedObjectNamespace(serviceName, name);
             ClientProxyFuture future = proxies.get(ns);
             ClientProxy proxy = future == null ? null : future.get();
             DistributedObjectEvent.EventType eventType = DistributedObjectEvent.EventType.valueOf(eventTypeName);
-            LazyDistributedObjectEvent event = new LazyDistributedObjectEvent(eventType, serviceName, name, proxy,
+            LazyDistributedObjectEvent event = new LazyDistributedObjectEvent(eventType, serviceName, name, proxy, source,
                     proxyManager);
             if (DistributedObjectEvent.EventType.CREATED.equals(eventType)) {
                 listener.distributedObjectCreated(event);
@@ -507,18 +401,35 @@ public final class ProxyManager {
                 listener.distributedObjectDestroyed(event);
             }
         }
-
-        @Override
-        public void beforeListenerRegister() {
-        }
-
-        @Override
-        public void onListenerRegister() {
-        }
     }
 
     public boolean removeDistributedObjectListener(@Nonnull UUID id) {
         return client.getListenerService().deregisterListener(id);
+    }
+
+    private static final class DistributeObjectListenerMessageCodec implements ListenerMessageCodec {
+        private DistributeObjectListenerMessageCodec() {
+        }
+
+        @Override
+        public ClientMessage encodeAddRequest(boolean localOnly) {
+            return ClientAddDistributedObjectListenerCodec.encodeRequest(localOnly);
+        }
+
+        @Override
+        public UUID decodeAddResponse(ClientMessage clientMessage) {
+            return ClientAddDistributedObjectListenerCodec.decodeResponse(clientMessage).response;
+        }
+
+        @Override
+        public ClientMessage encodeRemoveRequest(UUID realRegistrationId) {
+            return ClientRemoveDistributedObjectListenerCodec.encodeRequest(realRegistrationId);
+        }
+
+        @Override
+        public boolean decodeRemoveResponse(ClientMessage clientMessage) {
+            return ClientRemoveDistributedObjectListenerCodec.decodeResponse(clientMessage).response;
+        }
     }
 
     private static class ClientProxyFuture {

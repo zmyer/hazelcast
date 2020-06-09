@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2008-2019, Hazelcast, Inc. All Rights Reserved.
+ * Copyright (c) 2008-2020, Hazelcast, Inc. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -32,7 +32,7 @@ import com.hazelcast.map.listener.MapEvictedListener;
  * of operations carried out via the {@link IMap}
  * interface.  Events will not fire, for example, for an entry
  * that comes into the Map via the {@link MapLoader} lifecycle.
- * <p/>
+ * <p>
  * This interface is here for backward compatibility reasons.
  * For a most appropriate alternative please use/check
  * {@link com.hazelcast.map.listener.MapListener} interface.

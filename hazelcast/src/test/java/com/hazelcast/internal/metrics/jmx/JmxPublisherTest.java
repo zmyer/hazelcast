@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2008-2019, Hazelcast, Inc. All Rights Reserved.
+ * Copyright (c) 2008-2020, Hazelcast, Inc. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -17,7 +17,9 @@
 package com.hazelcast.internal.metrics.jmx;
 
 import com.hazelcast.internal.metrics.MetricDescriptor;
+import com.hazelcast.internal.metrics.jmx.MetricsMBean.Type;
 import com.hazelcast.internal.util.BiTuple;
+import com.hazelcast.internal.util.TriTuple;
 import com.hazelcast.test.HazelcastSerialClassRunner;
 import com.hazelcast.test.annotation.QuickTest;
 import org.junit.After;
@@ -29,26 +31,17 @@ import org.junit.runner.RunWith;
 import javax.management.InstanceNotFoundException;
 import javax.management.MBeanServer;
 import javax.management.ObjectInstance;
-import javax.management.ObjectName;
 import java.lang.management.ManagementFactory;
-import java.util.HashSet;
 import java.util.List;
-import java.util.Map;
-import java.util.Map.Entry;
-import java.util.Set;
 import java.util.concurrent.ThreadLocalRandom;
-import java.util.function.Function;
-import java.util.stream.Collectors;
 
 import static com.hazelcast.internal.metrics.MetricTarget.JMX;
 import static com.hazelcast.internal.metrics.impl.DefaultMetricDescriptorSupplier.DEFAULT_DESCRIPTOR_SUPPLIER;
-import static com.hazelcast.internal.util.BiTuple.of;
-import static com.hazelcast.internal.util.MapUtil.entry;
+import static com.hazelcast.internal.metrics.jmx.MetricsMBean.Type.DOUBLE;
+import static com.hazelcast.internal.metrics.jmx.MetricsMBean.Type.LONG;
 import static java.util.Arrays.asList;
 import static java.util.Collections.emptyList;
 import static java.util.Collections.singletonList;
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertTrue;
 
 @RunWith(HazelcastSerialClassRunner.class)
 @Category(QuickTest.class)
@@ -56,22 +49,19 @@ public class JmxPublisherTest {
 
     private static final String MODULE_NAME = "moduleA";
 
-    private ObjectName objectNameNoModule;
-    private ObjectName objectNameWithModule;
-
     private JmxPublisher jmxPublisher;
     private MBeanServer platformMBeanServer;
     private String domainPrefix;
+    private JmxPublisherTestHelper helper;
 
     @Before
     public void before() throws Exception {
         domainPrefix = "domain" + ThreadLocalRandom.current().nextInt(Integer.MAX_VALUE);
         jmxPublisher = new JmxPublisher("inst1", domainPrefix);
+        helper = new JmxPublisherTestHelper(domainPrefix);
         platformMBeanServer = ManagementFactory.getPlatformMBeanServer();
-        objectNameNoModule = new ObjectName(domainPrefix + ":*");
-        objectNameWithModule = new ObjectName(domainPrefix + "." + MODULE_NAME + ":*");
         try {
-            assertMBeans(emptyList());
+            helper.assertMBeans(emptyList());
         } catch (AssertionError e) {
             throw new AssertionError("JMX beans used by this test are already registered", e);
         }
@@ -81,7 +71,7 @@ public class JmxPublisherTest {
     public void after() throws Exception {
         // unregister all beans in domains used in the test to not interfere with other tests
         try {
-            for (ObjectInstance instance : queryOurInstances()) {
+            for (ObjectInstance instance : helper.queryOurInstances()) {
                 platformMBeanServer.unregisterMBean(instance.getObjectName());
             }
         } catch (InstanceNotFoundException ignored) {
@@ -95,9 +85,9 @@ public class JmxPublisherTest {
                 .withTag("tag1", "a")
                 .withTag("tag2", "b");
         jmxPublisher.publishLong(descriptor, 1L);
-        assertMBeans(singletonList(
-                of(domainPrefix + ":type=Metrics,instance=inst1,tag0=\"tag1=a\",tag1=\"tag2=b\"",
-                        singletonList(entry("c", 1L)))));
+        helper.assertMBeans(singletonList(
+                metric(domainPrefix + ":type=Metrics,instance=inst1,tag0=\"tag1=a\",tag1=\"tag2=b\"",
+                        singletonList(longValue("c", 1L)))));
     }
 
     @Test
@@ -109,9 +99,10 @@ public class JmxPublisherTest {
                 .withTag("tag1", "a")
                 .withTag("tag2", "b");
         jmxPublisher.publishLong(descriptor, 1L);
-        assertMBeans(singletonList(
-                of(domainPrefix + ":type=Metrics,instance=inst1,prefix=d,tag0=\"tag1=a\",tag1=\"tag2=b\",tag2=\"name=itsName\"",
-                        singletonList(entry("c", 1L)))));
+        helper.assertMBeans(singletonList(
+                metric(domainPrefix
+                                + ":type=Metrics,instance=inst1,prefix=d,tag0=\"tag1=a\",tag1=\"tag2=b\",tag2=\"name=itsName\"",
+                        singletonList(longValue("c", 1L)))));
     }
 
     @Test
@@ -121,9 +112,9 @@ public class JmxPublisherTest {
                 .withTag("tag1", "a")
                 .withTag("module", MODULE_NAME);
         jmxPublisher.publishLong(descriptor, 1L);
-        assertMBeans(singletonList(
-                of(domainPrefix + "." + MODULE_NAME + ":type=Metrics,instance=inst1,tag0=\"tag1=a\"",
-                        singletonList(entry("c", 1L)))));
+        helper.assertMBeans(singletonList(
+                metric(domainPrefix + "." + MODULE_NAME + ":type=Metrics,instance=inst1,tag0=\"tag1=a\"",
+                        singletonList(longValue("c", 1L)))));
     }
 
     @Test
@@ -147,15 +138,15 @@ public class JmxPublisherTest {
                 .withTag("tag2", "c"), 3L);
         jmxPublisher.publishLong(newDescriptor()
                 .withMetric("a"), 4L);
-        assertMBeans(asList(
-                of(domainPrefix + ":type=Metrics,instance=inst1,tag0=\"tag1=a\",tag1=\"tag2=b\"",
-                        asList(entry("c", 1L), entry("d", 2L))),
-                of(domainPrefix + "." + MODULE_NAME + ":type=Metrics,instance=inst1,tag0=\"tag1=a\",tag1=\"tag2=b\"",
-                        singletonList(entry("d", 5L))),
-                of(domainPrefix + ":type=Metrics,instance=inst1,tag0=\"tag1=a\",tag1=\"tag2=c\"",
-                        singletonList(entry("a", 3L))),
-                of(domainPrefix + ":type=Metrics,instance=inst1",
-                        singletonList(entry("a", 4L)))
+        helper.assertMBeans(asList(
+                metric(domainPrefix + ":type=Metrics,instance=inst1,tag0=\"tag1=a\",tag1=\"tag2=b\"",
+                        asList(longValue("c", 1L), longValue("d", 2L))),
+                metric(domainPrefix + "." + MODULE_NAME + ":type=Metrics,instance=inst1,tag0=\"tag1=a\",tag1=\"tag2=b\"",
+                        singletonList(longValue("d", 5L))),
+                metric(domainPrefix + ":type=Metrics,instance=inst1,tag0=\"tag1=a\",tag1=\"tag2=c\"",
+                        singletonList(longValue("a", 3L))),
+                metric(domainPrefix + ":type=Metrics,instance=inst1",
+                        singletonList(longValue("a", 4L)))
         ));
     }
 
@@ -168,22 +159,22 @@ public class JmxPublisherTest {
                 .withMetric("c")
                 .withTag("tag1", "a"), 2L);
         jmxPublisher.whenComplete();
-        assertMBeans(singletonList(
-                of(domainPrefix + ":type=Metrics,instance=inst1,tag0=\"tag1=a\"",
-                        asList(entry("b", 1L), entry("c", 2L)))
+        helper.assertMBeans(singletonList(
+                metric(domainPrefix + ":type=Metrics,instance=inst1,tag0=\"tag1=a\"",
+                        asList(longValue("b", 1L), longValue("c", 2L)))
         ));
 
         jmxPublisher.publishLong(newDescriptor()
                 .withMetric("b")
                 .withTag("tag1", "a"), 1L);
         jmxPublisher.whenComplete();
-        assertMBeans(singletonList(
-                of(domainPrefix + ":type=Metrics,instance=inst1,tag0=\"tag1=a\"",
-                        singletonList(entry("b", 1L)))
+        helper.assertMBeans(singletonList(
+                metric(domainPrefix + ":type=Metrics,instance=inst1,tag0=\"tag1=a\"",
+                        singletonList(longValue("b", 1L)))
         ));
 
         jmxPublisher.whenComplete();
-        assertMBeans(emptyList());
+        helper.assertMBeans(emptyList());
     }
 
     @Test
@@ -219,7 +210,6 @@ public class JmxPublisherTest {
 
     private void when_badCharacters_then_escaped(String badText) throws Exception {
         // we must be able to work with any crazy user input
-        System.out.println("badText: " + badText);
         jmxPublisher.publishLong(newDescriptor()
                 .withPrefix(badText)
                 .withMetric("metric"), 1L);
@@ -228,11 +218,11 @@ public class JmxPublisherTest {
                 .withTag("tag1", "a"), 2L);
         jmxPublisher.whenComplete();
 
-        assertMBeans(asList(
-                of(domainPrefix + ":type=Metrics,instance=inst1,prefix=" + JmxPublisher.escapeObjectNameValue(badText),
-                        singletonList(entry("metric", 1L))),
-                of(domainPrefix + ":type=Metrics,instance=inst1,tag0=\"tag1=a\"",
-                        singletonList(entry(badText, 2L)))
+        helper.assertMBeans(asList(
+                metric(domainPrefix + ":type=Metrics,instance=inst1,prefix=" + JmxPublisher.escapeObjectNameValue(badText),
+                        singletonList(longValue("metric", 1L))),
+                metric(domainPrefix + ":type=Metrics,instance=inst1,tag0=\"tag1=a\"",
+                        singletonList(longValue(badText, 2L)))
         ));
     }
 
@@ -254,39 +244,63 @@ public class JmxPublisherTest {
                 .withMetric("double"), 2.5D);
         jmxPublisher.whenComplete();
 
-        assertMBeans(singletonList(
-                of(domainPrefix + ":type=Metrics,instance=inst1,prefix=notExcluded", asList(
-                        entry("long", 2L),
-                        entry("double", 2.5D)
+        helper.assertMBeans(singletonList(
+                metric(domainPrefix + ":type=Metrics,instance=inst1,prefix=notExcluded", asList(
+                        longValue("long", 2L),
+                        doubleValue("double", 2.5D)
                 ))
         ));
+    }
+
+    @Test
+    public void when_singleMetricUpdates() throws Exception {
+        MetricDescriptor descriptor = newDescriptor()
+                .withMetric("c")
+                .withTag("tag1", "a")
+                .withTag("tag2", "b");
+        jmxPublisher.publishLong(descriptor, 1L);
+        jmxPublisher.whenComplete();
+        helper.assertMBeans(singletonList(
+                metric(domainPrefix + ":type=Metrics,instance=inst1,tag0=\"tag1=a\",tag1=\"tag2=b\"",
+                        singletonList(longValue("c", 1L)))));
+
+        jmxPublisher.publishLong(descriptor, 2L);
+        helper.assertMBeans(singletonList(
+                metric(domainPrefix + ":type=Metrics,instance=inst1,tag0=\"tag1=a\",tag1=\"tag2=b\"",
+                        singletonList(longValue("c", 2L)))));
+    }
+
+    @Test
+    public void when_shutdown_noMBeansLeak() throws Exception {
+        MetricDescriptor descriptor = newDescriptor()
+                .withMetric("c")
+                .withTag("tag1", "a")
+                .withTag("tag2", "b");
+        jmxPublisher.publishLong(descriptor, 1L);
+        jmxPublisher.whenComplete();
+        helper.assertMBeans(singletonList(
+                metric(domainPrefix + ":type=Metrics,instance=inst1,tag0=\"tag1=a\",tag1=\"tag2=b\"",
+                        singletonList(longValue("c", 1L)))));
+
+        jmxPublisher.shutdown();
+
+        helper.assertMBeans(emptyList());
     }
 
     private MetricDescriptor newDescriptor() {
         return DEFAULT_DESCRIPTOR_SUPPLIER.get();
     }
 
-    private void assertMBeans(List<BiTuple<String, List<Entry<String, Number>>>> expected) throws Exception {
-        Set<ObjectInstance> instances = queryOurInstances();
-        Map<ObjectName, ObjectInstance> instanceMap =
-                instances.stream().collect(Collectors.toMap(ObjectInstance::getObjectName, Function.identity()));
-
-        assertEquals("actual: " + instances, expected.size(), instances.size());
-
-        for (BiTuple<String, List<Entry<String, Number>>> entry : expected) {
-            ObjectName on = new ObjectName(entry.element1);
-            assertTrue("name: " + on + " not in instances " + instances, instanceMap.containsKey(on));
-            for (Entry<String, Number> attribute : entry.element2) {
-                assertEquals("Attribute '" + attribute.getKey() + "' of '" + on + "' doesn't match",
-                        attribute.getValue(), platformMBeanServer.getAttribute(on, attribute.getKey()));
-            }
-        }
+    private BiTuple<String, List<TriTuple<String, Number, Type>>> metric(String objectName,
+                                                                         List<TriTuple<String, Number, Type>> measurements) {
+        return BiTuple.of(objectName, measurements);
     }
 
-    private Set<ObjectInstance> queryOurInstances() {
-        Set<ObjectInstance> instances = new HashSet<>();
-        instances.addAll(platformMBeanServer.queryMBeans(objectNameNoModule, null));
-        instances.addAll(platformMBeanServer.queryMBeans(objectNameWithModule, null));
-        return instances;
+    private TriTuple<String, Number, Type> longValue(String name, long value) {
+        return TriTuple.of(name, value, LONG);
+    }
+
+    private TriTuple<String, Number, Type> doubleValue(String name, double value) {
+        return TriTuple.of(name, value, DOUBLE);
     }
 }

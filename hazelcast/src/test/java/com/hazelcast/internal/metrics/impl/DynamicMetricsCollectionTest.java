@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2008-2019, Hazelcast, Inc. All Rights Reserved.
+ * Copyright (c) 2008-2020, Hazelcast, Inc. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,13 +16,14 @@
 
 package com.hazelcast.internal.metrics.impl;
 
-import com.hazelcast.internal.metrics.MetricsRegistry;
 import com.hazelcast.internal.metrics.MetricDescriptor;
+import com.hazelcast.internal.metrics.MetricsRegistry;
 import com.hazelcast.internal.metrics.Probe;
 import com.hazelcast.internal.metrics.collectors.MetricsCollector;
 import com.hazelcast.logging.Logger;
 import com.hazelcast.test.HazelcastParallelClassRunner;
 import com.hazelcast.test.HazelcastTestSupport;
+import com.hazelcast.test.RequireAssertEnabled;
 import com.hazelcast.test.annotation.ParallelJVMTest;
 import com.hazelcast.test.annotation.QuickTest;
 import org.junit.Test;
@@ -34,6 +35,7 @@ import static com.hazelcast.internal.metrics.ProbeLevel.MANDATORY;
 import static com.hazelcast.internal.metrics.ProbeUnit.BYTES;
 import static com.hazelcast.internal.metrics.ProbeUnit.COUNT;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.fail;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -171,6 +173,7 @@ public class DynamicMetricsCollectionTest extends HazelcastTestSupport {
         verify(collectorMock, never()).collectDouble(expectedDescriptor, 42.42D);
     }
 
+    @RequireAssertEnabled
     @Test
     public void testDynamicProviderExceptionsAreNotPropagated() {
         MetricsCollector collectorMock = mock(MetricsCollector.class);
@@ -180,22 +183,28 @@ public class DynamicMetricsCollectionTest extends HazelcastTestSupport {
 
         });
 
-        metricsRegistry.collect(collectorMock);
-        // we just expect there is no exception
+        // we just expect there is no exception apart from AssertionError,
+        // which is for testing only
+        try {
+            metricsRegistry.collect(collectorMock);
+            fail("Should throw AssertionError");
+        } catch (AssertionError ex) {
+            // nop
+        }
     }
 
     private static class SourceObject {
-        @Probe
+        @Probe(name = "longField")
         private long longField;
-        @Probe
+        @Probe(name = "doubleField")
         private double doubleField;
 
-        @Probe
+        @Probe(name = "longMethod")
         private long longMethod() {
             return longField + 1;
         }
 
-        @Probe
+        @Probe(name = "doubleMethod")
         private double doubleMethod() {
             return doubleField + 1.1D;
         }

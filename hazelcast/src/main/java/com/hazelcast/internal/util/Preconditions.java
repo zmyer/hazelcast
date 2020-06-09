@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2008-2019, Hazelcast, Inc. All Rights Reserved.
+ * Copyright (c) 2008-2020, Hazelcast, Inc. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -325,6 +325,19 @@ public final class Preconditions {
     public static void checkTrue(boolean expression, String errorMessage) {
         if (!expression) {
             throw new IllegalArgumentException(errorMessage);
+        }
+    }
+
+    /**
+     * Tests whether the supplied expression is {@code true}.
+     *
+     * @param expression   the expression tested to see if it is {@code true}.
+     * @param errorMessage the exception message.
+     * @throws java.lang.UnsupportedOperationException if the supplied expression is {@code false}.
+     */
+    public static void checkTrueUnsupportedOperation(boolean expression, String errorMessage) {
+        if (!expression) {
+            throw new UnsupportedOperationException(errorMessage);
         }
     }
 

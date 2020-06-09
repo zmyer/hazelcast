@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2008-2019, Hazelcast, Inc. All Rights Reserved.
+ * Copyright (c) 2008-2020, Hazelcast, Inc. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -27,7 +27,7 @@ import com.hazelcast.internal.cluster.impl.operations.JoinMastershipClaimOp;
 import com.hazelcast.cluster.Address;
 import com.hazelcast.internal.nio.Connection;
 import com.hazelcast.spi.impl.operationservice.impl.OperationServiceImpl;
-import com.hazelcast.spi.properties.GroupProperty;
+import com.hazelcast.spi.properties.ClusterProperty;
 import com.hazelcast.internal.util.AddressUtil;
 import com.hazelcast.internal.util.AddressUtil.AddressMatcher;
 import com.hazelcast.internal.util.AddressUtil.InvalidAddressException;
@@ -63,10 +63,10 @@ public class TcpIpJoiner extends AbstractJoiner {
 
     public TcpIpJoiner(Node node) {
         super(node);
-        int tryCount = node.getProperties().getInteger(GroupProperty.TCP_JOIN_PORT_TRY_COUNT);
+        int tryCount = node.getProperties().getInteger(ClusterProperty.TCP_JOIN_PORT_TRY_COUNT);
         if (tryCount <= 0) {
             throw new IllegalArgumentException(String.format("%s should be greater than zero! Current value: %d",
-                    GroupProperty.TCP_JOIN_PORT_TRY_COUNT, tryCount));
+                    ClusterProperty.TCP_JOIN_PORT_TRY_COUNT, tryCount));
         }
         maxPortTryCount = tryCount;
         joinConfig = getActiveMemberNetworkConfig(config).getJoin();
@@ -84,7 +84,7 @@ public class TcpIpJoiner extends AbstractJoiner {
     public void doJoin() {
         final Address targetAddress = getTargetAddress();
         if (targetAddress != null) {
-            long maxJoinMergeTargetMillis = node.getProperties().getMillis(GroupProperty.MAX_JOIN_MERGE_TARGET_SECONDS);
+            long maxJoinMergeTargetMillis = node.getProperties().getMillis(ClusterProperty.MAX_JOIN_MERGE_TARGET_SECONDS);
             joinViaTargetMember(targetAddress, maxJoinMergeTargetMillis);
             if (!clusterService.isJoined()) {
                 joinViaPossibleMembers();
@@ -114,7 +114,7 @@ public class TcpIpJoiner extends AbstractJoiner {
             Connection connection;
             while (shouldRetry() && (Clock.currentTimeMillis() - joinStartTime < maxJoinMillis)) {
 
-                connection = node.getEndpointManager(MEMBER).getOrConnect(targetAddress);
+                connection = node.getServer().getConnectionManager(MEMBER).getOrConnect(targetAddress);
                 if (connection == null) {
                     //noinspection BusyWait
                     Thread.sleep(JOIN_RETRY_WAIT_TIME);
@@ -123,7 +123,7 @@ public class TcpIpJoiner extends AbstractJoiner {
                 if (logger.isFineEnabled()) {
                     logger.fine("Sending joinRequest " + targetAddress);
                 }
-                clusterJoinManager.sendJoinRequest(targetAddress, true);
+                clusterJoinManager.sendJoinRequest(targetAddress);
                 //noinspection BusyWait
                 Thread.sleep(JOIN_RETRY_WAIT_TIME);
             }
@@ -232,7 +232,7 @@ public class TcpIpJoiner extends AbstractJoiner {
             if (isBlacklisted(address)) {
                 continue;
             }
-            if (node.getEndpointManager(MEMBER).getConnection(address) != null) {
+            if (node.getServer().getConnectionManager(MEMBER).get(address) != null) {
                 if (thisHashCode > address.hashCode()) {
                     return false;
                 }
@@ -255,7 +255,7 @@ public class TcpIpJoiner extends AbstractJoiner {
                 if (logger.isFineEnabled()) {
                     logger.fine("Sending join request to " + masterAddress);
                 }
-                clusterJoinManager.sendJoinRequest(masterAddress, true);
+                clusterJoinManager.sendJoinRequest(masterAddress);
             } else {
                 sendMasterQuestion(addresses);
             }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2008-2019, Hazelcast, Inc. All Rights Reserved.
+ * Copyright (c) 2008-2020, Hazelcast, Inc. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -20,7 +20,7 @@ import com.hazelcast.config.Config;
 import com.hazelcast.core.HazelcastInstance;
 import com.hazelcast.cp.internal.HazelcastRaftTestSupport;
 import com.hazelcast.cp.lock.FencedLock;
-import com.hazelcast.spi.properties.GroupProperty;
+import com.hazelcast.spi.properties.ClusterProperty;
 import com.hazelcast.test.HazelcastParallelClassRunner;
 import com.hazelcast.test.annotation.ParallelJVMTest;
 import com.hazelcast.test.annotation.QuickTest;
@@ -31,6 +31,7 @@ import org.junit.runner.RunWith;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.Future;
 
+import static com.hazelcast.test.Accessors.getNodeEngineImpl;
 import static org.hamcrest.Matchers.hasSize;
 import static org.junit.Assert.assertThat;
 
@@ -41,7 +42,7 @@ public class UnsafeFencedLockMigrationTest extends HazelcastRaftTestSupport {
     @Test
     public void whenLockIsMigrated_thenSessionInformationShouldMigrate() {
         Config config = new Config();
-        config.setProperty(GroupProperty.PARTITION_COUNT.getName(), "2");
+        config.setProperty(ClusterProperty.PARTITION_COUNT.getName(), "2");
 
         HazelcastInstance hz1 = factory.newHazelcastInstance(config);
 
@@ -66,7 +67,7 @@ public class UnsafeFencedLockMigrationTest extends HazelcastRaftTestSupport {
     @Test
     public void whenLockIsMigrated_thenWaitingOpsShouldBeNotified() throws Exception {
         Config config = new Config();
-        config.setProperty(GroupProperty.PARTITION_COUNT.getName(), "2");
+        config.setProperty(ClusterProperty.PARTITION_COUNT.getName(), "2");
 
         HazelcastInstance hz1 = factory.newHazelcastInstance(config);
 

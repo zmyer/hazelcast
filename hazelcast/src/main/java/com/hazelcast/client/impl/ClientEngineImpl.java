@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2008-2019, Hazelcast, Inc. All Rights Reserved.
+ * Copyright (c) 2008-2020, Hazelcast, Inc. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -19,7 +19,6 @@ package com.hazelcast.client.impl;
 import com.hazelcast.cache.impl.JCacheDetector;
 import com.hazelcast.client.Client;
 import com.hazelcast.client.ClientListener;
-import com.hazelcast.client.ClientType;
 import com.hazelcast.client.impl.operations.GetConnectedClientsOperation;
 import com.hazelcast.client.impl.protocol.ClientExceptions;
 import com.hazelcast.client.impl.protocol.ClientMessage;
@@ -27,30 +26,29 @@ import com.hazelcast.client.impl.protocol.MessageTaskFactory;
 import com.hazelcast.client.impl.protocol.task.AbstractPartitionMessageTask;
 import com.hazelcast.client.impl.protocol.task.AuthenticationBaseMessageTask;
 import com.hazelcast.client.impl.protocol.task.BlockingMessageTask;
-import com.hazelcast.client.impl.protocol.task.ListenerMessageTask;
 import com.hazelcast.client.impl.protocol.task.MessageTask;
 import com.hazelcast.client.impl.protocol.task.TransactionalMessageTask;
 import com.hazelcast.client.impl.protocol.task.UrgentMessageTask;
 import com.hazelcast.client.impl.protocol.task.map.AbstractMapQueryMessageTask;
+import com.hazelcast.client.impl.statistics.ClientStatistics;
 import com.hazelcast.cluster.Address;
 import com.hazelcast.cluster.Member;
-import com.hazelcast.instance.EndpointQualifier;
 import com.hazelcast.instance.impl.Node;
+import com.hazelcast.internal.cluster.AddressChecker;
 import com.hazelcast.internal.cluster.ClusterService;
+import com.hazelcast.internal.cluster.impl.AddressCheckerImpl;
 import com.hazelcast.internal.nio.Connection;
 import com.hazelcast.internal.nio.ConnectionListener;
-import com.hazelcast.internal.nio.tcp.TcpIpConnection;
+import com.hazelcast.internal.nio.ConnectionType;
+import com.hazelcast.internal.partition.IPartitionService;
+import com.hazelcast.internal.server.ServerConnection;
 import com.hazelcast.internal.services.CoreService;
 import com.hazelcast.internal.services.ManagedService;
-import com.hazelcast.internal.services.MemberAttributeServiceEvent;
-import com.hazelcast.internal.services.MembershipAwareService;
-import com.hazelcast.internal.services.MembershipServiceEvent;
 import com.hazelcast.internal.util.RuntimeAvailableProcessors;
 import com.hazelcast.internal.util.executor.ExecutorType;
 import com.hazelcast.internal.util.executor.UnblockablePoolExecutorThreadFactory;
 import com.hazelcast.logging.ILogger;
 import com.hazelcast.security.SecurityContext;
-import com.hazelcast.spi.exception.TargetNotMemberException;
 import com.hazelcast.spi.impl.NodeEngine;
 import com.hazelcast.spi.impl.NodeEngineImpl;
 import com.hazelcast.spi.impl.eventservice.EventPublishingService;
@@ -60,15 +58,13 @@ import com.hazelcast.spi.impl.operationservice.Operation;
 import com.hazelcast.spi.impl.operationservice.OperationService;
 import com.hazelcast.spi.impl.operationservice.impl.OperationServiceImpl;
 import com.hazelcast.spi.impl.proxyservice.ProxyService;
-import com.hazelcast.internal.partition.IPartitionService;
-import com.hazelcast.spi.properties.GroupProperty;
+import com.hazelcast.spi.properties.ClusterProperty;
 import com.hazelcast.transaction.TransactionManagerService;
 
 import javax.annotation.Nonnull;
 import javax.security.auth.login.LoginException;
 import java.net.InetSocketAddress;
 import java.util.Collection;
-import java.util.EnumMap;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Properties;
@@ -80,7 +76,7 @@ import java.util.concurrent.Future;
 import java.util.function.Consumer;
 
 import static com.hazelcast.instance.EndpointQualifier.CLIENT;
-import static com.hazelcast.instance.EndpointQualifier.MEMBER;
+import static com.hazelcast.internal.util.MapUtil.createHashMap;
 import static com.hazelcast.internal.util.SetUtil.createHashSet;
 import static com.hazelcast.internal.util.ThreadUtil.createThreadPoolName;
 
@@ -90,7 +86,7 @@ import static com.hazelcast.internal.util.ThreadUtil.createThreadPoolName;
 //FGTODO: 2019/11/22 下午4:01 zmyer
 @SuppressWarnings("checkstyle:classdataabstractioncoupling")
 public class ClientEngineImpl implements ClientEngine, CoreService,
-        ManagedService, MembershipAwareService, EventPublishingService<ClientEvent, ClientListener> {
+        ManagedService, EventPublishingService<ClientEvent, ClientListener> {
 
     /**
      * Service name to be used in requests.
@@ -106,9 +102,6 @@ public class ClientEngineImpl implements ClientEngine, CoreService,
     private final Executor blockingExecutor;
     private final Executor queryExecutor;
 
-    // client Address -> member Address, only used when advanced network config is enabled
-    private final Map<Address, Address> clientMemberAddressMap = new ConcurrentHashMap<Address, Address>();
-
     private volatile ClientSelector clientSelector = ClientSelectors.any();
 
     private final ClientEndpointManagerImpl endpointManager;
@@ -117,10 +110,11 @@ public class ClientEngineImpl implements ClientEngine, CoreService,
 
     private final MessageTaskFactory messageTaskFactory;
     private final ClientExceptions clientExceptions;
-    private final ClientPartitionListenerService partitionListenerService;
+    private final ClusterViewListenerService clusterListenerService;
     private final boolean advancedNetworkConfigEnabled;
     private final ClientLifecycleMonitor lifecycleMonitor;
     private final Map<UUID, Consumer<Long>> backupListeners = new ConcurrentHashMap<>();
+    private final AddressChecker addressChecker;
 
     public ClientEngineImpl(Node node) {
         this.logger = node.getLogger(ClientEngine.class);
@@ -132,10 +126,12 @@ public class ClientEngineImpl implements ClientEngine, CoreService,
         this.blockingExecutor = newBlockingExecutor();
         this.messageTaskFactory = new CompositeMessageTaskFactory(nodeEngine);
         this.clientExceptions = initClientExceptionFactory();
-        this.partitionListenerService = new ClientPartitionListenerService(nodeEngine);
+        this.clusterListenerService = new ClusterViewListenerService(nodeEngine);
         this.advancedNetworkConfigEnabled = node.getConfig().getAdvancedNetworkConfig().isEnabled();
         this.lifecycleMonitor = new ClientLifecycleMonitor(endpointManager, this, logger, nodeEngine,
                 nodeEngine.getExecutionService(), node.getProperties());
+        Set<String> trustedInterfaces = node.getConfig().getManagementCenterConfig().getTrustedInterfaces();
+        this.addressChecker = new AddressCheckerImpl(trustedInterfaces, logger);
     }
 
     private ClientExceptions initClientExceptionFactory() {
@@ -152,7 +148,7 @@ public class ClientEngineImpl implements ClientEngine, CoreService,
         final ExecutionService executionService = nodeEngine.getExecutionService();
         int coreSize = RuntimeAvailableProcessors.get();
 
-        int threadCount = node.getProperties().getInteger(GroupProperty.CLIENT_ENGINE_THREAD_COUNT);
+        int threadCount = node.getProperties().getInteger(ClusterProperty.CLIENT_ENGINE_THREAD_COUNT);
         if (threadCount <= 0) {
             threadCount = coreSize * threadsPerCore;
         }
@@ -180,7 +176,7 @@ public class ClientEngineImpl implements ClientEngine, CoreService,
         final ExecutionService executionService = nodeEngine.getExecutionService();
         int coreSize = RuntimeAvailableProcessors.get();
 
-        int threadCount = node.getProperties().getInteger(GroupProperty.CLIENT_ENGINE_QUERY_THREAD_COUNT);
+        int threadCount = node.getProperties().getInteger(ClusterProperty.CLIENT_ENGINE_QUERY_THREAD_COUNT);
         if (threadCount <= 0) {
             threadCount = coreSize * QUERY_THREADS_PER_CORE;
         }
@@ -195,7 +191,7 @@ public class ClientEngineImpl implements ClientEngine, CoreService,
         final ExecutionService executionService = nodeEngine.getExecutionService();
         int coreSize = Runtime.getRuntime().availableProcessors();
 
-        int threadCount = node.getProperties().getInteger(GroupProperty.CLIENT_ENGINE_BLOCKING_THREAD_COUNT);
+        int threadCount = node.getProperties().getInteger(ClusterProperty.CLIENT_ENGINE_BLOCKING_THREAD_COUNT);
         if (threadCount <= 0) {
             threadCount = coreSize * BLOCKING_THREADS_PER_CORE;
         }
@@ -225,8 +221,6 @@ public class ClientEngineImpl implements ClientEngine, CoreService,
         } else if (messageTask instanceof TransactionalMessageTask) {
             blockingExecutor.execute(messageTask);
         } else if (messageTask instanceof BlockingMessageTask) {
-            blockingExecutor.execute(messageTask);
-        } else if (messageTask instanceof ListenerMessageTask) {
             blockingExecutor.execute(messageTask);
         } else {
             executor.execute(messageTask);
@@ -296,27 +290,23 @@ public class ClientEngineImpl implements ClientEngine, CoreService,
 
     @Override
     public boolean bind(final ClientEndpoint endpoint) {
-        if (!clientSelector.select(endpoint)) {
+        if (!isClientAllowed(endpoint)) {
             return false;
         }
 
-        if (!endpointManager.registerEndpoint(endpoint)) {
-            // connection exists just reauthenticated to promote to become an owner connection
-            return true;
-        }
+        endpointManager.registerEndpoint(endpoint);
 
-        Connection conn = endpoint.getConnection();
-        if (conn instanceof TcpIpConnection) {
+        ServerConnection conn = endpoint.getConnection();
+        if (conn != null) {
             InetSocketAddress socketAddress = conn.getRemoteSocketAddress();
             //socket address can be null if connection closed before bind
             if (socketAddress != null) {
-                Address address = new Address(socketAddress);
-                ((TcpIpConnection) conn).setEndPoint(address);
+                conn.setRemoteAddress(new Address(socketAddress));
             }
         }
 
         // Second check to catch concurrent change done via applySelector
-        if (!clientSelector.select(endpoint)) {
+        if (!isClientAllowed(endpoint)) {
             endpointManager.removeEndpoint(endpoint);
             return false;
         }
@@ -330,7 +320,7 @@ public class ClientEngineImpl implements ClientEngine, CoreService,
         clientSelector = newSelector;
 
         for (ClientEndpoint endpoint : endpointManager.getEndpoints()) {
-            if (!clientSelector.select(endpoint)) {
+            if (!isClientAllowed(endpoint)) {
                 endpoint.getConnection().close("Client disconnected from cluster via Management Center", null);
             }
         }
@@ -345,36 +335,6 @@ public class ClientEngineImpl implements ClientEngine, CoreService,
         }
     }
 
-    @Override
-    public void memberAdded(MembershipServiceEvent event) {
-        if (advancedNetworkConfigEnabled) {
-            final Map<EndpointQualifier, Address> newMemberAddressMap = event.getMember().getAddressMap();
-            final Address memberAddress = newMemberAddressMap.get(MEMBER);
-            final Address clientAddress = newMemberAddressMap.get(CLIENT);
-            if (clientAddress != null) {
-                clientMemberAddressMap.put(clientAddress, memberAddress);
-            }
-        }
-    }
-
-    @Override
-    public void memberRemoved(MembershipServiceEvent event) {
-        if (event.getMember().localMember()) {
-            return;
-        }
-
-        if (advancedNetworkConfigEnabled) {
-            final Address clientAddress = event.getMember().getAddressMap().get(CLIENT);
-            if (clientAddress != null) {
-                clientMemberAddressMap.remove(clientAddress);
-            }
-        }
-    }
-
-    @Override
-    public void memberAttributeChanged(MemberAttributeServiceEvent event) {
-    }
-
     @Nonnull
     @Override
     public Collection<Client> getClients() {
@@ -386,7 +346,7 @@ public class ClientEngineImpl implements ClientEngine, CoreService,
 
     @Override
     public void init(NodeEngine nodeEngine, Properties properties) {
-        node.getEndpointManager(CLIENT).addConnectionListener(connectionListener);
+        node.getServer().getConnectionManager(CLIENT).addConnectionListener(connectionListener);
 
         ClientHeartbeatMonitor heartbeatMonitor = new ClientHeartbeatMonitor(
                 endpointManager, getLogger(ClientHeartbeatMonitor.class), nodeEngine.getExecutionService(), node.getProperties());
@@ -430,13 +390,13 @@ public class ClientEngineImpl implements ClientEngine, CoreService,
     }
 
     @Override
-    public ClientPartitionListenerService getPartitionListenerService() {
-        return partitionListenerService;
+    public ClusterViewListenerService getClusterListenerService() {
+        return clusterListenerService;
     }
 
     @Override
     public boolean isClientAllowed(Client client) {
-        return clientSelector.select(client);
+        return ConnectionType.MC_JAVA_CLIENT.equals(client.getClientType()) || clientSelector.select(client);
     }
 
     private final class ConnectionListenerImpl implements ConnectionListener {
@@ -449,7 +409,9 @@ public class ClientEngineImpl implements ClientEngine, CoreService,
         }
 
         @Override
-        public void connectionRemoved(Connection connection) {
+        public void connectionRemoved(Connection c) {
+            ServerConnection connection = (ServerConnection) c;
+
             if (!connection.isClient() || !nodeEngine.isRunning()) {
                 return;
             }
@@ -464,72 +426,34 @@ public class ClientEngineImpl implements ClientEngine, CoreService,
     }
 
     @Override
-    public Map<ClientType, Integer> getConnectedClientStats() {
-        int numberOfCppClients = 0;
-        int numberOfDotNetClients = 0;
-        int numberOfJavaClients = 0;
-        int numberOfNodeJSClients = 0;
-        int numberOfPythonClients = 0;
-        int numberOfGoClients = 0;
-        int numberOfOtherClients = 0;
+    public Map<String, Integer> getConnectedClientStats() {
+        Map<UUID, String> clientsMap = getClientsInCluster();
 
-        Map<UUID, ClientType> clientsMap = getClientsInCluster();
+        final Map<String, Integer> resultMap = new HashMap<>();
 
-        //Now we are regrouping according to the client type
-        for (ClientType clientType : clientsMap.values()) {
-            switch (clientType) {
-                case JAVA:
-                    numberOfJavaClients++;
-                    break;
-                case CSHARP:
-                    numberOfDotNetClients++;
-                    break;
-                case CPP:
-                    numberOfCppClients++;
-                    break;
-                case NODEJS:
-                    numberOfNodeJSClients++;
-                    break;
-                case PYTHON:
-                    numberOfPythonClients++;
-                    break;
-                case GO:
-                    numberOfGoClients++;
-                    break;
-                default:
-                    numberOfOtherClients++;
-            }
+        for (String clientType : clientsMap.values()) {
+            Integer count = resultMap.getOrDefault(clientType, 0);
+            resultMap.put(clientType, ++count);
         }
-
-        final Map<ClientType, Integer> resultMap = new EnumMap<ClientType, Integer>(ClientType.class);
-
-        resultMap.put(ClientType.CPP, numberOfCppClients);
-        resultMap.put(ClientType.CSHARP, numberOfDotNetClients);
-        resultMap.put(ClientType.JAVA, numberOfJavaClients);
-        resultMap.put(ClientType.NODEJS, numberOfNodeJSClients);
-        resultMap.put(ClientType.PYTHON, numberOfPythonClients);
-        resultMap.put(ClientType.GO, numberOfGoClients);
-        resultMap.put(ClientType.OTHER, numberOfOtherClients);
-
         return resultMap;
     }
 
-    Map<UUID, ClientType> getClientsInCluster() {
+    Map<UUID, String> getClientsInCluster() {
         OperationService operationService = node.nodeEngine.getOperationService();
-        Map<UUID, ClientType> clientsMap = new HashMap<UUID, ClientType>();
+        Map<UUID, String> clientsMap = new HashMap<>();
 
         for (Member member : node.getClusterService().getMembers()) {
             Address target = member.getAddress();
             Operation clientInfoOperation = new GetConnectedClientsOperation();
-            Future<Map<UUID, ClientType>> future
+            Future<Map<UUID, String>> future
                     = operationService.invokeOnTarget(SERVICE_NAME, clientInfoOperation, target);
             try {
-                Map<UUID, ClientType> endpoints = future.get();
+                Map<UUID, String> endpoints = future.get();
                 if (endpoints == null) {
                     continue;
                 }
                 //Merge connected clients according to their UUID
-                for (Map.Entry<UUID, ClientType> entry : endpoints.entrySet()) {
+                for (Map.Entry<UUID, String> entry : endpoints.entrySet()) {
                     clientsMap.put(entry.getKey(), entry.getValue());
                 }
             } catch (Exception e) {
@@ -540,52 +464,16 @@ public class ClientEngineImpl implements ClientEngine, CoreService,
     }
 
     @Override
-    public Map<UUID, String> getClientStatistics() {
+    public Map<UUID, ClientStatistics> getClientStatistics() {
         Collection<ClientEndpoint> clientEndpoints = endpointManager.getEndpoints();
-        Map<UUID, String> statsMap = new HashMap<>(clientEndpoints.size());
+        Map<UUID, ClientStatistics> statsMap = createHashMap(clientEndpoints.size());
         for (ClientEndpoint e : clientEndpoints) {
-            String statistics = e.getClientAttributes();
+            ClientStatistics statistics = e.getClientStatistics();
             if (null != statistics) {
                 statsMap.put(e.getUuid(), statistics);
             }
         }
         return statsMap;
-    }
-
-    @Override
-    public Address memberAddressOf(Address clientAddress) {
-        if (!advancedNetworkConfigEnabled) {
-            return clientAddress;
-        }
-
-        // clientMemberAddressMap is maintained in memberAdded/Removed
-        Address memberAddress = clientMemberAddressMap.get(clientAddress);
-        if (memberAddress != null) {
-            return memberAddress;
-        }
-
-        // lookup all members in membership manager
-        Set<Member> clusterMembers = node.getClusterService().getMembers();
-        for (Member member : clusterMembers) {
-            if (member.getAddressMap().get(CLIENT).equals(clientAddress)) {
-                memberAddress = member.getAddress();
-                clientMemberAddressMap.put(clientAddress, memberAddress);
-                return memberAddress;
-            }
-        }
-        throw new TargetNotMemberException("Could not locate member with client address " + clientAddress);
-    }
-
-    @Override
-    public Address clientAddressOf(Address memberAddress) {
-        if (!advancedNetworkConfigEnabled) {
-            return memberAddress;
-        }
-        Member member = node.getClusterService().getMember(memberAddress);
-        if (member != null) {
-            return member.getAddressMap().get(CLIENT);
-        }
-        throw new TargetNotMemberException("Could not locate member with member address " + memberAddress);
     }
 
     @Override
@@ -613,5 +501,10 @@ public class ClientEngineImpl implements ClientEngine, CoreService,
 
     public Map<UUID, Consumer<Long>> getBackupListeners() {
         return backupListeners;
+    }
+
+    @Override
+    public AddressChecker getManagementTasksChecker() {
+        return addressChecker;
     }
 }

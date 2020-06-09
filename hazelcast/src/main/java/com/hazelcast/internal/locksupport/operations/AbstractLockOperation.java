@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2008-2019, Hazelcast, Inc. All Rights Reserved.
+ * Copyright (c) 2008-2020, Hazelcast, Inc. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -19,9 +19,10 @@ package com.hazelcast.internal.locksupport.operations;
 import com.hazelcast.internal.locksupport.LockDataSerializerHook;
 import com.hazelcast.internal.locksupport.LockSupportServiceImpl;
 import com.hazelcast.internal.locksupport.LockStoreImpl;
+import com.hazelcast.internal.nio.IOUtil;
 import com.hazelcast.nio.ObjectDataInput;
 import com.hazelcast.nio.ObjectDataOutput;
-import com.hazelcast.nio.serialization.Data;
+import com.hazelcast.internal.serialization.Data;
 import com.hazelcast.nio.serialization.IdentifiedDataSerializable;
 import com.hazelcast.internal.services.LockInterceptorService;
 import com.hazelcast.spi.impl.operationservice.NamedOperation;
@@ -156,7 +157,7 @@ public abstract class AbstractLockOperation extends Operation
     protected void writeInternal(ObjectDataOutput out) throws IOException {
         super.writeInternal(out);
         out.writeObject(namespace);
-        out.writeData(key);
+        IOUtil.writeData(out, key);
         out.writeLong(threadId);
         out.writeLong(leaseTime);
         out.writeLong(referenceCallId);
@@ -167,7 +168,7 @@ public abstract class AbstractLockOperation extends Operation
     protected void readInternal(ObjectDataInput in) throws IOException {
         super.readInternal(in);
         namespace = in.readObject();
-        key = in.readData();
+        key = IOUtil.readData(in);
         threadId = in.readLong();
         leaseTime = in.readLong();
         referenceCallId = in.readLong();

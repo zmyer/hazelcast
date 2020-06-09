@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2008-2019, Hazelcast, Inc. All Rights Reserved.
+ * Copyright (c) 2008-2020, Hazelcast, Inc. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -295,7 +295,7 @@ public class ConcurrentReferenceHashMap<K, V> extends AbstractMap<K, V>
         return segments[(hash >>> segmentShift) & segmentMask];
     }
 
-    private int hashOf(Object key) {
+    protected int hashOf(Object key) {
         return hash(identityComparisons ? System.identityHashCode(key) : key.hashCode());
     }
 
@@ -740,6 +740,32 @@ public class ConcurrentReferenceHashMap<K, V> extends AbstractMap<K, V>
                     removeInternal(key, hash, oldValue, false);
                     return null;
                 } else {
+                    putInternal(key, hash, newValue, null, false);
+                    return newValue;
+                }
+            } finally {
+                unlock();
+            }
+        }
+
+        V apply(K key, int hash, BiFunction<? super K, ? super V, ? extends V> remappingFunction) {
+            lock();
+            try {
+                V oldValue = get(key, hash);
+                V newValue = remappingFunction.apply(key, oldValue);
+
+                if (newValue == null) {
+                    // delete mapping
+                    if (oldValue != null) {
+                        // something to remove
+                        removeInternal(key, hash, oldValue, false);
+                        return null;
+                    } else {
+                        // nothing to do. Leave things as they were.
+                        return null;
+                    }
+                } else {
+                    // add or replace old mapping
                     putInternal(key, hash, newValue, null, false);
                     return newValue;
                 }
@@ -1447,6 +1473,16 @@ public class ConcurrentReferenceHashMap<K, V> extends AbstractMap<K, V>
         return segmentFor(hash).applyIfPresent(key, hash, remappingFunction);
     }
 
+    @Override
+    public V apply(K key, BiFunction<? super K, ? super V, ? extends V> remappingFunction) {
+        checkNotNull(key);
+        checkNotNull(remappingFunction);
+
+        int hash = hashOf(key);
+        Segment<K, V> segment = segmentFor(hash);
+        return segment.apply(key, hash, remappingFunction);
+    }
+
     /**
      * Copies all of the mappings from the specified map to this one.
      * These mappings replace any mappings that this map had for any of the
@@ -1602,7 +1638,12 @@ public class ConcurrentReferenceHashMap<K, V> extends AbstractMap<K, V>
      */
     public Set<Map.Entry<K, V>> entrySet() {
         Set<Map.Entry<K, V>> es = entrySet;
-        return (es != null) ? es : (entrySet = new EntrySet());
+        return (es != null) ? es : (entrySet = new EntrySet(false));
+    }
+
+    public Set<Map.Entry<K, V>> cachedEntrySet() {
+        Set<Map.Entry<K, V>> es = entrySet;
+        return (es != null) ? es : (entrySet = new EntrySet(true));
     }
 
     /**
@@ -1627,7 +1668,7 @@ public class ConcurrentReferenceHashMap<K, V> extends AbstractMap<K, V>
 
     /* ---------------- Iterator Support -------------- */
 
-    abstract class HashIterator {
+    protected abstract class HashIterator {
         int nextSegmentIndex;
         int nextTableIndex;
         HashEntry<K, V>[] currentTable;
@@ -1815,6 +1856,41 @@ public class ConcurrentReferenceHashMap<K, V> extends AbstractMap<K, V>
         }
     }
 
+    final class CachedEntryIterator extends HashIterator implements Iterator<Entry<K, V>> {
+        private InitializableEntry entry = new InitializableEntry();
+
+        public Map.Entry<K, V> next() {
+            HashEntry<K, V> e = super.nextEntry();
+            return entry.init(e.key(), e.value());
+        }
+    }
+
+    protected static class InitializableEntry<K, V> implements Entry<K, V> {
+        private K key;
+        private V value;
+
+        @Override
+        public K getKey() {
+            return key;
+        }
+
+        @Override
+        public V getValue() {
+            return value;
+        }
+
+        public Entry<K, V> init(K key, V value) {
+            this.key = key;
+            this.value = value;
+            return this;
+        }
+
+        @Override
+        public V setValue(V value) {
+            throw new UnsupportedOperationException();
+        }
+    }
+
     final class KeySet extends AbstractSet<K> {
         public Iterator<K> iterator() {
             return new KeyIterator();
@@ -1864,8 +1940,14 @@ public class ConcurrentReferenceHashMap<K, V> extends AbstractMap<K, V>
     }
 
     final class EntrySet extends AbstractSet<Map.Entry<K, V>> {
+        private final boolean cached;
+
+        public EntrySet(boolean cached) {
+            this.cached = cached;
+        }
+
         public Iterator<Map.Entry<K, V>> iterator() {
-            return new EntryIterator();
+            return cached ? new CachedEntryIterator() : new EntryIterator();
         }
 
         public boolean contains(Object o) {

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2008-2019, Hazelcast, Inc. All Rights Reserved.
+ * Copyright (c) 2008-2020, Hazelcast, Inc. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -75,7 +75,7 @@ import static com.hazelcast.internal.util.Preconditions.checkPositive;
  * evolve. But there is no problem using it in production. We use similar techniques
  * to achieve high performance.
  *
- * @param <E>
+ * @param <E> the result type of the Pipelining
  */
 @Beta
 public class Pipelining<E> {

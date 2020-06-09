@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2008-2019, Hazelcast, Inc. All Rights Reserved.
+ * Copyright (c) 2008-2020, Hazelcast, Inc. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -18,10 +18,10 @@ package com.hazelcast.instance;
 
 import com.hazelcast.instance.impl.DefaultNodeContext;
 import com.hazelcast.instance.impl.Node;
-import com.hazelcast.internal.networking.ServerSocketRegistry;
+import com.hazelcast.internal.server.tcp.ServerSocketRegistry;
 import com.hazelcast.cluster.Address;
-import com.hazelcast.internal.nio.NetworkingService;
-import com.hazelcast.internal.nio.tcp.FirewallingNetworkingService;
+import com.hazelcast.internal.server.Server;
+import com.hazelcast.internal.server.FirewallingServer;
 
 import java.util.Collections;
 
@@ -32,9 +32,9 @@ import java.util.Collections;
 public class FirewallingNodeContext extends DefaultNodeContext {
 
     @Override
-    public NetworkingService createNetworkingService(Node node, ServerSocketRegistry registry) {
-        NetworkingService networkingService = super.createNetworkingService(node, registry);
-        return new FirewallingNetworkingService(networkingService, Collections.<Address>emptySet());
+    public Server createServer(Node node, ServerSocketRegistry registry) {
+        Server server = super.createServer(node, registry);
+        return new FirewallingServer(server, Collections.<Address>emptySet());
     }
 
 }

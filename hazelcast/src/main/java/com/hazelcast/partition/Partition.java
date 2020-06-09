@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2008-2019, Hazelcast, Inc. All Rights Reserved.
+ * Copyright (c) 2008-2020, Hazelcast, Inc. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -20,12 +20,11 @@ import com.hazelcast.cluster.Member;
 
 /**
  * In Hazelcast the data is split up in partitions: by default, 271 and configurable through the 'hazelcast.partition.count'
- * GroupProperty. Each partition is owned by one member and the ownership can change if members join or leave the cluster.
- * <p>
+ * ClusterProperty. Each partition is owned by one member and the ownership can change if members join or leave the cluster.
+ *
  * Using this Partition object, you get access to who is the owner of a given partition. This object is not a DTO, so it will
  * be updated when a member changes ownership.
  */
-//FGTODO: 2019/12/2 下午7:39 zmyer
 public interface Partition {
 
     /**
@@ -38,9 +37,9 @@ public interface Partition {
 
     /**
      * Returns the current member that owns this partition.
-     * <p>
+     *
      * The returned value could be stale as soon as it is returned.
-     * <p>
+     *
      * It can be that null is returned if the owner of a partition has not been established.
      *
      * @return the owner member of the partition

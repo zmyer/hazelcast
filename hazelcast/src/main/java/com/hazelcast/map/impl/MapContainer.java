@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2008-2019, Hazelcast, Inc. All Rights Reserved.
+ * Copyright (c) 2008-2020, Hazelcast, Inc. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -22,11 +22,10 @@ import com.hazelcast.config.EventJournalConfig;
 import com.hazelcast.config.IndexConfig;
 import com.hazelcast.config.InvalidConfigurationException;
 import com.hazelcast.config.MapConfig;
-import com.hazelcast.config.WanConsumerConfig;
 import com.hazelcast.config.WanReplicationConfig;
+import com.hazelcast.config.WanConsumerConfig;
 import com.hazelcast.config.WanReplicationRef;
 import com.hazelcast.config.WanSyncConfig;
-import com.hazelcast.spi.eviction.EvictionPolicyComparator;
 import com.hazelcast.internal.nio.ClassLoaderUtil;
 import com.hazelcast.internal.partition.IPartitionService;
 import com.hazelcast.internal.serialization.InternalSerializationService;
@@ -46,15 +45,16 @@ import com.hazelcast.map.impl.query.QueryEntryFactory;
 import com.hazelcast.map.impl.record.DataRecordFactory;
 import com.hazelcast.map.impl.record.ObjectRecordFactory;
 import com.hazelcast.map.impl.record.RecordFactory;
-import com.hazelcast.nio.serialization.Data;
+import com.hazelcast.internal.serialization.Data;
 import com.hazelcast.partition.PartitioningStrategy;
 import com.hazelcast.query.impl.Index;
 import com.hazelcast.query.impl.Indexes;
 import com.hazelcast.query.impl.QueryableEntry;
 import com.hazelcast.query.impl.getters.Extractors;
+import com.hazelcast.spi.eviction.EvictionPolicyComparator;
 import com.hazelcast.spi.impl.NodeEngine;
 import com.hazelcast.spi.merge.SplitBrainMergePolicy;
-import com.hazelcast.wan.impl.DelegatingWanReplicationScheme;
+import com.hazelcast.wan.impl.DelegatingWanScheme;
 import com.hazelcast.wan.impl.WanReplicationService;
 
 import java.util.HashMap;
@@ -68,7 +68,7 @@ import static com.hazelcast.config.InMemoryFormat.OBJECT;
 import static com.hazelcast.internal.eviction.EvictionPolicyEvaluatorProvider.getEvictionPolicyComparator;
 import static com.hazelcast.map.impl.eviction.Evictor.NULL_EVICTOR;
 import static com.hazelcast.map.impl.mapstore.MapStoreContextFactory.createMapStoreContext;
-import static com.hazelcast.spi.properties.GroupProperty.MAP_EVICTION_BATCH_SIZE;
+import static com.hazelcast.spi.properties.ClusterProperty.MAP_EVICTION_BATCH_SIZE;
 import static java.lang.System.getProperty;
 
 /**
@@ -77,7 +77,8 @@ import static java.lang.System.getProperty;
  */
 //FGTODO: 2019/12/4 下午8:23 zmyer
 @SuppressWarnings({"WeakerAccess", "checkstyle:classfanoutcomplexity"})
-public class MapContainer {
+public class
+MapContainer {
 
     protected final String name;
     protected final String splitBrainProtectionName;
@@ -102,12 +103,14 @@ public class MapContainer {
     protected final AtomicInteger invalidationListenerCount = new AtomicInteger();
 
     protected SplitBrainMergePolicy wanMergePolicy;
-    protected DelegatingWanReplicationScheme wanReplicationDelegate;
+    protected DelegatingWanScheme wanReplicationDelegate;
 
     protected volatile MapConfig mapConfig;
     private volatile Evictor evictor;
 
     private boolean persistWanReplicatedData;
+
+    private volatile boolean destroyed;
 
     /**
      * Operations which are done in this constructor should obey the rules defined
@@ -132,7 +135,7 @@ public class MapContainer {
                 .build();
         this.queryEntryFactory = new QueryEntryFactory(mapConfig.getCacheDeserializedValues(),
                 serializationService, extractors);
-        this.globalIndexes = shouldUseGlobalIndex(mapConfig) ? createIndexes(true) : null;
+        this.globalIndexes = shouldUseGlobalIndex() ? createIndexes(true) : null;
         this.mapStoreContext = createMapStoreContext(this);
         initWanReplication(mapServiceContext.getNodeEngine());
     }
@@ -175,7 +178,7 @@ public class MapContainer {
         return new EvictorImpl(evictionPolicyComparator, evictionChecker, evictionBatchSize, partitionService);
     }
 
-    protected boolean shouldUseGlobalIndex(MapConfig mapConfig) {
+    public boolean shouldUseGlobalIndex() {
         // for non-native memory populate a single global index
         return !mapConfig.getInMemoryFormat().equals(NATIVE);
     }
@@ -200,10 +203,10 @@ public class MapContainer {
 
     // overridden in different context
     ConstructorFunction<Void, RecordFactory> createRecordFactoryConstructor(final SerializationService serializationService) {
-        return notUsedArg -> {
+        return anyArg -> {
             switch (mapConfig.getInMemoryFormat()) {
                 case BINARY:
-                    return new DataRecordFactory(mapConfig, serializationService, partitioningStrategy);
+                    return new DataRecordFactory(mapConfig, serializationService);
                 case OBJECT:
                     return new ObjectRecordFactory(mapConfig, serializationService);
                 default:
@@ -230,11 +233,12 @@ public class MapContainer {
 
         WanReplicationService wanReplicationService = nodeEngine.getWanReplicationService();
         wanReplicationDelegate = wanReplicationService.getWanReplicationPublishers(wanReplicationRefName);
-        wanMergePolicy = nodeEngine.getSplitBrainMergePolicyProvider().getMergePolicy(wanReplicationRef.getMergePolicy());
+        wanMergePolicy = nodeEngine.getSplitBrainMergePolicyProvider()
+                                   .getMergePolicy(wanReplicationRef.getMergePolicyClassName());
 
         WanReplicationConfig wanReplicationConfig = config.getWanReplicationConfig(wanReplicationRefName);
         if (wanReplicationConfig != null) {
-            WanConsumerConfig wanConsumerConfig = wanReplicationConfig.getWanConsumerConfig();
+            WanConsumerConfig wanConsumerConfig = wanReplicationConfig.getConsumerConfig();
             if (wanConsumerConfig != null) {
                 persistWanReplicatedData = wanConsumerConfig.isPersistWanReplicatedData();
             }
@@ -259,7 +263,7 @@ public class MapContainer {
         return replicationConfig.getBatchPublisherConfigs()
                 .stream()
                 .anyMatch(c -> {
-                    WanSyncConfig syncConfig = c.getWanSyncConfig();
+                    WanSyncConfig syncConfig = c.getSyncConfig();
                     return syncConfig != null && MERKLE_TREES.equals(syncConfig.getConsistencyCheckStrategy());
                 });
     }
@@ -289,7 +293,7 @@ public class MapContainer {
         return globalIndexes != null;
     }
 
-    public DelegatingWanReplicationScheme getWanReplicationDelegate() {
+    public DelegatingWanScheme getWanReplicationDelegate() {
         return wanReplicationDelegate;
     }
 
@@ -390,8 +394,20 @@ public class MapContainer {
         return interceptorRegistry;
     }
 
+    /**
+     * Callback invoked before record store and indexes are destroyed. Ensures that if map iterator observes a non-destroyed
+     * state, then associated data structures are still valid.
+     */
+    public void onBeforeDestroy() {
+        destroyed = true;
+    }
+
     // callback called when the MapContainer is de-registered from MapService and destroyed - basically on map-destroy
     public void onDestroy() {
+    }
+
+    public boolean isDestroyed() {
+        return destroyed;
     }
 
     public boolean shouldCloneOnEntryProcessing(int partitionId) {

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2008-2019, Hazelcast, Inc. All Rights Reserved.
+ * Copyright (c) 2008-2020, Hazelcast, Inc. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -21,6 +21,7 @@ import com.hazelcast.internal.json.JsonObject;
 import com.hazelcast.internal.monitor.LocalWanPublisherStats;
 import com.hazelcast.internal.monitor.LocalWanStats;
 import com.hazelcast.internal.util.Clock;
+import com.hazelcast.json.internal.JsonSerializable;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -30,13 +31,13 @@ import java.util.Map;
  * A single WAN replication scheme can contain multiple WAN replication
  * publishers, identified by name.
  */
-public class LocalWanStatsImpl implements LocalWanStats {
+public class LocalWanStatsImpl implements LocalWanStats, JsonSerializable {
     /**
      * Local WAN replication statistics for a single scheme, grouped by WAN
      * publisher ID.
      */
     private volatile Map<String, LocalWanPublisherStats> localPublisherStatsMap = new HashMap<>();
-    private volatile long creationTime;
+    private final long creationTime;
 
     public LocalWanStatsImpl() {
         creationTime = Clock.currentTimeMillis();

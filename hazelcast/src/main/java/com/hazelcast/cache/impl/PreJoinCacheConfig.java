@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2008-2019, Hazelcast, Inc. All Rights Reserved.
+ * Copyright (c) 2008-2020, Hazelcast, Inc. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -19,9 +19,11 @@ package com.hazelcast.cache.impl;
 import com.hazelcast.config.AbstractCacheConfig;
 import com.hazelcast.config.CacheConfig;
 import com.hazelcast.config.CacheConfigAccessor;
+import com.hazelcast.internal.nio.IOUtil;
 import com.hazelcast.internal.serialization.SerializationService;
 import com.hazelcast.nio.ObjectDataInput;
 import com.hazelcast.nio.ObjectDataOutput;
+import com.hazelcast.spi.impl.SerializationServiceSupport;
 import com.hazelcast.spi.tenantcontrol.TenantControl;
 
 import javax.cache.configuration.CacheEntryListenerConfiguration;
@@ -84,24 +86,26 @@ public class PreJoinCacheConfig<K, V> extends CacheConfig<K, V> {
 
     @Override
     protected void writeFactories(ObjectDataOutput out) throws IOException {
-        SerializationService serializationService = out.getSerializationService();
-        out.writeData(cacheLoaderFactory.getSerializedValue(serializationService));
-        out.writeData(cacheWriterFactory.getSerializedValue(serializationService));
-        out.writeData(expiryPolicyFactory.getSerializedValue(serializationService));
+        assert (out instanceof SerializationServiceSupport) : "out must implement SerializationServiceSupport";
+        SerializationService serializationService = ((SerializationServiceSupport) out).getSerializationService();
+        IOUtil.writeData(out, cacheLoaderFactory.getSerializedValue(serializationService));
+        IOUtil.writeData(out, cacheWriterFactory.getSerializedValue(serializationService));
+        IOUtil.writeData(out, expiryPolicyFactory.getSerializedValue(serializationService));
     }
 
     @Override
     protected void readFactories(ObjectDataInput in) throws IOException {
-        cacheLoaderFactory = DeferredValue.withSerializedValue(in.readData());
-        cacheWriterFactory = DeferredValue.withSerializedValue(in.readData());
-        expiryPolicyFactory = DeferredValue.withSerializedValue(in.readData());
+        cacheLoaderFactory = DeferredValue.withSerializedValue(IOUtil.readData(in));
+        cacheWriterFactory = DeferredValue.withSerializedValue(IOUtil.readData(in));
+        expiryPolicyFactory = DeferredValue.withSerializedValue(IOUtil.readData(in));
     }
 
     @Override
     protected void writeListenerConfigurations(ObjectDataOutput out) throws IOException {
+        assert (out instanceof SerializationServiceSupport) : "out must implement SerializationServiceSupport";
         out.writeInt(listenerConfigurations.size());
         for (DeferredValue<CacheEntryListenerConfiguration<K, V>> config : listenerConfigurations) {
-            out.writeData(config.getSerializedValue(out.getSerializationService()));
+            IOUtil.writeData(out, config.getSerializedValue(((SerializationServiceSupport) out).getSerializationService()));
         }
     }
 
@@ -111,7 +115,7 @@ public class PreJoinCacheConfig<K, V> extends CacheConfig<K, V> {
         listenerConfigurations = createConcurrentSet();
         for (int i = 0; i < size; i++) {
             DeferredValue<CacheEntryListenerConfiguration<K, V>> serializedConfig =
-                    DeferredValue.withSerializedValue(in.readData());
+                    DeferredValue.withSerializedValue(IOUtil.readData(in));
             listenerConfigurations.add(serializedConfig);
         }
     }

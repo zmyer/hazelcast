@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2008-2019, Hazelcast, Inc. All Rights Reserved.
+ * Copyright (c) 2008-2020, Hazelcast, Inc. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -52,4 +52,21 @@ public interface MetricsCollectionContext {
      */
     void collect(MetricDescriptor descriptor, String name, ProbeLevel level, ProbeUnit unit, double value);
 
+    /**
+     * Collects the given metric.
+     *
+     * @param descriptor The {@link MetricDescriptor} used to describe
+     *                   the metrics extracted from the {@code source} object
+     * @param value      The value of the collected metric
+     */
+    void collect(MetricDescriptor descriptor, long value);
+
+    /**
+     * Collects the given metric.
+     *
+     * @param descriptor The {@link MetricDescriptor} used to describe
+     *                   the metrics extracted from the {@code source} object
+     * @param value      The value of the collected metric
+     */
+    void collect(MetricDescriptor descriptor, double value);
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2008-2019, Hazelcast, Inc. All Rights Reserved.
+ * Copyright (c) 2008-2020, Hazelcast, Inc. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -84,7 +84,7 @@ public final class InboundResponseHandler implements Consumer<Packet> {
         byte[] bytes = packet.toByteArray();
         int typeId = Bits.readInt(bytes, OFFSET_TYPE_ID, useBigEndian);
         long callId = Bits.readLong(bytes, OFFSET_CALL_ID, useBigEndian);
-        Address sender = packet.getConn().getEndPoint();
+        Address sender = packet.getConn().getRemoteAddress();
         try {
             switch (typeId) {
                 case NORMAL_RESPONSE:

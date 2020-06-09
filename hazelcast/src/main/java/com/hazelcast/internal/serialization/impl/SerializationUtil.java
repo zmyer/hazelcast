@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2008-2019, Hazelcast, Inc. All Rights Reserved.
+ * Copyright (c) 2008-2020, Hazelcast, Inc. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -17,20 +17,20 @@
 package com.hazelcast.internal.serialization.impl;
 
 import com.hazelcast.core.HazelcastException;
-import com.hazelcast.partition.PartitioningStrategy;
 import com.hazelcast.instance.impl.OutOfMemoryErrorDispatcher;
 import com.hazelcast.internal.serialization.InternalSerializationService;
+import com.hazelcast.internal.serialization.SerializableByConvention;
+import com.hazelcast.internal.util.collection.PartitionIdSet;
 import com.hazelcast.nio.ObjectDataInput;
 import com.hazelcast.nio.ObjectDataOutput;
 import com.hazelcast.nio.serialization.ByteArraySerializer;
-import com.hazelcast.nio.serialization.Data;
+import com.hazelcast.internal.serialization.Data;
 import com.hazelcast.nio.serialization.HazelcastSerializationException;
 import com.hazelcast.nio.serialization.Portable;
-import com.hazelcast.internal.serialization.SerializableByConvention;
 import com.hazelcast.nio.serialization.Serializer;
 import com.hazelcast.nio.serialization.StreamSerializer;
 import com.hazelcast.nio.serialization.VersionedPortable;
-import com.hazelcast.internal.util.collection.PartitionIdSet;
+import com.hazelcast.partition.PartitioningStrategy;
 
 import javax.annotation.Nonnull;
 import java.io.ByteArrayInputStream;
@@ -115,10 +115,10 @@ public final class SerializationUtil {
         throw new HazelcastSerializationException("Failed to serialize '" + clazz + '\'', e);
     }
 
-    static SerializerAdapter createSerializerAdapter(Serializer serializer, InternalSerializationService serializationService) {
+    public static SerializerAdapter createSerializerAdapter(Serializer serializer) {
         final SerializerAdapter s;
         if (serializer instanceof StreamSerializer) {
-            s = new StreamSerializerAdapter(serializationService, (StreamSerializer) serializer);
+            s = new StreamSerializerAdapter((StreamSerializer) serializer);
         } else if (serializer instanceof ByteArraySerializer) {
             s = new ByteArraySerializerAdapter((ByteArraySerializer) serializer);
         } else {
@@ -396,6 +396,22 @@ public final class SerializationUtil {
             result.add(in.readInt());
         }
         return result;
+    }
+
+    public static boolean isClassStaticAndSerializable(Object object) {
+        Class clazz = object.getClass();
+        boolean isStatic = !clazz.isSynthetic() && !clazz.isAnonymousClass() && !clazz.isLocalClass();
+        if (!isStatic) {
+            return false;
+        }
+
+        try {
+            checkSerializable(object, "object");
+        } catch (Throwable t) {
+            return false;
+        }
+
+        return true;
     }
 
     private static class NullOutputStream extends OutputStream {

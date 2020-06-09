@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2008-2019, Hazelcast, Inc. All Rights Reserved.
+ * Copyright (c) 2008-2020, Hazelcast, Inc. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -28,11 +28,11 @@ import com.hazelcast.cluster.Member;
 import com.hazelcast.config.CacheConfig;
 import com.hazelcast.internal.serialization.InternalSerializationService;
 import com.hazelcast.internal.serialization.SerializationService;
-import com.hazelcast.cluster.Address;
 import com.hazelcast.internal.util.FutureUtil;
 
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.UUID;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 
@@ -80,10 +80,11 @@ final class ClientCacheHelper {
     /**
      * Creates a new cache configuration on Hazelcast members.
      *
-     * @param client             the client instance which will send the operation to server
-     * @param newCacheConfig     the cache configuration to be sent to server
-     * @param <K>                type of the key of the cache
-     * @param <V>                type of the value of the cache
+     * @param client         the client instance which will send the operation to server
+     * @param newCacheConfig the cache configuration to be sent to server
+     * @param <K>            type of the key of the cache
+     * @param <V>            type of the value of the cache
+     * @param urgent         whether creating the config is urgent or not(urgent messages can be send in DISCONNECTED state )
      * @return the created cache configuration
      * @see com.hazelcast.cache.impl.operation.AddCacheConfigOperation
      */
@@ -123,9 +124,9 @@ final class ClientCacheHelper {
         Collection<Future> futures = new ArrayList<Future>();
         for (Member member : members) {
             try {
-                Address address = member.getAddress();
-                ClientMessage request = CacheManagementConfigCodec.encodeRequest(cacheName, statOrMan, enabled, address);
-                ClientInvocation clientInvocation = new ClientInvocation(client, request, cacheName, address);
+                UUID uuid = member.getUuid();
+                ClientMessage request = CacheManagementConfigCodec.encodeRequest(cacheName, statOrMan, enabled, uuid);
+                ClientInvocation clientInvocation = new ClientInvocation(client, request, cacheName, uuid);
                 Future<ClientMessage> future = clientInvocation.invoke();
                 futures.add(future);
             } catch (Exception e) {

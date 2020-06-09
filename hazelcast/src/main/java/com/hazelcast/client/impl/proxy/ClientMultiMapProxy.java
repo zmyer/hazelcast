@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2008-2019, Hazelcast, Inc. All Rights Reserved.
+ * Copyright (c) 2008-2020, Hazelcast, Inc. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -31,6 +31,7 @@ import com.hazelcast.client.impl.protocol.codec.MultiMapGetCodec;
 import com.hazelcast.client.impl.protocol.codec.MultiMapIsLockedCodec;
 import com.hazelcast.client.impl.protocol.codec.MultiMapKeySetCodec;
 import com.hazelcast.client.impl.protocol.codec.MultiMapLockCodec;
+import com.hazelcast.client.impl.protocol.codec.MultiMapPutAllCodec;
 import com.hazelcast.client.impl.protocol.codec.MultiMapPutCodec;
 import com.hazelcast.client.impl.protocol.codec.MultiMapRemoveCodec;
 import com.hazelcast.client.impl.protocol.codec.MultiMapRemoveEntryCodec;
@@ -41,36 +42,45 @@ import com.hazelcast.client.impl.protocol.codec.MultiMapUnlockCodec;
 import com.hazelcast.client.impl.protocol.codec.MultiMapValueCountCodec;
 import com.hazelcast.client.impl.protocol.codec.MultiMapValuesCodec;
 import com.hazelcast.client.impl.spi.ClientContext;
+import com.hazelcast.client.impl.spi.ClientPartitionService;
 import com.hazelcast.client.impl.spi.ClientProxy;
 import com.hazelcast.client.impl.spi.EventHandler;
+import com.hazelcast.client.impl.spi.impl.ClientInvocation;
 import com.hazelcast.client.impl.spi.impl.ListenerMessageCodec;
 import com.hazelcast.cluster.Member;
 import com.hazelcast.core.EntryEvent;
 import com.hazelcast.core.EntryEventType;
 import com.hazelcast.core.EntryListener;
+import com.hazelcast.internal.serialization.Data;
+import com.hazelcast.internal.util.CollectionUtil;
+import com.hazelcast.internal.util.ThreadUtil;
 import com.hazelcast.map.IMapEvent;
 import com.hazelcast.map.MapEvent;
 import com.hazelcast.map.impl.DataAwareEntryEvent;
 import com.hazelcast.map.impl.ListenerAdapter;
 import com.hazelcast.multimap.LocalMultiMapStats;
 import com.hazelcast.multimap.MultiMap;
-import com.hazelcast.nio.serialization.Data;
+import com.hazelcast.spi.impl.InternalCompletableFuture;
 import com.hazelcast.spi.impl.UnmodifiableLazyList;
-import com.hazelcast.internal.util.ThreadUtil;
+import com.hazelcast.spi.impl.UnmodifiableLazySet;
 
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
 import java.util.AbstractMap;
+import java.util.ArrayList;
 import java.util.Collection;
-import java.util.HashSet;
+import java.util.HashMap;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
+import java.util.concurrent.CompletionStage;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.function.BiConsumer;
 
-import static com.hazelcast.map.impl.ListenerAdapters.createListenerAdapter;
 import static com.hazelcast.internal.util.Preconditions.checkNotNull;
 import static com.hazelcast.internal.util.Preconditions.checkPositive;
+import static com.hazelcast.map.impl.ListenerAdapters.createListenerAdapter;
 import static java.lang.Thread.currentThread;
 
 /**
@@ -90,6 +100,88 @@ public class ClientMultiMapProxy<K, V> extends ClientProxy implements MultiMap<K
 
     public ClientMultiMapProxy(String serviceName, String name, ClientContext context) {
         super(serviceName, name, context);
+    }
+
+    @Override
+    public CompletionStage<Void> putAllAsync(@Nonnull Map<? extends K, Collection<? extends V>> m) {
+        InternalCompletableFuture<Void> future = new InternalCompletableFuture<>();
+        Map<Data, Collection<Data>> dataMap = new HashMap<>();
+
+        for (Map.Entry e : m.entrySet()) {
+            Collection<Data> dataCollection = CollectionUtil
+                    .objectToDataCollection(((Collection<? extends V>) e.getValue()),
+                            getSerializationService());
+
+            dataMap.put(toData(e.getKey()), dataCollection);
+        }
+        putAllInternal(dataMap, future);
+        return future;
+    }
+
+    @Override
+    public CompletionStage<Void> putAllAsync(@Nonnull K key, Collection<? extends V> value) {
+        InternalCompletableFuture<Void> future = new InternalCompletableFuture<>();
+        Map<Data, Collection<Data>> dataMap = new HashMap<>();
+
+        Collection<Data> dataCollection = CollectionUtil
+                .objectToDataCollection(value, getSerializationService());
+        dataMap.put(toData(key), dataCollection);
+        putAllInternal(dataMap, future);
+        return future;
+    }
+
+
+    @SuppressWarnings({"checkstyle:cyclomaticcomplexity", "checkstyle:npathcomplexity", "checkstyle:methodlength"})
+    private void putAllInternal(@Nonnull Map<Data, Collection<Data>> map,
+                                @Nonnull InternalCompletableFuture<Void> future) {
+
+        if (map.isEmpty()) {
+            future.complete(null);
+            return;
+        }
+
+        ClientPartitionService partitionService = getContext().getPartitionService();
+        int partitionCount = partitionService.getPartitionCount();
+        Map<Integer, Collection<Map.Entry<Data, Collection<Data>>>> entryMap = new HashMap<>(partitionCount);
+
+        for (Map.Entry<Data, Collection<Data>> entry : map.entrySet()) {
+            checkNotNull(entry.getKey(), NULL_KEY_IS_NOT_ALLOWED);
+            checkNotNull(entry.getValue(), NULL_VALUE_IS_NOT_ALLOWED);
+
+            Data keyData = entry.getKey();
+            int partitionId = partitionService.getPartitionId(keyData);
+            Collection<Map.Entry<Data, Collection<Data>>> partition = entryMap.get(partitionId);
+            if (partition == null) {
+                partition = new ArrayList<>();
+                entryMap.put(partitionId, partition);
+            }
+
+            partition.add(new AbstractMap.SimpleEntry<>(keyData, entry.getValue()));
+        }
+        assert entryMap.size() > 0;
+        AtomicInteger counter = new AtomicInteger(entryMap.size());
+        InternalCompletableFuture<Void> resultFuture = future;
+        BiConsumer<ClientMessage, Throwable> callback = (response, t) -> {
+            if (t != null) {
+                resultFuture.completeExceptionally(t);
+            }
+            if (counter.decrementAndGet() == 0) {
+                if (!resultFuture.isDone()) {
+                    resultFuture.complete(null);
+                }
+            }
+        };
+
+        for (Map.Entry<Integer, Collection<Map.Entry<Data, Collection<Data>>>> entry : entryMap.entrySet()) {
+            Integer partitionId = entry.getKey();
+            // if there is only one entry, consider how we can use MapPutRequest
+            // without having to get back the return value
+
+            ClientMessage request = MultiMapPutAllCodec.encodeRequest(name, entry.getValue());
+            new ClientInvocation(getClient(), request, getName(), partitionId)
+                    .invoke()
+                    .whenCompleteAsync(callback);
+        }
     }
 
     @Override
@@ -114,7 +206,7 @@ public class ClientMultiMapProxy<K, V> extends ClientProxy implements MultiMap<K
         ClientMessage request = MultiMapGetCodec.encodeRequest(name, keyData, ThreadUtil.getThreadId());
         ClientMessage response = invoke(request, keyData);
         MultiMapGetCodec.ResponseParameters resultParameters = MultiMapGetCodec.decodeResponse(response);
-        return new UnmodifiableLazyList<V>(resultParameters.response, getSerializationService());
+        return new UnmodifiableLazyList(resultParameters.response, getSerializationService());
     }
 
     @Override
@@ -139,7 +231,7 @@ public class ClientMultiMapProxy<K, V> extends ClientProxy implements MultiMap<K
         ClientMessage request = MultiMapRemoveCodec.encodeRequest(name, keyData, ThreadUtil.getThreadId());
         ClientMessage response = invoke(request, keyData);
         MultiMapRemoveCodec.ResponseParameters resultParameters = MultiMapRemoveCodec.decodeResponse(response);
-        return new UnmodifiableLazyList<V>(resultParameters.response, getSerializationService());
+        return new UnmodifiableLazyList(resultParameters.response, getSerializationService());
     }
 
     public void delete(@Nonnull Object key) {
@@ -161,13 +253,8 @@ public class ClientMultiMapProxy<K, V> extends ClientProxy implements MultiMap<K
         ClientMessage request = MultiMapKeySetCodec.encodeRequest(name);
         ClientMessage response = invoke(request);
         MultiMapKeySetCodec.ResponseParameters resultParameters = MultiMapKeySetCodec.decodeResponse(response);
-        Collection<Data> result = resultParameters.response;
-        Set<K> keySet = new HashSet<K>(result.size());
-        for (Data data : result) {
-            final K key = toObject(data);
-            keySet.add(key);
-        }
-        return keySet;
+
+        return (Set<K>) new UnmodifiableLazySet(resultParameters.response, getSerializationService());
     }
 
     @Nonnull
@@ -176,7 +263,7 @@ public class ClientMultiMapProxy<K, V> extends ClientProxy implements MultiMap<K
         ClientMessage request = MultiMapValuesCodec.encodeRequest(name);
         ClientMessage response = invoke(request);
         MultiMapValuesCodec.ResponseParameters resultParameters = MultiMapValuesCodec.decodeResponse(response);
-        return new UnmodifiableLazyList<V>(resultParameters.response, getSerializationService());
+        return new UnmodifiableLazyList(resultParameters.response, getSerializationService());
     }
 
     @Nonnull
@@ -186,13 +273,7 @@ public class ClientMultiMapProxy<K, V> extends ClientProxy implements MultiMap<K
         ClientMessage response = invoke(request);
         MultiMapEntrySetCodec.ResponseParameters resultParameters = MultiMapEntrySetCodec.decodeResponse(response);
 
-        Set<Map.Entry<K, V>> entrySet = new HashSet<>(resultParameters.response.size());
-        for (Map.Entry<Data, Data> entry : resultParameters.response) {
-            K key = toObject(entry.getKey());
-            V value = toObject(entry.getValue());
-            entrySet.add(new AbstractMap.SimpleEntry<>(key, value));
-        }
-        return entrySet;
+        return (Set) new UnmodifiableLazySet(resultParameters.response, getSerializationService());
     }
 
     @Override
@@ -541,13 +622,7 @@ public class ClientMultiMapProxy<K, V> extends ClientProxy implements MultiMap<K
             return new DataAwareEntryEvent<K, V>(member, eventType, name, keyData, valueData, oldValueData, mergingValueData,
                     getSerializationService());
         }
-
-        @Override
-        public void beforeListenerRegister() {
-        }
-
-        @Override
-        public void onListenerRegister() {
-        }
     }
+
+
 }

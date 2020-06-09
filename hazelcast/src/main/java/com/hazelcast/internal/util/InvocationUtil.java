@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2008-2019, Hazelcast, Inc. All Rights Reserved.
+ * Copyright (c) 2008-2020, Hazelcast, Inc. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,20 +16,19 @@
 
 package com.hazelcast.internal.util;
 
+import com.hazelcast.cluster.Address;
 import com.hazelcast.cluster.Member;
 import com.hazelcast.internal.cluster.ClusterService;
 import com.hazelcast.internal.util.futures.ChainingFuture;
 import com.hazelcast.internal.util.iterator.RestartingMemberIterator;
-import com.hazelcast.cluster.Address;
 import com.hazelcast.spi.impl.InternalCompletableFuture;
 import com.hazelcast.spi.impl.NodeEngine;
 import com.hazelcast.spi.impl.operationservice.Operation;
 import com.hazelcast.spi.impl.operationservice.OperationResponseHandler;
-import com.hazelcast.spi.properties.GroupProperty;
+import com.hazelcast.spi.properties.ClusterProperty;
 
 import java.util.Iterator;
 import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.Executor;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Function;
 import java.util.function.Supplier;
@@ -42,11 +41,6 @@ import static com.hazelcast.spi.impl.InternalCompletableFuture.newCompletedFutur
  */
 //FGTODO: 2019/11/26 下午3:10 zmyer
 public final class InvocationUtil {
-
-    /**
-     * An executor utility to run callbacks on the caller thread.
-     */
-    public static final Executor CALLER_RUNS_EXECUTOR = new CallerRunsExecutor();
 
     private InvocationUtil() {
     }
@@ -124,7 +118,7 @@ public final class InvocationUtil {
             this.operationSupplier = operationSupplier;
             this.nodeEngine = nodeEngine;
             this.memberIterator = memberIterator;
-            this.retryDelayMillis = nodeEngine.getProperties().getMillis(GroupProperty.INVOCATION_RETRY_PAUSE);
+            this.retryDelayMillis = nodeEngine.getProperties().getMillis(ClusterProperty.INVOCATION_RETRY_PAUSE);
         }
 
         @Override
@@ -177,13 +171,6 @@ public final class InvocationUtil {
                     }
                 });
             }
-        }
-    }
-
-    private static class CallerRunsExecutor implements Executor {
-        @Override
-        public void execute(Runnable command) {
-            command.run();
         }
     }
 }

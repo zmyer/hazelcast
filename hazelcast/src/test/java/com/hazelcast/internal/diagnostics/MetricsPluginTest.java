@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2008-2019, Hazelcast, Inc. All Rights Reserved.
+ * Copyright (c) 2008-2020, Hazelcast, Inc. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -31,6 +31,7 @@ import org.junit.runner.RunWith;
 
 import static com.hazelcast.internal.metrics.MetricTarget.DIAGNOSTICS;
 import static com.hazelcast.internal.metrics.ProbeLevel.MANDATORY;
+import static com.hazelcast.test.Accessors.getNodeEngineImpl;
 import static java.util.concurrent.TimeUnit.SECONDS;
 import static org.junit.Assert.assertEquals;
 
@@ -66,7 +67,7 @@ public class MetricsPluginTest extends AbstractDiagnosticsPluginTest {
         });
 
         plugin.run(logWriter);
-        assertContains("[metric=broken,excludedTargets={}]=java.lang.RuntimeException:error");
+        assertContains("[metric=broken]=java.lang.RuntimeException:error");
     }
 
     @Test
@@ -74,8 +75,8 @@ public class MetricsPluginTest extends AbstractDiagnosticsPluginTest {
         plugin.run(logWriter);
 
         // we just test a few to make sure the metrics are written
-        assertContains("[unit=count,metric=client.endpoint.count,excludedTargets={}]=0");
-        assertContains("[unit=count,metric=operation.responseQueueSize,excludedTargets={}]=0");
+        assertContains("[unit=count,metric=client.endpoint.count]=0");
+        assertContains("[unit=count,metric=operation.responseQueueSize]=0");
     }
 
     @Test
@@ -84,23 +85,23 @@ public class MetricsPluginTest extends AbstractDiagnosticsPluginTest {
 
         plugin.run(logWriter);
 
-        assertContains("[unit=count,metric=test.notExcludedLong,excludedTargets={}]=1");
-        assertNotContains("[unit=count,metric=test.excludedLong,excludedTargets={}]=1");
-        assertContains("[unit=count,metric=test.notExcludedDouble,excludedTargets={}]=1.5");
-        assertNotContains("[unit=count,metric=test.excludedDouble,excludedTargets={}]=2.5");
+        assertContains("[unit=count,metric=test.notExcludedLong]=1");
+        assertNotContains("[unit=count,metric=test.excludedLong]=1");
+        assertContains("[unit=count,metric=test.notExcludedDouble]=1.5");
+        assertNotContains("[unit=count,metric=test.excludedDouble]=2.5");
     }
 
     private static class ExclusionProbeSource {
-        @Probe
+        @Probe(name = "notExcludedLong")
         private long notExcludedLong = 1;
 
-        @Probe(excludedTargets = DIAGNOSTICS)
+        @Probe(name = "excludedLong", excludedTargets = DIAGNOSTICS)
         private long excludedLong = 2;
 
-        @Probe
+        @Probe(name = "notExcludedDouble")
         private double notExcludedDouble = 1.5D;
 
-        @Probe(excludedTargets = DIAGNOSTICS)
+        @Probe(name = "excludedDouble", excludedTargets = DIAGNOSTICS)
         private double excludedDouble = 2.5D;
     }
 

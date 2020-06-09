@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2008-2019, Hazelcast, Inc. All Rights Reserved.
+ * Copyright (c) 2008-2020, Hazelcast, Inc. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -38,7 +38,7 @@ import com.hazelcast.internal.nio.ConnectionListener;
 import com.hazelcast.logging.Logger;
 import com.hazelcast.map.IMap;
 import com.hazelcast.spi.exception.TargetDisconnectedException;
-import com.hazelcast.spi.properties.GroupProperty;
+import com.hazelcast.spi.properties.ClusterProperty;
 import com.hazelcast.test.AssertTask;
 import com.hazelcast.test.HazelcastParallelClassRunner;
 import com.hazelcast.test.annotation.ParallelJVMTest;
@@ -104,24 +104,19 @@ public class ClientHeartbeatTest extends ClientTestSupport {
     }
 
     @Test
-    public void testInvocation_whenHeartbeatStopped() throws InterruptedException {
-        hazelcastFactory.newHazelcastInstance();
-        final HazelcastInstance client = hazelcastFactory.newHazelcastClient(getClientConfig());
-        final HazelcastInstance instance2 = hazelcastFactory.newHazelcastInstance();
+    public void testInvocation_whenHeartbeatStopped() {
+        HazelcastInstance instance = hazelcastFactory.newHazelcastInstance();
+        HazelcastInstance client = hazelcastFactory.newHazelcastClient(getClientConfig());
 
-        // make sure client is connected to instance2
-        String keyOwnedByInstance2 = generateKeyOwnedBy(instance2);
+        warmUpPartitions(instance, client);
 
-        // Verify that the client received partition update for instance2
-        waitClientPartitionUpdateForKeyOwner(client, instance2, keyOwnedByInstance2);
+        IMap<String, String> map = client.getMap("test");
+        map.put("foo", "bar");
 
-        IMap<String, String> map = client.getMap(randomString());
-        map.put(keyOwnedByInstance2, randomString());
-
-        blockMessagesFromInstance(instance2, client);
+        blockMessagesFromInstance(instance, client);
 
         expectedException.expect(TargetDisconnectedException.class);
-        map.put(keyOwnedByInstance2, randomString());
+        map.put("for", "bar2");
     }
 
     @Test
@@ -191,6 +186,7 @@ public class ClientHeartbeatTest extends ClientTestSupport {
         ClientConfig clientConfig = new ClientConfig();
         clientConfig.setProperty(ClientProperty.HEARTBEAT_TIMEOUT.getName(), String.valueOf(HEARTBEAT_TIMEOUT_MILLIS));
         clientConfig.setProperty(ClientProperty.HEARTBEAT_INTERVAL.getName(), "500");
+        clientConfig.getConnectionStrategyConfig().getConnectionRetryConfig().setClusterConnectTimeoutMillis(5000);
         return clientConfig;
     }
 
@@ -198,7 +194,7 @@ public class ClientHeartbeatTest extends ClientTestSupport {
     public void testClientEndpointsDelaySeconds_whenHeartbeatResumed() throws Exception {
         int delaySeconds = 2;
         Config config = new Config();
-        config.setProperty(GroupProperty.CLIENT_CLEANUP_TIMEOUT.getName(), String.valueOf(TimeUnit.SECONDS.toMillis(delaySeconds)));
+        config.setProperty(ClusterProperty.CLIENT_CLEANUP_TIMEOUT.getName(), String.valueOf(TimeUnit.SECONDS.toMillis(delaySeconds)));
         HazelcastInstance hazelcastInstance = hazelcastFactory.newHazelcastInstance(config);
 
         HazelcastInstance client = hazelcastFactory.newHazelcastClient(getClientConfig());
@@ -276,7 +272,7 @@ public class ClientHeartbeatTest extends ClientTestSupport {
             }
 
             @Override
-            public void beforeListenerRegister() {
+            public void beforeListenerRegister(Connection connection) {
                 if (count.incrementAndGet() == 2) {
                     try {
                         blockIncoming.await();
@@ -287,7 +283,7 @@ public class ClientHeartbeatTest extends ClientTestSupport {
             }
 
             @Override
-            public void onListenerRegister() {
+            public void onListenerRegister(Connection connection) {
                 onListenerRegister.countDown();
             }
 

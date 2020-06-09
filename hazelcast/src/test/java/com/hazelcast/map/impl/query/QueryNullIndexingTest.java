@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2008-2019, Hazelcast, Inc. All Rights Reserved.
+ * Copyright (c) 2008-2020, Hazelcast, Inc. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -25,7 +25,7 @@ import com.hazelcast.query.Predicates;
 import com.hazelcast.query.SampleTestObjects;
 import com.hazelcast.query.SampleTestObjects.Employee;
 import com.hazelcast.query.impl.IndexCopyBehavior;
-import com.hazelcast.spi.properties.GroupProperty;
+import com.hazelcast.spi.properties.ClusterProperty;
 import com.hazelcast.test.HazelcastSerialParametersRunnerFactory;
 import com.hazelcast.test.HazelcastTestSupport;
 import com.hazelcast.test.annotation.QuickTest;
@@ -135,7 +135,7 @@ public class QueryNullIndexingTest extends HazelcastTestSupport {
     private List<Long> queryIndexedDateFieldAsNullValue(boolean ordered,
                                                         Predicate<Integer, SampleTestObjects.Employee> pred) {
         Config config = getConfig();
-        config.setProperty(GroupProperty.INDEX_COPY_BEHAVIOR.getName(), copyBehavior.name());
+        config.setProperty(ClusterProperty.INDEX_COPY_BEHAVIOR.getName(), copyBehavior.name());
         HazelcastInstance instance = createHazelcastInstance(config);
         IMap<Integer, SampleTestObjects.Employee> map = instance.getMap("default");
 

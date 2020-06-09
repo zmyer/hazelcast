@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!--
-  ~ Copyright (c) 2008-2019, Hazelcast, Inc. All Rights Reserved.
+  ~ Copyright (c) 2008-2020, Hazelcast, Inc. All Rights Reserved.
   ~
   ~ Licensed under the Apache License, Version 2.0 (the "License");
   ~ you may not use this file except in compliance with the License.
@@ -39,19 +39,16 @@
 <hazelcast xmlns="http://www.hazelcast.com/schema/config"
            xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
            xsi:schemaLocation="http://www.hazelcast.com/schema/config
-           http://www.hazelcast.com/schema/config/hazelcast-config-4.0.xsd">
+           http://www.hazelcast.com/schema/config/hazelcast-config-4.1.xsd">
 
-    <cluster-name>dev</cluster-name>
+    <cluster-name>my-cluster</cluster-name>
     <license-key>HAZELCAST_ENTERPRISE_LICENSE_KEY</license-key>
     <instance-name>dummy</instance-name>
-    <management-center enabled="true" update-interval="5" scripting-enabled="false">
-        <url>http://mywebserver:8080</url>
-        <mutual-auth enabled="true">
-            <factory-class-name>com.hazelcast.examples.MySSLContextFactory</factory-class-name>
-            <properties>
-                <property name="foo">bar</property>
-            </properties>
-        </mutual-auth>
+    <management-center scripting-enabled="false">
+        <trusted-interfaces>
+            <interface>10.10.1.*</interface>
+            <interface>10.10.2.*</interface>
+        </trusted-interfaces>
     </management-center>
 
     <properties>
@@ -70,9 +67,9 @@
             <response-timeout-millis>5000</response-timeout-millis>
             <acknowledge-type>ACK_ON_RECEIPT</acknowledge-type>
             <target-endpoints>10.3.5.1:5701, 10.3.5.2:5701</target-endpoints>
-            <wan-sync>
+            <sync>
                 <consistency-check-strategy>MERKLE_TREES</consistency-check-strategy>
-            </wan-sync>
+            </sync>
         </batch-publisher>
         <batch-publisher>
             <cluster-name>istanbul</cluster-name>
@@ -95,12 +92,14 @@
                 <zones>us-east1-b,us-east1-c</zones>
             </gcp>
             <azure enabled="false">
+                <instance-metadata-available>false</instance-metadata-available>
                 <client-id>CLIENT_ID</client-id>
                 <client-secret>CLIENT_SECRET</client-secret>
                 <tenant-id>TENANT_ID</tenant-id>
                 <subscription-id>SUB_ID</subscription-id>
-                <cluster-id>HZLCAST001</cluster-id>
-                <group-name>RESOURCE-GROUP-NAME</group-name>
+                <resource-group>RESOURCE-GROUP-NAME</resource-group>
+                <scale-set>SCALE-SET-NAME</scale-set>
+                <tag>TAG-NAME=HZLCAST001</tag>
             </azure>
             <kubernetes enabled="false">
                 <namespace>MY-KUBERNETES-NAMESPACE</namespace>
@@ -323,7 +322,7 @@
         </near-cache>
 
         <wan-replication-ref name="my-wan-cluster">
-            <merge-policy>hz.PASS_THROUGH</merge-policy>
+            <merge-policy-class-name>hz.PASS_THROUGH</merge-policy-class-name>
             <filters>
                 <filter-impl>com.example.WanTestFilter1</filter-impl>
                 <filter-impl>com.example.WanTestFilter2</filter-impl>
@@ -332,15 +331,47 @@
         </wan-replication-ref>
 
         <indexes>
+            <!-- unordered/hash index on the name attribute -->
             <index type="HASH">
                 <attributes>
                     <attribute>name</attribute>
                 </attributes>
             </index>
+            <!-- ordered/tree index on the age attribute -->
             <index>
                 <attributes>
                     <attribute>age</attribute>
                 </attributes>
+            </index>
+            <!-- composite unordered/hash index on the name and age attributes -->
+            <index type="HASH">
+                <attributes>
+                    <attribute>name</attribute>
+                    <attribute>age</attribute>
+                </attributes>
+            </index>
+            <!-- composite ordered/tree index on the age and name attributes -->
+            <index>
+                <attributes>
+                    <attribute>age</attribute>
+                    <attribute>name</attribute>
+                </attributes>
+            </index>
+            <!-- bitmap index on the age attribute -->
+            <index type="BITMAP">
+                <attributes>
+                    <attribute>age</attribute>
+                </attributes>
+            </index>
+            <!-- bitmap index on the name attribute with options -->
+            <index type="BITMAP">
+                <attributes>
+                    <attribute>name</attribute>
+                </attributes>
+                <bitmap-index-options>
+                    <unique-key>id</unique-key>
+                    <unique-key-transformation>RAW</unique-key-transformation>
+                </bitmap-index-options>
             </index>
         </indexes>
 
@@ -494,7 +525,7 @@
         <eviction comparator-class-name="DummyClass" eviction-policy="LRU"
                   max-size-policy="ENTRY_COUNT" size="50"/>
         <wan-replication-ref name="my-wan-cluster">
-            <merge-policy>hz.PASS_THROUGH</merge-policy>
+            <merge-policy-class-name>hz.PASS_THROUGH</merge-policy-class-name>
             <filters>
                 <filter-impl>com.example.WanTestFilter1</filter-impl>
                 <filter-impl>com.example.WanTestFilter2</filter-impl>
@@ -517,14 +548,16 @@
     <flake-id-generator name="default">
         <prefetch-count>100</prefetch-count>
         <prefetch-validity-millis>600000</prefetch-validity-millis>
-        <id-offset>0</id-offset>
+        <epoch-start>1514764800000</epoch-start>
         <node-id-offset>0</node-id-offset>
+        <bits-sequence>6</bits-sequence>
+        <bits-node-id>16</bits-node-id>
+        <allowed-future-millis>15000</allowed-future-millis>
         <statistics-enabled>false</statistics-enabled>
     </flake-id-generator>
 
     <listeners>
         <listener>com.hazelcast.examples.MembershipListener</listener>
-        <listener>com.hazelcast.examples.InstanceListener</listener>
         <listener>com.hazelcast.examples.MigrationListener</listener>
         <listener>com.hazelcast.examples.PartitionLostListener</listener>
     </listeners>
@@ -573,17 +606,6 @@
         <metadata-space-percentage>12.5</metadata-space-percentage>
     </native-memory>
 
-    <services enable-defaults="false">
-        <service enabled="true">
-            <name>custom-service</name>
-            <class-name>com.hazelcast.examples.MyService</class-name>
-            <properties>
-                <property name="prop1">prop1-value</property>
-                <property name="prop2">prop2-value</property>
-            </properties>
-        </service>
-    </services>
-
     <security enabled="false">
         <realms>
             <realm name="mr">
@@ -615,6 +637,105 @@
                         <login-module class-name="com.hazelcast.examples.MyRequiredLoginModule" usage="REQUIRED">
                             <properties>
                                 <property name="property">value</property>
+                            </properties>
+                        </login-module>
+                    </jaas>
+                </authentication>
+            </realm>
+            <realm name="ldapRealm">
+                <authentication>
+                    <ldap>
+                        <url>ldap://ldap.my-company.example</url>
+                        <socket-factory-class-name>socketFactoryClassName</socket-factory-class-name>
+                        <parse-dn>true</parse-dn>
+                        <role-context>roleContext</role-context>
+                        <role-filter>roleFilter</role-filter>
+                        <role-mapping-attribute>roleMappingAttribute</role-mapping-attribute>
+                        <role-mapping-mode>reverse</role-mapping-mode>
+                        <role-name-attribute>roleNameAttribute</role-name-attribute>
+                        <role-recursion-max-depth>25</role-recursion-max-depth>
+                        <role-search-scope>object</role-search-scope>
+                        <user-name-attribute>userNameAttribute</user-name-attribute>
+                        <system-user-dn>systemUserDn</system-user-dn>
+                        <system-user-password>systemUserPassword</system-user-password>
+                        <system-authentication>simple</system-authentication>
+                        <security-realm>realmName</security-realm>
+                        <password-attribute>passwordAttribute</password-attribute>
+                        <user-context>userContext</user-context>
+                        <user-filter>userFilter</user-filter>
+                        <user-search-scope>one-level</user-search-scope>
+                    </ldap>
+                </authentication>
+            </realm>
+            <realm name="tlsRealm">
+                <authentication>
+                    <tls roleAttribute="cn"/>
+                </authentication>
+            </realm>
+            <realm name="usernamePasswordIdentityRealm">
+                <identity>
+                    <username-password username="user" password="Hazelcast" />
+                </identity>
+            </realm>
+            <realm name="tokenIdentityRealm">
+                <identity>
+                    <token encoding="base64">SGF6ZWxjYXN0</token>
+                </identity>
+            </realm>
+            <realm name="kerberosRealm">
+                <authentication>
+                    <kerberos>
+                        <skip-role>true</skip-role>
+                        <relax-flags-check>true</relax-flags-check>
+                        <security-realm>krb5Acceptor</security-realm>
+                        <ldap>
+                            <url>ldap://127.0.0.1/</url>
+                            <system-authentication>GSSAPI</system-authentication>
+                            <security-realm>krb5Initiator</security-realm>
+                            <skip-authentication>true</skip-authentication>
+                            <user-filter>(krb5PrincipalName={login})</user-filter>
+                            <role-mapping-attribute>cn</role-mapping-attribute>
+                        </ldap>
+                    </kerberos>
+                </authentication>
+                <identity>
+                    <kerberos>
+                        <realm>HAZELCAST.COM</realm>
+                        <security-realm>krb5Initiator</security-realm>
+                        <service-name-prefix>hz/</service-name-prefix>
+                        <spn>hz/127.0.0.1@HAZELCAST.COM</spn>
+                    </kerberos>
+                </identity>
+            </realm>
+            <realm name="krb5Acceptor">
+                <authentication>
+                    <jaas>
+                        <login-module class-name="com.sun.security.auth.module.Krb5LoginModule" usage="REQUIRED">
+                            <properties>
+                                <property name="isInitiator">false</property>
+                                <property name="useTicketCache">false</property>
+                                <property name="doNotPrompt">true</property>
+                                <property name="useKeyTab">true</property>
+                                <property name="storeKey">true</property>
+                                <property name="principal">hz/127.0.0.1@HAZELCAST.COM</property>
+                                <property name="keyTab">/opt/hz-localhost.keytab</property>
+                            </properties>
+                        </login-module>
+                    </jaas>
+                </authentication>
+            </realm>
+            <realm name="krb5Initiator">
+                <authentication>
+                    <jaas>
+                        <login-module class-name="com.sun.security.auth.module.Krb5LoginModule" usage="REQUIRED">
+                            <properties>
+                                <property name="isInitiator">true</property>
+                                <property name="useTicketCache">false</property>
+                                <property name="doNotPrompt">true</property>
+                                <property name="useKeyTab">true</property>
+                                <property name="storeKey">true</property>
+                                <property name="principal">hz/127.0.0.1@HAZELCAST.COM</property>
+                                <property name="keyTab">/opt/hz-localhost.keytab</property>
                             </properties>
                         </login-module>
                     </jaas>
@@ -737,6 +858,16 @@
                     <action>all</action>
                 </actions>
             </pn-counter-permission>
+            <ring-buffer-permission name="*">
+                <actions>
+                    <action>all</action>
+                </actions>
+            </ring-buffer-permission>
+            <reliable-topic-permission name="*">
+                <actions>
+                    <action>all</action>
+                </actions>
+            </reliable-topic-permission>
         </client-permissions>
         <client-block-unmapped-actions>true</client-block-unmapped-actions>
     </security>
@@ -771,13 +902,14 @@
     <split-brain-protection enabled="true" name="probabilistic-split-brain-protection">
         <minimum-cluster-size>3</minimum-cluster-size>
         <protect-on>READ_WRITE</protect-on>
-        <probabilistic-split-brain-protection acceptable-heartbeat-pause-millis="100" max-sample-size="20" suspicion-threshold="10" />
+        <probabilistic-split-brain-protection acceptable-heartbeat-pause-millis="100" max-sample-size="20"
+                                              suspicion-threshold="10"/>
     </split-brain-protection>
 
     <split-brain-protection enabled="true" name="recently-active-split-brain-protection">
         <minimum-cluster-size>4</minimum-cluster-size>
         <protect-on>READ_WRITE</protect-on>
-        <recently-active-split-brain-protection heartbeat-tolerance-millis="60000" />
+        <recently-active-split-brain-protection heartbeat-tolerance-millis="60000"/>
     </split-brain-protection>
 
     <hot-restart-persistence enabled="false">
@@ -831,4 +963,12 @@
             </fenced-lock>
         </locks>
     </cp-subsystem>
+
+    <metrics enabled="false">
+        <management-center enabled="false">
+            <retention-seconds>42</retention-seconds>
+        </management-center>
+        <jmx enabled="false"/>
+        <collection-frequency-seconds>24</collection-frequency-seconds>
+    </metrics>
 </hazelcast>

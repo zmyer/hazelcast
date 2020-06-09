@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2008-2019, Hazelcast, Inc. All Rights Reserved.
+ * Copyright (c) 2008-2020, Hazelcast, Inc. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -17,7 +17,7 @@
 package com.hazelcast.client.impl;
 
 import com.hazelcast.client.Client;
-import com.hazelcast.client.ClientType;
+import com.hazelcast.internal.nio.ConnectionType;
 
 import java.net.InetSocketAddress;
 import java.util.Set;
@@ -51,8 +51,8 @@ public class ClientImpl implements Client {
     }
 
     @Override
-    public ClientType getClientType() {
-        return ClientType.JAVA;
+    public String getClientType() {
+        return ConnectionType.JAVA_CLIENT;
     }
 
     @Override

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2008-2019, Hazelcast, Inc. All Rights Reserved.
+ * Copyright (c) 2008-2020, Hazelcast, Inc. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -20,7 +20,7 @@ import com.hazelcast.client.config.ClientConfig;
 import com.hazelcast.core.Hazelcast;
 import com.hazelcast.core.HazelcastInstance;
 import com.hazelcast.map.IMap;
-import com.hazelcast.spi.properties.GroupProperty;
+import com.hazelcast.spi.properties.ClusterProperty;
 import org.junit.Ignore;
 
 import java.util.concurrent.ExecutorService;
@@ -31,11 +31,11 @@ import java.util.concurrent.atomic.AtomicLong;
 public class SimpleMapTestFromClient {
 
     static {
-        GroupProperty.WAIT_SECONDS_BEFORE_JOIN.setSystemProperty("0");
+        ClusterProperty.WAIT_SECONDS_BEFORE_JOIN.setSystemProperty("0");
         System.setProperty("java.net.preferIPv4Stack", "true");
         System.setProperty("hazelcast.local.localAddress", "127.0.0.1");
-        GroupProperty.PHONE_HOME_ENABLED.setSystemProperty("false");
-        GroupProperty.SOCKET_BIND_ANY.setSystemProperty("false");
+        ClusterProperty.PHONE_HOME_ENABLED.setSystemProperty("false");
+        ClusterProperty.SOCKET_BIND_ANY.setSystemProperty("false");
     }
 
     private static int threadCount = 40;

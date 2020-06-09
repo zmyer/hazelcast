@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2008-2019, Hazelcast, Inc. All Rights Reserved.
+ * Copyright (c) 2008-2020, Hazelcast, Inc. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -23,7 +23,7 @@ import com.hazelcast.map.impl.record.Record;
 import com.hazelcast.map.impl.record.Records;
 import com.hazelcast.nio.ObjectDataInput;
 import com.hazelcast.nio.ObjectDataOutput;
-import com.hazelcast.nio.serialization.Data;
+import com.hazelcast.internal.serialization.Data;
 
 import java.io.IOException;
 import java.util.UUID;
@@ -35,17 +35,18 @@ public class TxnSetBackupOperation extends PutBackupOperation {
     public TxnSetBackupOperation() {
     }
 
-    public TxnSetBackupOperation(String name, Record<Data> record, Data dataValue, UUID transactionId) {
-        super(name, record, dataValue);
+    public TxnSetBackupOperation(String name, Data dataKey, Record<Data> record,
+                                 Data dataValue, UUID transactionId) {
+        super(name, dataKey, record, dataValue);
         this.transactionId = transactionId;
     }
 
     @Override
     protected void runInternal() {
-        Record currentRecord = recordStore.putBackupTxn(record, isPutTransient(),
+        Record currentRecord = recordStore.putBackupTxn(dataKey, record, isPutTransient(),
                 getCallerProvenance(), transactionId);
         Records.copyMetadataFrom(record, currentRecord);
-        recordStore.forceUnlock(currentRecord.getKey());
+        recordStore.forceUnlock(dataKey);
     }
 
     @Override

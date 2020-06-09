@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2008-2019, Hazelcast, Inc. All Rights Reserved.
+ * Copyright (c) 2008-2020, Hazelcast, Inc. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -20,6 +20,7 @@ import com.hazelcast.map.listener.MapPartitionLostListener;
 import com.hazelcast.spi.impl.eventservice.EventFilter;
 
 import java.util.UUID;
+import java.util.concurrent.CompletableFuture;
 
 /**
  * Helper event listener methods for {@link MapServiceContext}.
@@ -34,10 +35,18 @@ public interface MapServiceContextEventListenerSupport {
 
     UUID addEventListener(Object mapListener, EventFilter eventFilter, String mapName);
 
+    CompletableFuture<UUID> addEventListenerAsync(Object mapListener, EventFilter eventFilter, String mapName);
+
     UUID addPartitionLostListener(MapPartitionLostListener listener, String mapName);
+
+    CompletableFuture<UUID> addPartitionLostListenerAsync(MapPartitionLostListener listener, String mapName);
 
     boolean removeEventListener(String mapName, UUID registrationId);
 
+    CompletableFuture<Boolean> removeEventListenerAsync(String mapName, UUID registrationId);
+
     boolean removePartitionLostListener(String mapName, UUID registrationId);
+
+    CompletableFuture<Boolean> removePartitionLostListenerAsync(String mapName, UUID registrationId);
 
 }

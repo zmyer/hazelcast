@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2008-2019, Hazelcast, Inc. All Rights Reserved.
+ * Copyright (c) 2008-2020, Hazelcast, Inc. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -17,13 +17,14 @@
 package com.hazelcast.internal.util;
 
 import com.hazelcast.core.HazelcastException;
-import com.hazelcast.internal.serialization.PortableHook;
+import com.hazelcast.internal.serialization.DataSerializerHook;
+import com.hazelcast.internal.serialization.impl.portable.PortableHook;
 import com.hazelcast.internal.nio.IOUtil;
 import com.hazelcast.nio.serialization.ClassDefinition;
 import com.hazelcast.nio.serialization.PortableFactory;
 import com.hazelcast.nio.serialization.Serializer;
 import com.hazelcast.nio.serialization.SerializerHook;
-import com.hazelcast.spi.impl.SpiPortableHook;
+import com.hazelcast.spi.impl.SpiDataSerializerHook;
 import com.hazelcast.test.HazelcastParallelClassRunner;
 import com.hazelcast.test.HazelcastTestSupport;
 import com.hazelcast.test.annotation.ParallelJVMTest;
@@ -34,11 +35,17 @@ import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
 
+import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.net.MalformedURLException;
 import java.net.URL;
 import java.net.URLClassLoader;
+import java.net.URLConnection;
+import java.net.URLStreamHandler;
+import java.util.Arrays;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.Enumeration;
 import java.util.HashSet;
 import java.util.Iterator;
@@ -81,9 +88,9 @@ public class ServiceLoaderTest extends HazelcastTestSupport {
         //child classloader will steal bytecode from the parent and will define classes on its own
         ClassLoader childLoader = new StealingClassloader(parent);
 
-        Class<?> interfaceClass = childLoader.loadClass(PortableHook.class.getName());
+        Class<?> interfaceClass = childLoader.loadClass(DataSerializerHook.class.getName());
         Iterator<? extends Class<?>> iterator
-                = ServiceLoader.classIterator(interfaceClass, "com.hazelcast.PortableHook", childLoader);
+                = ServiceLoader.classIterator(interfaceClass, "com.hazelcast.DataSerializerHook", childLoader);
 
         //make sure some hook were found.
         assertTrue(iterator.hasNext());
@@ -173,7 +180,7 @@ public class ServiceLoaderTest extends HazelcastTestSupport {
 
     @Test
     public void testSkipHookLoadedByDifferentClassloader() {
-        Class<?> otherInterface = newInterface(PortableHook.class.getName());
+        Class<?> otherInterface = newInterface(SpiDataSerializerHook.class.getName());
         ClassLoader otherClassloader = otherInterface.getClassLoader();
 
         Class<?> otherHook = newClassImplementingInterface("com.hazelcast.internal.serialization.DifferentHook",
@@ -183,15 +190,15 @@ public class ServiceLoaderTest extends HazelcastTestSupport {
         ServiceLoader.ServiceDefinition definition1 = new ServiceLoader.ServiceDefinition(otherHook.getName(), otherClassloader);
         //this hook should be loaded
         ServiceLoader.ServiceDefinition definition2
-                = new ServiceLoader.ServiceDefinition(SpiPortableHook.class.getName(), SpiPortableHook.class.getClassLoader());
+                = new ServiceLoader.ServiceDefinition(SpiDataSerializerHook.class.getName(), SpiDataSerializerHook.class.getClassLoader());
 
         Set<ServiceLoader.ServiceDefinition> definitions = setOf(definition1, definition2);
-        ServiceLoader.ClassIterator<PortableHook> iterator
-                = new ServiceLoader.ClassIterator<PortableHook>(definitions, PortableHook.class);
+        ServiceLoader.ClassIterator<DataSerializerHook> iterator
+                = new ServiceLoader.ClassIterator<>(definitions, DataSerializerHook.class);
 
         assertTrue(iterator.hasNext());
-        Class<PortableHook> hook = iterator.next();
-        assertEquals(SpiPortableHook.class, hook);
+        Class<DataSerializerHook> hook = iterator.next();
+        assertEquals(SpiDataSerializerHook.class, hook);
         assertFalse(iterator.hasNext());
     }
 
@@ -388,16 +395,29 @@ public class ServiceLoaderTest extends HazelcastTestSupport {
         Class<ServiceLoaderSpecialCharsTestInterface> type = ServiceLoaderSpecialCharsTestInterface.class;
         String factoryId = "com.hazelcast.ServiceLoaderSpecialCharsTestInterface";
 
-        String externalForm = ClassLoader.getSystemResource("test with special chars^")
-                .toExternalForm()
-                .replace("%20", " ")
-                .replace("%5e", "^");
-
-        URL url = new URL(externalForm + "/");
+        URL url = ClassLoader.getSystemResource("test with special chars^/");
         ClassLoader given = new URLClassLoader(new URL[]{url});
 
         Set<ServiceLoaderSpecialCharsTestInterface> implementations = new HashSet<ServiceLoaderSpecialCharsTestInterface>();
         Iterator<ServiceLoaderSpecialCharsTestInterface> iterator = ServiceLoader.iterator(type, factoryId, given);
+        while (iterator.hasNext()) {
+            implementations.add(iterator.next());
+        }
+
+        assertEquals(1, implementations.size());
+    }
+
+    @Test
+    public void loadServicesFromInMemoryClassLoader() throws Exception {
+        Class<ServiceLoaderTestInterface> type = ServiceLoaderTestInterface.class;
+        String factoryId = "com.hazelcast.InMemoryFileForTesting";
+
+        ClassLoader parent = this.getClass().getClassLoader();
+        // Handles META-INF/services/com.hazelcast.CustomServiceLoaderTestInterface
+        ClassLoader given = new CustomUrlStreamHandlerClassloader(parent);
+
+        Set<ServiceLoaderTestInterface> implementations = new HashSet<ServiceLoaderTestInterface>();
+        Iterator<ServiceLoaderTestInterface> iterator = ServiceLoader.iterator(type, factoryId, given);
         while (iterator.hasNext()) {
             implementations.add(iterator.next());
         }
@@ -508,5 +528,52 @@ public class ServiceLoaderTest extends HazelcastTestSupport {
             return null;
         }
 
+    }
+
+    /**
+     * Delegates everything to a given parent classloader, except for a single
+     * file.
+     */
+    private static class CustomUrlStreamHandlerClassloader extends ClassLoader {
+        private final String inMemoryResourceName = "META-INF/services/com.hazelcast.InMemoryFileForTesting";
+        private final String inMemoryContent = "com.hazelcast.internal.util.ServiceLoaderTest$ServiceLoaderTestInterfaceImpl";
+
+        private CustomUrlStreamHandlerClassloader(ClassLoader parent) {
+            super(parent);
+        }
+
+        @Override
+        public URL findResource(String name) {
+            if (!inMemoryResourceName.equals(name)) {
+                return null;
+            }
+            try {
+                return new URL(null, "inmemory:" + name, new URLStreamHandler() {
+                    @Override
+                    protected URLConnection openConnection(URL u) {
+                        return new URLConnection(u) {
+                            private final ByteArrayInputStream in = new ByteArrayInputStream(inMemoryContent.getBytes());
+
+                            @Override
+                            public void connect() {
+                            }
+
+                            @Override
+                            public InputStream getInputStream() {
+                                return in;
+                            }
+                        };
+                    }
+                });
+            } catch (MalformedURLException e) {
+                throw new RuntimeException(e);
+            }
+        }
+
+        @Override
+        public Enumeration<URL> findResources(String name) {
+            URL resource = findResource(name);
+            return resource == null ? Collections.emptyEnumeration() : Collections.enumeration(Arrays.asList(resource));
+        }
     }
 }

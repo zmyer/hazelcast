@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2008-2019, Hazelcast, Inc. All Rights Reserved.
+ * Copyright (c) 2008-2020, Hazelcast, Inc. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -19,12 +19,15 @@ package com.hazelcast.config;
 import com.hazelcast.nio.ObjectDataInput;
 import com.hazelcast.nio.ObjectDataOutput;
 import com.hazelcast.nio.serialization.IdentifiedDataSerializable;
+import com.hazelcast.wan.WanPublisher;
 
 import javax.annotation.Nonnull;
 import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Objects;
 
+import static com.hazelcast.internal.util.Preconditions.checkHasText;
 import static com.hazelcast.internal.util.Preconditions.checkNotNull;
 
 /**
@@ -34,8 +37,8 @@ import static com.hazelcast.internal.util.Preconditions.checkNotNull;
 public abstract class AbstractWanPublisherConfig implements IdentifiedDataSerializable {
 
     protected String publisherId = "";
-    protected String className = "";
-    protected Object implementation;
+    protected String className;
+    protected WanPublisher implementation;
     protected Map<String, Comparable> properties = new HashMap<>();
 
     /**
@@ -81,7 +84,7 @@ public abstract class AbstractWanPublisherConfig implements IdentifiedDataSerial
 
     /**
      * Returns the name of the class implementing
-     * {@link com.hazelcast.wan.WanReplicationPublisher}.
+     * {@link WanPublisher}.
      */
     public String getClassName() {
         return className;
@@ -89,33 +92,35 @@ public abstract class AbstractWanPublisherConfig implements IdentifiedDataSerial
 
     /**
      * Sets the name of the class implementing
-     * {@link com.hazelcast.wan.WanReplicationPublisher}.
+     * {@link WanPublisher}.
      * To configure the built in WanBatchReplication, please use
-     * {@link WanBatchReplicationPublisherConfig} config class.
+     * {@link WanBatchPublisherConfig} config class.
      *
      * @param className the name of the class implementation for the WAN replication
      * @return this config
      */
-    public AbstractWanPublisherConfig setClassName(String className) {
-        this.className = className;
+    public AbstractWanPublisherConfig setClassName(@Nonnull String className) {
+        this.className = checkHasText(className, "Wan publisher class name must contain text!");
+        this.implementation = null;
         return this;
     }
 
     /**
-     * Returns the implementation of {@link com.hazelcast.wan.WanReplicationPublisher}.
+     * Returns the implementation of {@link WanPublisher}.
      */
-    public Object getImplementation() {
+    public WanPublisher getImplementation() {
         return implementation;
     }
 
     /**
-     * Sets the implementation of {@link com.hazelcast.wan.WanReplicationPublisher}.
+     * Sets the implementation of {@link WanPublisher}.
      *
      * @param implementation the implementation for the WAN replication
      * @return this config
      */
-    public AbstractWanPublisherConfig setImplementation(Object implementation) {
-        this.implementation = implementation;
+    public AbstractWanPublisherConfig setImplementation(@Nonnull WanPublisher implementation) {
+        this.implementation = checkNotNull(implementation, "Wan publisher cannot be null!");
+        this.className = null;
         return this;
     }
 
@@ -154,24 +159,14 @@ public abstract class AbstractWanPublisherConfig implements IdentifiedDataSerial
 
         AbstractWanPublisherConfig that = (AbstractWanPublisherConfig) o;
 
-        if (!publisherId.equals(that.publisherId)) {
-            return false;
-        }
-        if (className != null ? !className.equals(that.className) : that.className != null) {
-            return false;
-        }
-        if (implementation != null ? !implementation.equals(that.implementation) : that.implementation != null) {
-            return false;
-        }
-        return properties.equals(that.properties);
+        return publisherId.equals(that.publisherId)
+            && Objects.equals(implementation, that.implementation)
+            && Objects.equals(className, that.className)
+            && properties.equals(that.properties);
     }
 
     @Override
     public int hashCode() {
-        int result = publisherId.hashCode();
-        result = 31 * result + (className != null ? className.hashCode() : 0);
-        result = 31 * result + (implementation != null ? implementation.hashCode() : 0);
-        result = 31 * result + properties.hashCode();
-        return result;
+        return Objects.hash(publisherId, className, implementation, properties);
     }
 }

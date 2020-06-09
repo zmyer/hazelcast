@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!--
-  ~ Copyright (c) 2008-2019, Hazelcast, Inc. All Rights Reserved.
+  ~ Copyright (c) 2008-2020, Hazelcast, Inc. All Rights Reserved.
   ~
   ~ Licensed under the Apache License, Version 2.0 (the "License");
   ~ you may not use this file except in compliance with the License.
@@ -23,7 +23,7 @@
   the directory where you start your Hazelcast client.
 
   To learn how to configure Hazelcast, please see the schema at
-  https://hazelcast.com/schema/client-config/hazelcast-client-config-4.0.xsd
+  https://hazelcast.com/schema/client-config/hazelcast-client-config-4.1.xsd
   or the Reference Manual at https://hazelcast.org/documentation/
 -->
 
@@ -31,7 +31,7 @@
 <hazelcast-client xmlns="http://www.hazelcast.com/schema/client-config"
                   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
                   xsi:schemaLocation="http://www.hazelcast.com/schema/client-config
-                  http://www.hazelcast.com/schema/client-config/hazelcast-client-config-4.0.xsd">
+                  http://www.hazelcast.com/schema/client-config/hazelcast-client-config-4.1.xsd">
 
     <!--
         You can use the <import> element to load different Hazelcast declarative configuration files you prepared.
@@ -82,7 +82,7 @@
         Specifies the cluster name. It's sent as part of the client authentication message to Hazelcast
         member(s).
     -->
-    <cluster-name>dev</cluster-name>
+    <cluster-name>my-cluster</cluster-name>
 
     <!--
         When Hazelcast instances are created, they are put in a global registry with their creation names.
@@ -91,17 +91,6 @@
     -->
     <instance-name>CLIENT_NAME</instance-name>
 
-    <!--
-        ===== HAZELCAST LICENSE CONFIGURATION =====
-
-        If you have an Enterprise or Enterprise HD license, you can enter it here.
-        You can also set your license key programmatically; please refer to
-        http://docs.hazelcast.org/docs/latest/manual/html-single/index.html#setting-the-license-key
-
-        Please note that providing the license key is not required in client
-        configuration, it is kept only for backward compatibility.
-    -->
-    <license-key>HAZELCAST_ENTERPRISE_LICENSE_KEY</license-key>
     <!--
         The <properties> element lets you add properties to some of the Hazelcast elements used to configure some of
         the Hazelcast client modules.
@@ -330,12 +319,14 @@
             <zones>us-east1-b,us-east1-c</zones>
         </gcp>
         <azure enabled="false">
+            <instance-metadata-available>false</instance-metadata-available>
             <client-id>CLIENT_ID</client-id>
             <client-secret>CLIENT_SECRET</client-secret>
             <tenant-id>TENANT_ID</tenant-id>
             <subscription-id>SUB_ID</subscription-id>
-            <cluster-id>HZLCAST001</cluster-id>
-            <group-name>RESOURCE-GROUP-NAME</group-name>
+            <resource-group>RESOURCE-GROUP-NAME</resource-group>
+            <scale-set>SCALE-SET-NAME</scale-set>
+            <tag>TAG-NAME=HZLCAST001</tag>
         </azure>
         <kubernetes enabled="false">
             <namespace>MY-KUBERNETES-NAMESPACE</namespace>
@@ -368,14 +359,6 @@
             </discovery-strategy>
         </discovery-strategies>
     </network>
-    <!--
-        The <executor-pool-size> element lets you configure the pool size for an internal executor service
-        (different from the data structure Executor Service) that has threads and queues to perform internal operations
-        such as handling responses. This parameter specifies the size of the pool of threads which perform these
-        operations laying in the executor’s queue. If not configured, this parameter has the value of 5 x core size of
-        the client, i.e., it is 20 for a machine that has 4 cores.
-    -->
-    <executor-pool-size>40</executor-pool-size>
 
     <!--
         ===== HAZELCAST SECURITY CONFIGURATION =====
@@ -396,6 +379,9 @@
         * <token>
             Defines a static TokenCredentials instance as the client's identity. It can have attribute "encoding".
             Content of the element is token value in given encoding (or in plain text).
+        * <kerberos>
+            Uses Kerberos service ticket (wrapped as GSS-API init token) as the identity.
+            It may reference a security realm  in the <realms> section. The realm is used for the Kerberos authentication.
     -->
     <security>
         <credentials-factory class-name="com.hazelcast.examples.MyCredentialsFactory">
@@ -403,21 +389,45 @@
                 <property name="property">value</property>
             </properties>
         </credentials-factory>
-        <!-- 
+        <!--
         <username-password username="client1" password="s3crEt"/>
         <token encoding="base64">SGF6ZWxjYXN0</token>
+        <kerberos>
+            <realm>HAZELCAST.COM</realm>
+            <security-realm>krb5Initiator</security-realm>
+            <service-name-prefix>hz/</service-name-prefix>
+            <spn>hz/127.0.0.1@HAZELCAST.COM</spn>
+        </kerberos>
          -->
+        <realms>
+            <realm name="krb5Initiator">
+                <authentication>
+                    <jaas>
+                        <login-module class-name="com.sun.security.auth.module.Krb5LoginModule" usage="REQUIRED">
+                            <properties>
+                                <property name="isInitiator">true</property>
+                                <property name="useTicketCache">false</property>
+                                <property name="doNotPrompt">true</property>
+                                <property name="useKeyTab">true</property>
+                                <property name="storeKey">true</property>
+                                <property name="principal">jduke@HAZELCAST.COM</property>
+                                <property name="keyTab">/opt/jduke.keytab</property>
+                            </properties>
+                        </login-module>
+                    </jaas>
+                </authentication>
+            </realm>
+        </realms>
     </security>
 
     <!--
         ===== HAZELCAST LISTENER CONFIGURATIONS =====
 
         Configuration used to register the listeners that you created by implementing Hazelcast's
-        MembershipListener, InstanceListener and MigrationListener interfaces.
+        MembershipListener and MigrationListener interfaces.
     -->
     <listeners>
         <listener>com.hazelcast.examples.MembershipListener</listener>
-        <listener>com.hazelcast.examples.InstanceListener</listener>
         <listener>com.hazelcast.examples.MigrationListener</listener>
     </listeners>
 
@@ -756,9 +766,10 @@
                 Its default value is 1000 ms.
             * <max-backoff-millis>: Specifies the upper limit for the backoff in milliseconds. Its default value is 30000 ms.
             * <multiplier>: Factor to multiply the backoff after a failed retry. Its default value is 2.
-            * <fail-on-max-backoff>:
-                Specifies whether to fail when the max-backoff-millis has reached or continue waiting max-backoff-millis
-                at each iteration. Its default value is false.
+            * <cluster-connect-timeout-millis>: Timeout value in milliseconds for the client to give up to connect to
+              the current cluster
+              Depending on FailoverConfig, a client can shutdown or start trying on alternative cluster after reaching the timeout.
+              Its default value is 20000
             * <jitter>: Specifies by how much to randomize backoffs. Its default value is 0.2.
     -->
     <connection-strategy async-start="true" reconnect-mode="ASYNC">
@@ -766,7 +777,7 @@
             <initial-backoff-millis>2000</initial-backoff-millis>
             <max-backoff-millis>60000</max-backoff-millis>
             <multiplier>3</multiplier>
-            <fail-on-max-backoff>true</fail-on-max-backoff>
+            <cluster-connect-timeout-millis>5000</cluster-connect-timeout-millis>
             <jitter>0.5</jitter>
         </connection-retry>
     </connection-strategy>
@@ -863,5 +874,37 @@
             <className>test.sampleClassName</className>
         </classNames>
     </user-code-deployment>
+
+    <!--
+        ===== HAZELCAST METRICS CONFIGURATION =====
+
+        Configuration element's name is <metrics>.
+
+        It has the following attributes:
+        - enabled:
+            The master-switch for the metrics collection. If this is set
+            to false no metrics collection is done, regardless of the other
+            settings. Its default value is true.
+
+        It has the following sub-elements:
+        * <jmx>:
+            Defines the JMX related metrics configuration.
+
+            It has the following attributes:
+            * "enabled":
+                Controls whether the metrics collected are exposed to
+                through JMX. It is enabled by default.
+                In order to expose the metrics, the metrics system need
+                to be enabled via the enabled master-switch attribute.
+
+        * <collection-frequency-seconds>:
+            Sets the metrics collection frequency in seconds.
+            By default, metrics are collected every 5 seconds.
+
+    -->
+    <metrics enabled="false">
+        <jmx enabled="false"/>
+        <collection-frequency-seconds>42</collection-frequency-seconds>
+    </metrics>
 
 </hazelcast-client>

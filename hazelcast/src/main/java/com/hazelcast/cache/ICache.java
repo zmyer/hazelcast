@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2008-2019, Hazelcast, Inc. All Rights Reserved.
+ * Copyright (c) 2008-2020, Hazelcast, Inc. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -64,7 +64,7 @@ import java.util.concurrent.ForkJoinPool;
  * In a reactive way:
  * <pre>
  *   CompletionStage&lt;Value&gt; stage = unwrappedCache.getAsync( &quot;key-1&quot; ) ;
- *   stage.thenAcceptAsync(value -> {
+ *   stage.thenAcceptAsync(value -&gt; {
  *         System.out.println(value);
  *     });
  * </pre>
@@ -75,21 +75,28 @@ import java.util.concurrent.ForkJoinPool;
  *   System.out.println( value );
  * </pre>
  *
+ * <b>Execution properties of returned {@code CompletionStage}s</b>
  * <p>
- *     Dependent actions can be registered on the returned {@link CompletionStage}.
- *     Their execution follows {@link java.util.concurrent.CompletableFuture}
- *     execution conventions:
- *     <ul>
- *         <li>dependent actions registered by <em>non-async</em> methods may
- *        be executed by the thread that completes the current CompletableFuture or by any other
- *        caller of a completion method.</li>
- *        <li>dependent actions registered by default <em>async</em> methods without an explicit
- *        {@code Executor} argument are executed by {@link ForkJoinPool#commonPool()} unless
- *        its parallelism level is less than 2, in which case a new {@code Thread} is created to
- *        run each action</li>
- *     </ul>
- *
+ *     Actions supplied for dependent completions of non-async methods and async methods
+ *     without an explicit {@link java.util.concurrent.Executor} argument are performed
+ *     by the {@link ForkJoinPool#commonPool()} (unless it does not support a parallelism
+ *     level of at least 2, in which case a new {@code Thread} is created per task).
  * </p>
+ *
+ *
+ * <p>
+ * Dependent actions can be registered on the returned {@link CompletionStage}.
+ * Their execution follows {@link java.util.concurrent.CompletableFuture}
+ * execution conventions:
+ * <ul>
+ *     <li>dependent actions registered by <em>non-async</em> methods may
+ *     be executed by the thread that completes the current CompletableFuture or by any other
+ *     caller of a completion method.</li>
+ *     <li>dependent actions registered by default <em>async</em> methods without an explicit
+ *     {@code Executor} argument are executed by {@link ForkJoinPool#commonPool()} unless
+ *     its parallelism level is less than 2, in which case a new {@code Thread} is created to
+ *     run each action</li>
+ * </ul>
  *
  * <b>Custom ExpiryPolicy:</b><br>
  * For most of the typical operations, Hazelcast provides overloaded versions with an additional
@@ -888,7 +895,8 @@ public interface ICache<K, V>
     V getAndReplace(K key, V value, ExpiryPolicy expiryPolicy);
 
     /**
-     * Total entry count.
+     * Total entry count. If the cache contains more than
+     * <code>Integer.MAX_VALUE</code> elements, returns <code>Integer.MAX_VALUE</code>.
      *
      * @return total entry count
      */

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2008-2019, Hazelcast, Inc. All Rights Reserved.
+ * Copyright (c) 2008-2020, Hazelcast, Inc. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -132,6 +132,7 @@ public interface DurableExecutorService extends ExecutorService, DistributedObje
      *
      * @param task task submitted to the owner of the specified key
      * @param key  the specified key
+     * @param <T>  the return type of the task
      * @return a Future representing pending completion of the task
      */
     <T> DurableExecutorServiceFuture<T> submitToKeyOwner(@Nonnull Callable<T> task,

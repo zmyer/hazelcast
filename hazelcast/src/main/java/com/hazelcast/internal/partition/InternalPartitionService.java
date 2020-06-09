@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2008-2019, Hazelcast, Inc. All Rights Reserved.
+ * Copyright (c) 2008-2020, Hazelcast, Inc. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -29,20 +29,7 @@ import com.hazelcast.internal.services.ManagedService;
 
 import java.util.List;
 
-//FGTODO: 2019/11/22 下午3:58 zmyer
 public interface InternalPartitionService extends IPartitionService, ManagedService, GracefulShutdownAwareService {
-
-    /**
-     * Retry count for migration operations.
-     * <p>
-     * Current Invocation mechanism retries first 5 invocations without pausing.
-     */
-    int MIGRATION_RETRY_COUNT = 12;
-
-    /**
-     * Retry pause for migration operations in milliseconds.
-     */
-    long MIGRATION_RETRY_PAUSE = 10000;
 
     /**
      * Static constant for dispatching and listening migration events
@@ -63,9 +50,9 @@ public interface InternalPartitionService extends IPartitionService, ManagedServ
     /**
      * Number of the member groups to be used in partition assignments.
      *
-     * @return number of member groups
-     * @see com.hazelcast.partition.membergroup.MemberGroupFactory
+     * @see com.hazelcast.internal.partition.membergroup.MemberGroupFactory
      * @see com.hazelcast.config.PartitionGroupConfig
+     * @return number of member groups
      */
     int getMemberGroupsSize();
 
@@ -81,7 +68,6 @@ public interface InternalPartitionService extends IPartitionService, ManagedServ
 
     /**
      * Called when a member is added to the cluster. Triggers partition rebalancing.
-     *
      * @param member new member
      */
     void memberAdded(Member member);
@@ -89,7 +75,6 @@ public interface InternalPartitionService extends IPartitionService, ManagedServ
     /**
      * Called when a member is removed from the cluster.
      * Executes maintenance tasks, removes the member from partition table and triggers promotions.
-     *
      * @param member removed member
      */
     void memberRemoved(Member member);
@@ -128,7 +113,6 @@ public interface InternalPartitionService extends IPartitionService, ManagedServ
 
     /**
      * Creates an immutable/readonly view of partition table.
-     *
      * @return immutable view of partition table
      */
     PartitionTableView createPartitionTableView();

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2008-2019, Hazelcast, Inc. All Rights Reserved.
+ * Copyright (c) 2008-2020, Hazelcast, Inc. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -46,8 +46,7 @@ public class FailoverConfigTest {
         Set<String> allClientConfigMethods = new HashSet<>();
         Collections.addAll(allClientConfigMethods, "setProperty", "getProperty", "getClassLoader", "getProperties",
                 "setProperties", "getLabels", "getClusterName", "getSecurityConfig", "isSmartRouting", "setSmartRouting",
-                "getSocketInterceptorConfig", "setSocketInterceptorConfig", "getConnectionAttemptPeriod",
-                "setConnectionAttemptPeriod", "getConnectionAttemptLimit", "setConnectionAttemptLimit", "getConnectionTimeout",
+                "getSocketInterceptorConfig", "setSocketInterceptorConfig", "getConnectionTimeout",
                 "setConnectionTimeout", "addAddress", "setAddresses", "getAddresses", "isRedoOperation", "setRedoOperation",
                 "getSocketOptions", "setSocketOptions", "setConfigPatternMatcher", "getConfigPatternMatcher", "setSecurityConfig",
                 "getNetworkConfig", "setNetworkConfig", "addReliableTopicConfig", "getReliableTopicConfig", "addNearCacheConfig",
@@ -62,7 +61,7 @@ public class FailoverConfigTest {
                 "setQueryCacheConfigs", "getInstanceName", "setInstanceName", "getConnectionStrategyConfig",
                 "setConnectionStrategyConfig", "getUserCodeDeploymentConfig", "setUserCodeDeploymentConfig",
                 "getOrCreateQueryCacheConfig", "getOrNullQueryCacheConfig", "addLabel", "setLabels",
-                "setUserContext", "getUserContext", "setMetricsConfig",
+                "setUserContext", "getUserContext", "setMetricsConfig", "load",
                 "setBackupAckToClientEnabled", "isBackupAckToClientEnabled", "getMetricsConfig", "equals", "hashCode", "toString");
         Method[] declaredMethods = ClientConfig.class.getDeclaredMethods();
         for (Method method : declaredMethods) {
@@ -78,8 +77,7 @@ public class FailoverConfigTest {
     public void testAllClientNetworkConfigsAreHandledInMultipleClientConfigSupport() {
         Set<String> allClientNetworkConfigMethods = new HashSet<>();
         Collections.addAll(allClientNetworkConfigMethods, "isSmartRouting", "setSmartRouting", "getSocketInterceptorConfig",
-                "setSocketInterceptorConfig", "getConnectionAttemptPeriod", "setConnectionAttemptPeriod",
-                "getConnectionAttemptLimit", "setConnectionAttemptLimit", "getConnectionTimeout", "setConnectionTimeout",
+                "setSocketInterceptorConfig", "getConnectionTimeout", "setConnectionTimeout",
                 "addAddress", "setAddresses", "getAddresses", "isRedoOperation", "setRedoOperation", "getSocketOptions",
                 "setSocketOptions", "getDiscoveryConfig", "setDiscoveryConfig", "getSSLConfig", "setSSLConfig", "setAwsConfig",
                 "getAwsConfig", "setGcpConfig", "getGcpConfig", "setAzureConfig", "getAzureConfig", "setKubernetesConfig",

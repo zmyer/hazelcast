@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2008-2019, Hazelcast, Inc. All Rights Reserved.
+ * Copyright (c) 2008-2020, Hazelcast, Inc. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -32,7 +32,7 @@ import java.util.concurrent.CompletionStage;
  * registering a callback to be executed upon completion. For example:
  * <pre>
  * CompletionStage&lt;E&gt; future = atomicRef.getAsync();
- * future.whenCompleteAsync((v, throwable) -> {
+ * future.whenCompleteAsync((v, throwable) -&gt; {
  *     if (throwable == null) {
  *         // do something with the old value returned by put operation
  *     } else {
@@ -40,6 +40,12 @@ import java.util.concurrent.CompletionStage;
  *     }
  * });
  * </pre>
+ * <p>
+ * Actions supplied for dependent completions of default non-async methods and async methods
+ * without an explicit {@link java.util.concurrent.Executor} argument are performed
+ * by the {@link java.util.concurrent.ForkJoinPool#commonPool()} (unless it does not
+ * support a parallelism level of at least 2, in which case a new {@code Thread} is
+ * created per task).
  * <p>
  * IAtomicReference is accessed via {@link CPSubsystem#getAtomicReference(String)}.
  * It works on top of the Raft consensus algorithm.
@@ -147,6 +153,7 @@ public interface IAtomicReference<E> extends DistributedObject {
      * change.
      *
      * @param function the function applied on the value, the stored value does not change
+     * @param <R> the result type of the function
      * @return the result of the function application
      * @throws IllegalArgumentException if function is {@code null}
      */
@@ -238,6 +245,7 @@ public interface IAtomicReference<E> extends DistributedObject {
      * change.
      *
      * @param function the function
+     * @param <R> the result type of the function
      * @return the result of the function application
      * @throws IllegalArgumentException if function is {@code null}
      */

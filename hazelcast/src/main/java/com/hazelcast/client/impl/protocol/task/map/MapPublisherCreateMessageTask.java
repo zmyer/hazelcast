@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2008-2019, Hazelcast, Inc. All Rights Reserved.
+ * Copyright (c) 2008-2020, Hazelcast, Inc. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -31,7 +31,7 @@ import com.hazelcast.map.impl.querycache.accumulator.AccumulatorInfo;
 import com.hazelcast.map.impl.querycache.subscriber.operation.PublisherCreateOperation;
 import com.hazelcast.cluster.Address;
 import com.hazelcast.internal.nio.Connection;
-import com.hazelcast.nio.serialization.Data;
+import com.hazelcast.internal.serialization.Data;
 import com.hazelcast.query.Predicate;
 import com.hazelcast.spi.impl.operationservice.InvocationBuilder;
 import com.hazelcast.spi.impl.operationservice.impl.OperationServiceImpl;
@@ -48,7 +48,7 @@ import static com.hazelcast.map.impl.MapService.SERVICE_NAME;
 
 /**
  * Client Protocol Task for handling messages with type ID:
- * {@link com.hazelcast.client.impl.protocol.codec.ContinuousQueryMessageType#CONTINUOUSQUERY_PUBLISHERCREATE}
+ * {@link com.hazelcast.client.impl.protocol.codec.ContinuousQueryPublisherCreateCodec#REQUEST_MESSAGE_TYPE}
  */
 public class MapPublisherCreateMessageTask
         extends AbstractCallableMessageTask<ContinuousQueryPublisherCreateCodec.RequestParameters>

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2008-2019, Hazelcast, Inc. All Rights Reserved.
+ * Copyright (c) 2008-2020, Hazelcast, Inc. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -74,12 +74,14 @@ public class AddOperation extends AbstractPNCounterOperation implements Mutating
     private void updateStatistics() {
         final PNCounterService service = getService();
         final LocalPNCounterStatsImpl stats = service.getLocalPNCounterStats(name);
-        if (delta > 0) {
-            stats.incrementIncrementOperationCount();
-        } else if (delta < 0) {
-            stats.incrementDecrementOperationCount();
+        if (stats != null) {
+            if (delta > 0) {
+                stats.incrementIncrementOperationCount();
+            } else if (delta < 0) {
+                stats.incrementDecrementOperationCount();
+            }
+            stats.setValue(getBeforeUpdate ? (response.getValue() + delta) : response.getValue());
         }
-        stats.setValue(getBeforeUpdate ? (response.getValue() + delta) : response.getValue());
     }
 
     @Override

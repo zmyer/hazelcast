@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2008-2019, Hazelcast, Inc. All Rights Reserved.
+ * Copyright (c) 2008-2020, Hazelcast, Inc. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -91,11 +91,11 @@ public class XmlClientConfigBuilder extends AbstractXmlConfigBuilder {
     /**
      * Constructs a {@link XmlClientConfigBuilder} that loads the configuration
      * with the provided {@link XmlClientConfigLocator}.
-     * <p/>
+     * <p>
      * If the provided {@link XmlClientConfigLocator} is {@code null}, a new
      * instance is created and the config is located in every possible
      * places. For these places, please see {@link XmlClientConfigLocator}.
-     * <p/>
+     * <p>
      * If the provided {@link XmlClientConfigLocator} is not {@code null}, it
      * is expected that it already located the configuration XML to load
      * from. No further attempt to locate the configuration XML is made

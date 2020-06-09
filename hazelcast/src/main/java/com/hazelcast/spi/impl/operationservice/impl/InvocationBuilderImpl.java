@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2008-2019, Hazelcast, Inc. All Rights Reserved.
+ * Copyright (c) 2008-2020, Hazelcast, Inc. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,7 +16,6 @@
 
 package com.hazelcast.spi.impl.operationservice.impl;
 
-import com.hazelcast.executor.impl.ExecutionCallbackAdapter;
 import com.hazelcast.cluster.Address;
 import com.hazelcast.spi.impl.operationservice.InvocationBuilder;
 import com.hazelcast.spi.impl.operationservice.Operation;
@@ -51,18 +50,13 @@ class InvocationBuilderImpl extends InvocationBuilder {
             op.setPartitionId(partitionId).setReplicaIndex(replicaIndex);
             invocation = new PartitionInvocation(
                     context, op, doneCallback, tryCount, tryPauseMillis, callTimeout, resultDeserialized,
-                    failOnIndeterminateOperationState, endpointManager);
+                    failOnIndeterminateOperationState, connectionManager);
         } else {
             invocation = new TargetInvocation(
                     context, op, target, doneCallback, tryCount, tryPauseMillis,
-                    callTimeout, resultDeserialized, endpointManager);
+                    callTimeout, resultDeserialized, connectionManager);
         }
 
-        InvocationFuture future = invocation.invoke();
-        if (executionCallback != null) {
-            future.whenCompleteAsync(new ExecutionCallbackAdapter(executionCallback));
-        }
-
-        return future;
+        return invocation.invoke();
     }
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2008-2019, Hazelcast, Inc. All Rights Reserved.
+ * Copyright (c) 2008-2020, Hazelcast, Inc. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -20,10 +20,15 @@ import com.hazelcast.internal.config.ConfigDataSerializerHook;
 import com.hazelcast.nio.ObjectDataInput;
 import com.hazelcast.nio.ObjectDataOutput;
 import com.hazelcast.nio.serialization.IdentifiedDataSerializable;
+import com.hazelcast.wan.WanConsumer;
 
+import javax.annotation.Nonnull;
 import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Objects;
+
+import static com.hazelcast.internal.util.Preconditions.checkNotNull;
 
 /**
  * Config for processing WAN events received from a target cluster.
@@ -36,8 +41,8 @@ import java.util.Map;
  * <p>
  * NOTE: EE only
  *
- * @see WanReplicationConfig#setWanConsumerConfig(WanConsumerConfig)
- * @see CustomWanPublisherConfig#setClassName(String)
+ * @see WanReplicationConfig#setConsumerConfig(WanConsumerConfig)
+ * @see WanCustomPublisherConfig#setClassName(String)
  */
 //FGTODO: 2019/11/26 上午10:08 zmyer
 public class WanConsumerConfig implements IdentifiedDataSerializable {
@@ -49,8 +54,8 @@ public class WanConsumerConfig implements IdentifiedDataSerializable {
 
     private boolean persistWanReplicatedData = DEFAULT_PERSIST_WAN_REPLICATED_DATA;
     private String className;
-    private Object implementation;
-    private Map<String, Comparable> properties = new HashMap<String, Comparable>();
+    private WanConsumer implementation;
+    private Map<String, Comparable> properties = new HashMap<>();
 
     /**
      * Returns the properties for the custom WAN consumer.
@@ -73,7 +78,7 @@ public class WanConsumerConfig implements IdentifiedDataSerializable {
 
     /**
      * Returns the fully qualified class name of the class implementing
-     * {@link com.hazelcast.wan.WanReplicationConsumer}.
+     * {@link WanConsumer}.
      *
      * @return fully qualified class name
      */
@@ -83,41 +88,43 @@ public class WanConsumerConfig implements IdentifiedDataSerializable {
 
     /**
      * Sets the fully qualified class name of the class implementing
-     * {@link com.hazelcast.wan.WanReplicationConsumer}.
+     * {@link WanConsumer}.
      * The class name may be {@code null} in which case the implementation or
      * the default processing logic for incoming WAN events will be used.
      *
      * @param className fully qualified class name
      * @return this config
-     * @see #setImplementation(Object)
+     * @see #setImplementation(WanConsumer)
      */
-    public WanConsumerConfig setClassName(String className) {
-        this.className = className;
+    public WanConsumerConfig setClassName(@Nonnull String className) {
+        this.className = checkNotNull(className, "Wan consumer class name must contain text");
+        this.implementation = null;
         return this;
     }
 
     /**
      * Returns the implementation implementing
-     * {@link com.hazelcast.wan.WanReplicationConsumer}.
+     * {@link WanConsumer}.
      *
      * @return the implementation for this WAN consumer
      */
-    public Object getImplementation() {
+    public WanConsumer getImplementation() {
         return implementation;
     }
 
     /**
      * Sets the implementation for this WAN consumer. The object must implement
-     * {@link com.hazelcast.wan.WanReplicationConsumer}.
+     * {@link WanConsumer}.
      * The implementation may be {@code null} in which case the class name or
      * the default processing logic for incoming WAN events will be used.
      *
-     * @param implementation the object implementing {@link com.hazelcast.wan.WanReplicationConsumer}
+     * @param implementation the object implementing {@link WanConsumer}
      * @return this config
      * @see #setClassName(String)
      */
-    public WanConsumerConfig setImplementation(Object implementation) {
-        this.implementation = implementation;
+    public WanConsumerConfig setImplementation(@Nonnull WanConsumer implementation) {
+        this.implementation = checkNotNull(implementation, "Wan consumer cannot be null!");
+        this.className = null;
         return this;
     }
 
@@ -198,24 +205,14 @@ public class WanConsumerConfig implements IdentifiedDataSerializable {
 
         WanConsumerConfig that = (WanConsumerConfig) o;
 
-        if (persistWanReplicatedData != that.persistWanReplicatedData) {
-            return false;
-        }
-        if (className != null ? !className.equals(that.className) : that.className != null) {
-            return false;
-        }
-        if (implementation != null ? !implementation.equals(that.implementation) : that.implementation != null) {
-            return false;
-        }
-        return properties != null ? properties.equals(that.properties) : that.properties == null;
+        return persistWanReplicatedData == that.persistWanReplicatedData
+            && Objects.equals(className, that.className)
+            && Objects.equals(implementation, that.implementation)
+            && Objects.equals(properties, that.properties);
     }
 
     @Override
     public int hashCode() {
-        int result = (persistWanReplicatedData ? 1 : 0);
-        result = 31 * result + (className != null ? className.hashCode() : 0);
-        result = 31 * result + (implementation != null ? implementation.hashCode() : 0);
-        result = 31 * result + (properties != null ? properties.hashCode() : 0);
-        return result;
+        return Objects.hash(persistWanReplicatedData, className, implementation, properties);
     }
 }

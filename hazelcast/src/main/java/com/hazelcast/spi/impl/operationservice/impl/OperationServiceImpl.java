@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2008-2019, Hazelcast, Inc. All Rights Reserved.
+ * Copyright (c) 2008-2020, Hazelcast, Inc. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,21 +16,22 @@
 
 package com.hazelcast.spi.impl.operationservice.impl;
 
+import com.hazelcast.cluster.Address;
 import com.hazelcast.cluster.impl.MemberImpl;
 import com.hazelcast.core.LocalMemberResetException;
+import com.hazelcast.instance.EndpointQualifier;
 import com.hazelcast.instance.impl.Node;
 import com.hazelcast.internal.cluster.ClusterClock;
 import com.hazelcast.internal.management.dto.SlowOperationDTO;
-import com.hazelcast.internal.metrics.StaticMetricsProvider;
 import com.hazelcast.internal.metrics.MetricsRegistry;
 import com.hazelcast.internal.metrics.Probe;
+import com.hazelcast.internal.metrics.StaticMetricsProvider;
 import com.hazelcast.internal.nio.Packet;
 import com.hazelcast.internal.partition.InternalPartitionService;
 import com.hazelcast.internal.serialization.InternalSerializationService;
 import com.hazelcast.internal.util.counters.Counter;
 import com.hazelcast.internal.util.counters.MwCounter;
 import com.hazelcast.logging.ILogger;
-import com.hazelcast.cluster.Address;
 import com.hazelcast.spi.impl.NodeEngineImpl;
 import com.hazelcast.spi.impl.PartitionSpecificRunnable;
 import com.hazelcast.spi.impl.executionservice.ExecutionService;
@@ -45,7 +46,7 @@ import com.hazelcast.spi.impl.operationservice.OperationFactory;
 import com.hazelcast.spi.impl.operationservice.OperationService;
 import com.hazelcast.spi.impl.operationservice.PartitionTaskFactory;
 import com.hazelcast.spi.impl.operationservice.UrgentSystemOperation;
-import com.hazelcast.spi.properties.GroupProperty;
+import com.hazelcast.spi.properties.ClusterProperty;
 
 import java.util.ArrayList;
 import java.util.BitSet;
@@ -56,6 +57,12 @@ import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
 
+import static com.hazelcast.internal.metrics.MetricDescriptorConstants.OPERATION_METRIC_OPERATION_SERVICE_ASYNC_OPERATIONS;
+import static com.hazelcast.internal.metrics.MetricDescriptorConstants.OPERATION_METRIC_OPERATION_SERVICE_CALL_TIMEOUT_COUNT;
+import static com.hazelcast.internal.metrics.MetricDescriptorConstants.OPERATION_METRIC_OPERATION_SERVICE_FAILED_BACKUPS;
+import static com.hazelcast.internal.metrics.MetricDescriptorConstants.OPERATION_METRIC_OPERATION_SERVICE_RETRY_COUNT;
+import static com.hazelcast.internal.metrics.MetricDescriptorConstants.OPERATION_METRIC_OPERATION_SERVICE_TIMEOUT_COUNT;
+import static com.hazelcast.internal.metrics.MetricDescriptorConstants.OPERATION_PREFIX;
 import static com.hazelcast.internal.metrics.ProbeLevel.MANDATORY;
 import static com.hazelcast.internal.util.CollectionUtil.asIntegerList;
 import static com.hazelcast.internal.util.MapUtil.createHashMap;
@@ -67,8 +74,8 @@ import static com.hazelcast.spi.impl.operationservice.InvocationBuilder.DEFAULT_
 import static com.hazelcast.spi.impl.operationservice.InvocationBuilder.DEFAULT_REPLICA_INDEX;
 import static com.hazelcast.spi.impl.operationservice.Operations.isJoinOperation;
 import static com.hazelcast.spi.impl.operationservice.Operations.isWanReplicationOperation;
-import static com.hazelcast.spi.properties.GroupProperty.FAIL_ON_INDETERMINATE_OPERATION_STATE;
-import static com.hazelcast.spi.properties.GroupProperty.OPERATION_CALL_TIMEOUT_MILLIS;
+import static com.hazelcast.spi.properties.ClusterProperty.FAIL_ON_INDETERMINATE_OPERATION_STATE;
+import static com.hazelcast.spi.properties.ClusterProperty.OPERATION_CALL_TIMEOUT_MILLIS;
 import static java.util.Collections.newSetFromMap;
 import static java.util.concurrent.TimeUnit.SECONDS;
 
@@ -99,22 +106,22 @@ public final class OperationServiceImpl implements StaticMetricsProvider, LiveOp
 
     // contains the current executing asyncOperations. This information is needed for the operation-heartbeats.
     // operations are added/removed using the {@link Offload} functionality.
-    @Probe
-    final Set<Operation> asyncOperations = newSetFromMap(new ConcurrentHashMap<Operation, Boolean>());
+    @Probe(name = OPERATION_METRIC_OPERATION_SERVICE_ASYNC_OPERATIONS)
+    final Set<Operation> asyncOperations = newSetFromMap(new ConcurrentHashMap<>());
 
     final InvocationRegistry invocationRegistry;
     final OperationExecutor operationExecutor;
 
-    @Probe(name = "operationTimeoutCount", level = MANDATORY)
+    @Probe(name = OPERATION_METRIC_OPERATION_SERVICE_TIMEOUT_COUNT, level = MANDATORY)
     final MwCounter operationTimeoutCount = newMwCounter();
 
-    @Probe(name = "callTimeoutCount", level = MANDATORY)
+    @Probe(name = OPERATION_METRIC_OPERATION_SERVICE_CALL_TIMEOUT_COUNT, level = MANDATORY)
     final MwCounter callTimeoutCount = newMwCounter();
 
-    @Probe(name = "retryCount", level = MANDATORY)
+    @Probe(name = OPERATION_METRIC_OPERATION_SERVICE_RETRY_COUNT, level = MANDATORY)
     final MwCounter retryCount = newMwCounter();
 
-    @Probe(name = "failedBackups", level = MANDATORY)
+    @Probe(name = OPERATION_METRIC_OPERATION_SERVICE_FAILED_BACKUPS, level = MANDATORY)
     final Counter failedBackupsCount = newMwCounter();
 
     final NodeEngineImpl nodeEngine;
@@ -141,8 +148,8 @@ public final class OperationServiceImpl implements StaticMetricsProvider, LiveOp
         this.logger = node.getLogger(OperationService.class);
         this.serializationService = (InternalSerializationService) nodeEngine.getSerializationService();
 
-        this.invocationMaxRetryCount = node.getProperties().getInteger(GroupProperty.INVOCATION_MAX_RETRY_COUNT);
-        this.invocationRetryPauseMillis = node.getProperties().getMillis(GroupProperty.INVOCATION_RETRY_PAUSE);
+        this.invocationMaxRetryCount = node.getProperties().getInteger(ClusterProperty.INVOCATION_MAX_RETRY_COUNT);
+        this.invocationRetryPauseMillis = node.getProperties().getMillis(ClusterProperty.INVOCATION_RETRY_PAUSE);
         this.failOnIndeterminateOperationState = nodeEngine.getProperties().getBoolean(FAIL_ON_INDETERMINATE_OPERATION_STATE);
 
         this.backpressureRegulator = new BackpressureRegulator(
@@ -455,7 +462,7 @@ public final class OperationServiceImpl implements StaticMetricsProvider, LiveOp
 
     @Override
     public void provideStaticMetrics(MetricsRegistry registry) {
-        registry.registerStaticMetrics(this, "operation");
+        registry.registerStaticMetrics(this, OPERATION_PREFIX);
         registry.provideMetrics(invocationRegistry, invocationMonitor, inboundResponseHandlerSupplier, operationExecutor);
     }
 
@@ -474,7 +481,7 @@ public final class OperationServiceImpl implements StaticMetricsProvider, LiveOp
                 nodeEngine.getExecutionService().getExecutor(ExecutionService.ASYNC_EXECUTOR),
                 nodeEngine.getClusterService().getClusterClock(),
                 nodeEngine.getClusterService(),
-                node.networkingService,
+                node.getServer(),
                 node.nodeEngine.getExecutionService(),
                 nodeEngine.getProperties().getMillis(OPERATION_CALL_TIMEOUT_MILLIS),
                 invocationRegistry,
@@ -489,7 +496,7 @@ public final class OperationServiceImpl implements StaticMetricsProvider, LiveOp
                 serializationService,
                 nodeEngine.getThisAddress(),
                 outboundOperationHandler,
-                node.getEndpointManager());
+                node.getServer().getConnectionManager(EndpointQualifier.MEMBER));
     }
 
     public Invocation.Context getInvocationContext() {

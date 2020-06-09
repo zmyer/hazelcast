@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2008-2019, Hazelcast, Inc. All Rights Reserved.
+ * Copyright (c) 2008-2020, Hazelcast, Inc. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -28,6 +28,7 @@ import com.hazelcast.spi.impl.eventservice.EventService;
 
 import java.security.Permission;
 import java.util.UUID;
+import java.util.concurrent.Future;
 
 /**
  * SetRemoveListenerMessageTask
@@ -40,9 +41,9 @@ public class SetRemoveListenerMessageTask extends AbstractRemoveListenerMessageT
     }
 
     @Override
-    protected boolean deRegisterListener() {
+    protected Future<Boolean> deRegisterListener() {
         final EventService eventService = clientEngine.getEventService();
-        return eventService.deregisterListener(getServiceName(), parameters.name, parameters.registrationId);
+        return eventService.deregisterListenerAsync(getServiceName(), parameters.name, parameters.registrationId);
     }
 
     @Override

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2008-2019, Hazelcast, Inc. All Rights Reserved.
+ * Copyright (c) 2008-2020, Hazelcast, Inc. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -19,7 +19,6 @@ package com.hazelcast.internal.metrics.impl;
 import com.hazelcast.config.MetricsConfig;
 import com.hazelcast.internal.metrics.MetricsPublisher;
 import com.hazelcast.internal.metrics.MetricsRegistry;
-import com.hazelcast.internal.metrics.MetricDescriptor;
 import com.hazelcast.internal.metrics.collectors.MetricsCollector;
 import com.hazelcast.internal.metrics.jmx.JmxPublisher;
 import com.hazelcast.internal.metrics.managementcenter.ConcurrentArrayRingbuffer;
@@ -33,7 +32,6 @@ import com.hazelcast.spi.impl.executionservice.ExecutionService;
 import com.hazelcast.spi.impl.operationservice.LiveOperations;
 import com.hazelcast.spi.impl.operationservice.LiveOperationsTracker;
 
-import java.util.List;
 import java.util.Map;
 import java.util.Properties;
 import java.util.concurrent.CompletableFuture;
@@ -45,6 +43,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.function.Function;
 import java.util.function.Supplier;
 
+import static com.hazelcast.internal.util.ConcurrencyUtil.CALLER_RUNS;
 import static com.hazelcast.internal.util.ExceptionUtil.withTryCatch;
 import static com.hazelcast.internal.util.MapUtil.entry;
 import static java.util.stream.Collectors.joining;
@@ -65,7 +64,7 @@ public class MetricsService implements ManagedService, LiveOperationsTracker {
     // Holds futures for pending read metrics operations
     private final ConcurrentMap<CompletableFuture<RingbufferSlice<Map.Entry<Long, byte[]>>>, Long>
             pendingReads = new ConcurrentHashMap<>();
-    private final MetricsCollector metricsCollector = new PublisherMetricsCollector();
+    private final CopyOnWriteArrayList<MetricsPublisher> publishers = new CopyOnWriteArrayList<>();
     private volatile boolean collectorScheduled;
 
     /**
@@ -75,8 +74,6 @@ public class MetricsService implements ManagedService, LiveOperationsTracker {
      */
     private ConcurrentArrayRingbuffer<Map.Entry<Long, byte[]>> metricsJournal;
     private volatile ScheduledFuture<?> scheduledFuture;
-
-    private final List<MetricsPublisher> publishers;
 
     private final Supplier<MetricsRegistry> metricsRegistrySupplier;
 
@@ -90,18 +87,17 @@ public class MetricsService implements ManagedService, LiveOperationsTracker {
         this.config = nodeEngine.getConfig().getMetricsConfig();
         this.liveOperationRegistry = new LiveOperationRegistry();
         this.metricsRegistrySupplier = metricsRegistrySupplier;
-        this.publishers = new CopyOnWriteArrayList<>();
     }
 
     @Override
     public void init(NodeEngine nodeEngine, Properties properties) {
         if (config.isEnabled()) {
 
-            if (config.isMcEnabled()) {
+            if (config.getManagementCenterConfig().isEnabled()) {
                 publishers.add(createMcPublisher());
             }
 
-            if (config.isJmxEnabled()) {
+            if (config.getJmxConfig().isEnabled()) {
                 publishers.add(createJmxPublisher());
             }
 
@@ -135,32 +131,33 @@ public class MetricsService implements ManagedService, LiveOperationsTracker {
 
     private void scheduleMetricsCollectorIfNeeded() {
         if (!collectorScheduled && !publishers.isEmpty()) {
-            logger.fine("Configuring metrics collection, collection interval=" + config.getCollectionIntervalSeconds()
-                    + " seconds, retention=" + config.getRetentionSeconds() + " seconds, publishers="
-                    + publishers.stream().map(MetricsPublisher::name).collect(joining(", ", "[", "]")));
+            logger.fine("Configuring metrics collection, collection interval=" + config.getCollectionFrequencySeconds()
+                + " seconds, retention=" + config.getManagementCenterConfig().getRetentionSeconds() + " seconds, publishers="
+                + publishers.stream().map(MetricsPublisher::name).collect(joining(", ", "[", "]")));
 
             ExecutionService executionService = nodeEngine.getExecutionService();
             scheduledFuture = executionService.scheduleWithRepetition("MetricsPublisher", this::collectMetrics, 1,
-                    config.getCollectionIntervalSeconds(), TimeUnit.SECONDS);
+                    config.getCollectionFrequencySeconds(), TimeUnit.SECONDS);
             collectorScheduled = true;
         }
     }
 
     // visible for testing
+    MetricsConfig getConfig() {
+        return config;
+    }
+
+    // visible for testing
     void collectMetrics() {
-        collectMetrics(metricsCollector);
+        MetricsPublisher[] publishersArr = publishers.toArray(new MetricsPublisher[0]);
+        PublisherMetricsCollector publisherCollector = new PublisherMetricsCollector(publishersArr);
+        collectMetrics(publisherCollector);
+        publisherCollector.publishCollectedMetrics();
     }
 
     // visible for testing
     void collectMetrics(MetricsCollector metricsCollector) {
         metricsRegistrySupplier.get().collect(metricsCollector);
-        for (MetricsPublisher publisher : publishers) {
-            try {
-                publisher.whenComplete();
-            } catch (Exception e) {
-                logger.severe("Error completing publication for publisher " + publisher, e);
-            }
-        }
     }
 
     public LiveOperationRegistry getLiveOperationRegistry() {
@@ -182,7 +179,7 @@ public class MetricsService implements ManagedService, LiveOperationsTracker {
             throw new IllegalArgumentException("Metrics collection is not enabled");
         }
         CompletableFuture<RingbufferSlice<Map.Entry<Long, byte[]>>> future = new CompletableFuture<>();
-        future.whenComplete(withTryCatch(logger, (s, e) -> pendingReads.remove(future)));
+        future.whenCompleteAsync(withTryCatch(logger, (s, e) -> pendingReads.remove(future)), CALLER_RUNS);
         pendingReads.put(future, startSequence);
 
         tryCompleteRead(future, startSequence);
@@ -212,13 +209,7 @@ public class MetricsService implements ManagedService, LiveOperationsTracker {
             scheduledFuture.cancel(false);
         }
 
-        for (MetricsPublisher publisher : publishers) {
-            try {
-                publisher.shutdown();
-            } catch (Exception e) {
-                logger.warning("Error shutting down metrics publisher " + publisher.name(), e);
-            }
-        }
+        publishers.forEach(MetricsPublisher::shutdown);
     }
 
     private JmxPublisher createJmxPublisher() {
@@ -226,9 +217,9 @@ public class MetricsService implements ManagedService, LiveOperationsTracker {
     }
 
     private ManagementCenterPublisher createMcPublisher() {
-        int journalSize = Math.max(
-                1, (int) Math.ceil((double) config.getRetentionSeconds() / config.getCollectionIntervalSeconds())
-        );
+        int retentionSeconds = config.getManagementCenterConfig().getRetentionSeconds();
+        int frequency = config.getCollectionFrequencySeconds();
+        int journalSize = Math.max(1, (int) Math.ceil((double) retentionSeconds / frequency));
         metricsJournal = new ConcurrentArrayRingbuffer<>(journalSize);
         return new ManagementCenterPublisher(this.nodeEngine.getLoggingService(),
                 (blob, ts) -> {
@@ -236,47 +227,5 @@ public class MetricsService implements ManagedService, LiveOperationsTracker {
                     pendingReads.forEach(this::tryCompleteRead);
                 }
         );
-    }
-
-    /**
-     * A probe renderer which renders the metrics to all the given publishers.
-     */
-    private class PublisherMetricsCollector implements MetricsCollector {
-        @Override
-        public void collectLong(MetricDescriptor descriptor, long value) {
-            for (MetricsPublisher publisher : publishers) {
-                try {
-                    publisher.publishLong(descriptor, value);
-                } catch (Exception e) {
-                    logError(descriptor, value, publisher, e);
-                }
-            }
-        }
-
-        @Override
-        public void collectDouble(MetricDescriptor descriptor, double value) {
-            for (MetricsPublisher publisher : publishers) {
-                try {
-                    publisher.publishDouble(descriptor, value);
-                } catch (Exception e) {
-                    logError(descriptor, value, publisher, e);
-                }
-            }
-        }
-
-        @Override
-        public void collectException(MetricDescriptor descriptor, Exception e) {
-            logger.warning("Error when rendering '" + descriptor.toString() + '\'', e);
-        }
-
-        @Override
-        public void collectNoValue(MetricDescriptor descriptor) {
-            // noop
-        }
-
-        private void logError(MetricDescriptor descriptor, Object value, MetricsPublisher publisher, Exception e) {
-            logger.fine("Error publishing metric to: " + publisher.name() + ", metric=" + descriptor.toString()
-                    + ", value=" + value, e);
-        }
     }
 }

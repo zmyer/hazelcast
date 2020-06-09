@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2008-2019, Hazelcast, Inc. All Rights Reserved.
+ * Copyright (c) 2008-2020, Hazelcast, Inc. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -21,8 +21,8 @@ import com.hazelcast.instance.impl.Node;
 import com.hazelcast.instance.impl.NodeContext;
 import com.hazelcast.instance.impl.NodeExtension;
 import com.hazelcast.internal.cluster.Joiner;
-import com.hazelcast.internal.networking.ServerSocketRegistry;
-import com.hazelcast.internal.nio.NetworkingService;
+import com.hazelcast.internal.server.tcp.ServerSocketRegistry;
+import com.hazelcast.internal.server.Server;
 
 import java.util.function.Function;
 
@@ -53,7 +53,7 @@ public class WanServiceMockingNodeContext implements NodeContext {
     }
 
     @Override
-    public NetworkingService createNetworkingService(Node node, ServerSocketRegistry serverSocketRegistry) {
-        return this.nodeContextDelegate.createNetworkingService(node, serverSocketRegistry);
+    public Server createServer(Node node, ServerSocketRegistry serverSocketRegistry) {
+        return this.nodeContextDelegate.createServer(node, serverSocketRegistry);
     }
 }

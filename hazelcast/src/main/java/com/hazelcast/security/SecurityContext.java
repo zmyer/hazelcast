@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2008-2019, Hazelcast, Inc. All Rights Reserved.
+ * Copyright (c) 2008-2020, Hazelcast, Inc. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -41,7 +41,7 @@ public interface SecurityContext {
      * @param connection member connection
      *
      * @return {@link LoginContext}
-     * @throws LoginException
+     * @throws LoginException in case of any exceptional case
      */
     LoginContext createMemberLoginContext(String clusterName, Credentials credentials, Connection connection)
             throws LoginException;
@@ -53,7 +53,7 @@ public interface SecurityContext {
      * @param credentials client credentials
      * @param connection client connection
      * @return {@link LoginContext}
-     * @throws LoginException
+     * @throws LoginException in case of any exceptional case
      */
     LoginContext createClientLoginContext(String clusterName, Credentials credentials, Connection connection)
             throws LoginException;
@@ -70,7 +70,7 @@ public interface SecurityContext {
      *
      * @param subject the current subject
      * @param permission the specified permission for the subject
-     * @throws AccessControlException
+     * @throws AccessControlException if the specified permission has not been granted to the subject
      */
     void checkPermission(Subject subject, Permission permission) throws AccessControlException;
 
@@ -83,7 +83,7 @@ public interface SecurityContext {
      * @param objectName
      * @param methodName
      * @param parameters
-     * @throws AccessControlException
+     * @throws AccessControlException if access is denied
      */
     void interceptBefore(Credentials credentials, String serviceName, String objectName,
                          String methodName, Object[] parameters) throws AccessControlException;

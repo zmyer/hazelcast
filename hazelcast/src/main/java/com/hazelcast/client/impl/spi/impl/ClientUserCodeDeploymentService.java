@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2008-2019, Hazelcast, Inc. All Rights Reserved.
+ * Copyright (c) 2008-2020, Hazelcast, Inc. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -20,7 +20,6 @@ import com.hazelcast.client.config.ClientUserCodeDeploymentConfig;
 import com.hazelcast.client.impl.clientside.HazelcastClientInstanceImpl;
 import com.hazelcast.client.impl.protocol.ClientMessage;
 import com.hazelcast.client.impl.protocol.codec.ClientDeployClassesCodec;
-import com.hazelcast.internal.nio.Connection;
 
 import java.io.ByteArrayOutputStream;
 import java.io.File;
@@ -50,12 +49,12 @@ public class ClientUserCodeDeploymentService {
     private final ClientUserCodeDeploymentConfig clientUserCodeDeploymentConfig;
     private final ClassLoader configClassLoader;
     //List<Map.Entry> is used instead of Map to comply with generated code of client protocol
-    private final List<Map.Entry<String, byte[]>> classDefinitionList = new ArrayList<Map.Entry<String, byte[]>>();
+    private final List<Map.Entry<String, byte[]>> classDefinitionList = new ArrayList<>();
 
     public ClientUserCodeDeploymentService(ClientUserCodeDeploymentConfig clientUserCodeDeploymentConfig,
                                            ClassLoader configClassLoader) {
         this.clientUserCodeDeploymentConfig = clientUserCodeDeploymentConfig;
-        this.configClassLoader = configClassLoader != null ? configClassLoader : ClassLoader.getSystemClassLoader();
+        this.configClassLoader = configClassLoader != null ? configClassLoader : Thread.currentThread().getContextClassLoader();
     }
 
     public void start() throws IOException, ClassNotFoundException {
@@ -76,7 +75,7 @@ public class ClientUserCodeDeploymentService {
                     throw new ClassNotFoundException(resource);
                 }
                 byte[] bytes = toByteArray(is);
-                classDefinitionList.add(new AbstractMap.SimpleEntry<String, byte[]>(className, bytes));
+                classDefinitionList.add(new AbstractMap.SimpleEntry<>(className, bytes));
             } catch (IOException e) {
                 ignore(e);
             } finally {
@@ -113,7 +112,7 @@ public class ClientUserCodeDeploymentService {
                 }
                 byte[] classDefinition = readClassDefinition(inputStream, os);
                 inputStream.closeEntry();
-                classDefinitionList.add(new AbstractMap.SimpleEntry<String, byte[]>(className, classDefinition));
+                classDefinitionList.add(new AbstractMap.SimpleEntry<>(className, classDefinition));
             } while (true);
         } finally {
             closeResource(inputStream);
@@ -161,13 +160,12 @@ public class ClientUserCodeDeploymentService {
         return null;
     }
 
-    public void deploy(HazelcastClientInstanceImpl client, Connection ownerConnection)
-            throws ExecutionException, InterruptedException {
+    public void deploy(HazelcastClientInstanceImpl client) throws ExecutionException, InterruptedException {
         if (!clientUserCodeDeploymentConfig.isEnabled()) {
             return;
         }
         ClientMessage request = ClientDeployClassesCodec.encodeRequest(classDefinitionList);
-        ClientInvocation invocation = new ClientInvocation(client, request, null, ownerConnection);
+        ClientInvocation invocation = new ClientInvocation(client, request, null);
         ClientInvocationFuture future = invocation.invokeUrgent();
         future.get();
     }

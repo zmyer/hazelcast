@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2008-2019, Hazelcast, Inc. All Rights Reserved.
+ * Copyright (c) 2008-2020, Hazelcast, Inc. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -20,6 +20,10 @@ package com.hazelcast.client;
  * Thrown when Hazelcast client is not active during an invocation.
  */
 public class HazelcastClientNotActiveException extends IllegalStateException {
+
+    public HazelcastClientNotActiveException() {
+        super("Client is not active.");
+    }
 
     public HazelcastClientNotActiveException(String message) {
         super(message);

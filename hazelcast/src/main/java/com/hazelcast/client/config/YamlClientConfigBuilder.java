@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2008-2019, Hazelcast, Inc. All Rights Reserved.
+ * Copyright (c) 2008-2020, Hazelcast, Inc. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -88,11 +88,11 @@ public class YamlClientConfigBuilder extends AbstractYamlConfigBuilder {
     /**
      * Constructs a {@link YamlClientConfigBuilder} that loads the configuration
      * with the provided {@link YamlClientConfigLocator}.
-     * <p/>
+     * <p>
      * If the provided {@link YamlClientConfigLocator} is {@code null}, a new
      * instance is created and the config is located in every possible
      * places. For these places, please see {@link YamlClientConfigLocator}.
-     * <p/>
+     * <p>
      * If the provided {@link YamlClientConfigLocator} is not {@code null}, it
      * is expected that it already located the configuration YAML to load
      * from. No further attempt to locate the configuration YAML is made

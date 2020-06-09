@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2008-2019, Hazelcast, Inc. All Rights Reserved.
+ * Copyright (c) 2008-2020, Hazelcast, Inc. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -19,10 +19,11 @@ package com.hazelcast.collection.impl.txncollection.operations;
 import com.hazelcast.collection.impl.collection.CollectionContainer;
 import com.hazelcast.collection.impl.collection.CollectionDataSerializerHook;
 import com.hazelcast.collection.impl.collection.operations.CollectionOperation;
+import com.hazelcast.internal.nio.IOUtil;
 import com.hazelcast.internal.util.UUIDSerializationUtil;
 import com.hazelcast.nio.ObjectDataInput;
 import com.hazelcast.nio.ObjectDataOutput;
-import com.hazelcast.nio.serialization.Data;
+import com.hazelcast.internal.serialization.Data;
 import com.hazelcast.spi.impl.operationservice.MutatingOperation;
 
 import java.io.IOException;
@@ -57,7 +58,7 @@ public class CollectionReserveAddOperation extends CollectionOperation implement
     protected void writeInternal(ObjectDataOutput out) throws IOException {
         super.writeInternal(out);
         UUIDSerializationUtil.writeUUID(out, transactionId);
-        out.writeData(value);
+        IOUtil.writeData(out, value);
 
     }
 
@@ -65,6 +66,6 @@ public class CollectionReserveAddOperation extends CollectionOperation implement
     protected void readInternal(ObjectDataInput in) throws IOException {
         super.readInternal(in);
         transactionId = UUIDSerializationUtil.readUUID(in);
-        value = in.readData();
+        value = IOUtil.readData(in);
     }
 }

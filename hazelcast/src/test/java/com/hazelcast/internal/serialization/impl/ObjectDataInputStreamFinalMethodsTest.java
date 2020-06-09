@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2008-2019, Hazelcast, Inc. All Rights Reserved.
+ * Copyright (c) 2008-2020, Hazelcast, Inc. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -18,7 +18,7 @@ package com.hazelcast.internal.serialization.impl;
 
 import com.hazelcast.internal.serialization.InternalSerializationService;
 import com.hazelcast.internal.util.JavaVersion;
-import com.hazelcast.nio.serialization.Data;
+import com.hazelcast.internal.serialization.Data;
 import com.hazelcast.test.annotation.ParallelJVMTest;
 import com.hazelcast.test.annotation.QuickTest;
 import org.junit.Before;
@@ -35,6 +35,7 @@ import java.nio.ByteOrder;
 import java.util.Arrays;
 import java.util.Random;
 
+import static com.hazelcast.internal.nio.IOUtil.readData;
 import static com.hazelcast.internal.util.JavaVersion.JAVA_11;
 import static java.nio.ByteOrder.BIG_ENDIAN;
 import static org.junit.Assert.assertArrayEquals;
@@ -321,11 +322,11 @@ public class ObjectDataInputStreamFinalMethodsTest {
         inputStream.init((byteOrder == BIG_ENDIAN ? bytesBE : bytesLE), 0);
 
         inputStream.position(bytesLE.length - 4);
-        Data nullData = in.readData();
+        Data nullData = readData(in);
         inputStream.position(0);
-        Data theZeroLenghtArray = in.readData();
+        Data theZeroLenghtArray = readData(in);
         inputStream.position(4);
-        Data data = in.readData();
+        Data data = readData(in);
 
         assertNull(nullData);
         assertEquals(0, theZeroLenghtArray.getType());

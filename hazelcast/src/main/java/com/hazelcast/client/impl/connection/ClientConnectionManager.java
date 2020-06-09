@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2008-2019, Hazelcast, Inc. All Rights Reserved.
+ * Copyright (c) 2008-2020, Hazelcast, Inc. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,23 +16,21 @@
 
 package com.hazelcast.client.impl.connection;
 
-import com.hazelcast.client.impl.connection.nio.ClientConnection;
-import com.hazelcast.client.impl.clientside.CandidateClusterContext;
-import com.hazelcast.cluster.Address;
-import com.hazelcast.internal.nio.Connection;
+import com.hazelcast.client.HazelcastClientOfflineException;
 import com.hazelcast.internal.nio.ConnectionListenable;
 
+import javax.annotation.Nonnull;
 import java.io.IOException;
 import java.util.Collection;
 import java.util.UUID;
 
 /**
- * Responsible for managing {@link ClientConnection} objects.
+ * Responsible for managing {@link ClientConnection}.
  */
-public interface ClientConnectionManager extends ConnectionListenable {
+public interface ClientConnectionManager extends ConnectionListenable<ClientConnection> {
 
     /**
-     * Check if client connection manager is alive.
+     * Check if ClientConnectionManager is alive.
      * ClientConnectionManager is not alive only when client is closing.
      *
      * @return true if alive, false otherwise.
@@ -40,30 +38,32 @@ public interface ClientConnectionManager extends ConnectionListenable {
     boolean isAlive();
 
     /**
-     * @param address to be connected
+     * @param uuid UUID of the member to get connection of
      * @return connection if available, null otherwise
      */
-    Connection getActiveConnection(Address address);
+    ClientConnection getConnection(@Nonnull UUID uuid);
 
     /**
-     * @param address to be connected
-     * @return associated connection if available, creates new connection otherwise
-     * @throws IOException if connection is not established
+     * Check the connected state and user connection strategy configuration to see if an invocation is allowed at the moment
+     * returns without throwing exception only when is the client is Connected to cluster
+     *
+     * @throws IOException                     if client is disconnected and ReconnectMode is ON or
+     *                                         if client is starting and async start is false
+     * @throws HazelcastClientOfflineException if client is disconnected and ReconnectMode is ASYNC or
+     *                                         if client is starting and async start is true
      */
-    Connection getOrConnect(Address address) throws IOException;
-
-    /**
-     * @param address to be connected
-     * @return associated connection if available, returns null and triggers new connection creation otherwise
-     * @throws IOException if connection is not able to triggered
-     */
-    Connection getOrTriggerConnect(Address address) throws IOException;
+    void checkInvocationAllowed() throws IOException;
 
     Collection<ClientConnection> getActiveConnections();
 
     UUID getClientUuid();
 
-    void setCandidateClusterContext(CandidateClusterContext context);
+    /**
+     * For the smart client, Random ClientConnection is chosen via LoadBalancer
+     * For the unisocket client, the only ClientConnection will be returned
+     *
+     * @return random ClientConnection if available, null otherwise
+     */
+    ClientConnection getRandomConnection();
 
-    void beforeClusterSwitch(CandidateClusterContext context);
 }

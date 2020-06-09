@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2008-2019, Hazelcast, Inc. All Rights Reserved.
+ * Copyright (c) 2008-2020, Hazelcast, Inc. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -42,12 +42,7 @@ public class AddDistributedObjectListenerMessageTask
     protected Object call() throws Exception {
         final ProxyService proxyService = clientEngine.getProxyService();
         final UUID registrationId = proxyService.addProxyListener(this);
-        endpoint.addDestroyAction(registrationId, new Callable() {
-            @Override
-            public Boolean call() {
-                return proxyService.removeProxyListener(registrationId);
-            }
-        });
+        endpoint.addDestroyAction(registrationId, (Callable) () -> proxyService.removeProxyListener(registrationId));
 
         return registrationId;
     }
@@ -97,6 +92,11 @@ public class AddDistributedObjectListenerMessageTask
         send(event);
     }
 
+    @Override
+    protected boolean acceptOnIncompleteStart() {
+        return true;
+    }
+
     private void send(DistributedObjectEvent event) {
         if (!shouldSendEvent()) {
             return;
@@ -106,7 +106,7 @@ public class AddDistributedObjectListenerMessageTask
         String serviceName = event.getServiceName();
         ClientMessage eventMessage =
                 ClientAddDistributedObjectListenerCodec.encodeDistributedObjectEvent(name,
-                        serviceName, event.getEventType().name());
+                        serviceName, event.getEventType().name(), (UUID) event.getSource());
         sendClientMessage(null, eventMessage);
     }
 

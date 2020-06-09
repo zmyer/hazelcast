@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2008-2019, Hazelcast, Inc. All Rights Reserved.
+ * Copyright (c) 2008-2020, Hazelcast, Inc. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -18,6 +18,8 @@ package com.hazelcast.map.impl.recordstore;
 
 import com.hazelcast.map.impl.StoreAdapter;
 import com.hazelcast.map.impl.record.Record;
+import com.hazelcast.internal.serialization.Data;
+import com.hazelcast.spi.impl.operationexecutor.impl.PartitionOperationThread;
 
 /**
  * Record store adapter.
@@ -31,21 +33,38 @@ public class RecordStoreAdapter implements StoreAdapter<Record> {
     }
 
     @Override
-    public boolean evictIfExpired(Record record, long now, boolean backup) {
-        record = recordStore.getOrNullIfExpired(record, now, backup);
-        if (record != null) {
-            recordStore.accessRecord(record, now);
+    public boolean evictIfExpired(Data key, Record record, long now, boolean backup) {
+        // evictIfExpired method is only used for HD indexes
+        ensureCallingFromPartitionOperationThread();
+
+        record = recordStore.getOrNullIfExpired(key, record, now, backup);
+        if (record == null) {
+            // free memory of expired record
+            recordStore.disposeDeferredBlocks();
+            return true;
         }
-        return record == null;
+
+        // not expired record, update access info
+        recordStore.accessRecord(record, now);
+        return false;
     }
 
     @Override
     public boolean isTtlOrMaxIdleDefined(Record record) {
+        // isTtlOrMaxIdleDefined method is only used for HD indexes
+        ensureCallingFromPartitionOperationThread();
+
         return recordStore.isTtlOrMaxIdleDefined(record);
     }
 
     @Override
     public boolean isExpirable() {
         return recordStore.isExpirable();
+    }
+
+    private static void ensureCallingFromPartitionOperationThread() {
+        if (Thread.currentThread().getClass() != PartitionOperationThread.class) {
+            throw new IllegalThreadStateException(Thread.currentThread() + " cannot access data!");
+        }
     }
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2008-2019, Hazelcast, Inc. All Rights Reserved.
+ * Copyright (c) 2008-2020, Hazelcast, Inc. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -19,7 +19,7 @@ package com.hazelcast.cache;
 import com.hazelcast.cache.impl.HazelcastServerCachingProvider;
 import com.hazelcast.client.cache.impl.HazelcastClientCachingProvider;
 import com.hazelcast.core.HazelcastInstance;
-import com.hazelcast.spi.properties.GroupProperty;
+import com.hazelcast.spi.properties.ClusterProperty;
 
 import javax.cache.CacheException;
 import javax.cache.CacheManager;
@@ -56,7 +56,6 @@ import java.util.Properties;
  *     provider, while value {@code client} selects the client-side provider. Other values
  *     result in a {@link CacheException} being thrown.</li>
  * </ul>
- * </p>
  * <p>When using one of {@code Caching#getCachingProvider} variants with an explicit
  * class name argument, then:
  * <ul>
@@ -69,7 +68,6 @@ import java.util.Properties;
  *     <li>using {@value #CLIENT_CACHING_PROVIDER} as
  *     class name will return a client-side caching provider</li>
  * </ul>
- * </p>
  * <h3>Creating or reusing HazelcastInstances with CacheManagers</h3>
  * Arguments used with {@link CachingProvider#getCacheManager(URI, ClassLoader, Properties)}
  * and its variants control whether a {@code HazelcastInstance} will be created or reused
@@ -123,7 +121,6 @@ import java.util.Properties;
  * cache.put("a", "b");
  * </pre>
  * </blockquote>
- * </p>
  * <p><b>Obtain a client-side caching provider, starting a default client {@code HazelcastInstance}</b>
  * In this example the client-side caching provider is selected as default option. A new
  * client-side {@code HazelcastInstance} is created with default configuration once
@@ -141,7 +138,6 @@ import java.util.Properties;
  * cache.put("a", "b");
  * </pre>
  * </blockquote>
- * </p>
  *
  * @since 3.4
  */
@@ -184,7 +180,7 @@ public final class HazelcastCachingProvider implements CachingProvider {
 
     public HazelcastCachingProvider() {
         CachingProvider cp = null;
-        String providerType = GroupProperty.JCACHE_PROVIDER_TYPE.getSystemProperty();
+        String providerType = ClusterProperty.JCACHE_PROVIDER_TYPE.getSystemProperty();
         if (providerType != null) {
             if (PROVIDER_TYPE_CLIENT.equals(providerType)) {
                 cp = new HazelcastClientCachingProvider();

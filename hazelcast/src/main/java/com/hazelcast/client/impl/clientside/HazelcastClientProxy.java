@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2008-2019, Hazelcast, Inc. All Rights Reserved.
+ * Copyright (c) 2008-2020, Hazelcast, Inc. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -299,7 +299,7 @@ public class HazelcastClientProxy implements HazelcastInstance, SerializationSer
     protected HazelcastClientInstanceImpl getClient() {
         final HazelcastClientInstanceImpl c = client;
         if (c == null || !c.getLifecycleService().isRunning()) {
-            throw new HazelcastClientNotActiveException("Client is not active.");
+            throw new HazelcastClientNotActiveException();
         }
         return c;
     }

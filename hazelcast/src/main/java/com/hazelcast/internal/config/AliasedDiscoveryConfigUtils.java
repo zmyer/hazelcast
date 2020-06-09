@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2008-2019, Hazelcast, Inc. All Rights Reserved.
+ * Copyright (c) 2008-2020, Hazelcast, Inc. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -25,7 +25,7 @@ import com.hazelcast.config.GcpConfig;
 import com.hazelcast.config.InvalidConfigurationException;
 import com.hazelcast.config.JoinConfig;
 import com.hazelcast.config.KubernetesConfig;
-import com.hazelcast.config.WanBatchReplicationPublisherConfig;
+import com.hazelcast.config.WanBatchPublisherConfig;
 
 import java.util.ArrayList;
 import java.util.Collection;
@@ -84,7 +84,7 @@ public final class AliasedDiscoveryConfigUtils {
     /**
      * Extracts aliased discovery configs from {@code config} and creates a list of {@link DiscoveryStrategyConfig} out of them.
      */
-    public static List<DiscoveryStrategyConfig> createDiscoveryStrategyConfigs(WanBatchReplicationPublisherConfig config) {
+    public static List<DiscoveryStrategyConfig> createDiscoveryStrategyConfigs(WanBatchPublisherConfig config) {
         return map(aliasedDiscoveryConfigsFrom(config));
     }
 
@@ -151,7 +151,7 @@ public final class AliasedDiscoveryConfigUtils {
     /**
      * Gets the {@link AliasedDiscoveryConfig} from {@code config} by {@code tag}.
      */
-    public static AliasedDiscoveryConfig getConfigByTag(WanBatchReplicationPublisherConfig config, String tag) {
+    public static AliasedDiscoveryConfig getConfigByTag(WanBatchPublisherConfig config, String tag) {
         if ("aws".equals(tag)) {
             return config.getAwsConfig();
         } else if ("gcp".equals(tag)) {
@@ -178,7 +178,7 @@ public final class AliasedDiscoveryConfigUtils {
     /**
      * Gets a list of all aliased discovery configs from {@code config}.
      */
-    public static List<AliasedDiscoveryConfig<?>> aliasedDiscoveryConfigsFrom(WanBatchReplicationPublisherConfig config) {
+    public static List<AliasedDiscoveryConfig<?>> aliasedDiscoveryConfigsFrom(WanBatchPublisherConfig config) {
         return asList(config.getAwsConfig(), config.getGcpConfig(), config.getAzureConfig(), config.getKubernetesConfig(),
                 config.getEurekaConfig());
     }

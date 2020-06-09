@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2008-2019, Hazelcast, Inc. All Rights Reserved.
+ * Copyright (c) 2008-2020, Hazelcast, Inc. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -21,6 +21,7 @@ import com.hazelcast.client.config.ClientConfig;
 import com.hazelcast.client.config.ClientConnectionStrategyConfig;
 import com.hazelcast.client.config.ClientFlakeIdGeneratorConfig;
 import com.hazelcast.client.config.ClientIcmpPingConfig;
+import com.hazelcast.client.config.ClientMetricsConfig;
 import com.hazelcast.client.config.ClientNetworkConfig;
 import com.hazelcast.client.config.ClientReliableTopicConfig;
 import com.hazelcast.client.config.ClientSecurityConfig;
@@ -30,9 +31,7 @@ import com.hazelcast.client.config.ProxyFactoryConfig;
 import com.hazelcast.client.config.SocketOptions;
 import com.hazelcast.client.util.RandomLB;
 import com.hazelcast.client.util.RoundRobinLB;
-import com.hazelcast.internal.config.AbstractDomConfigProcessor;
 import com.hazelcast.config.AliasedDiscoveryConfig;
-import com.hazelcast.internal.config.AliasedDiscoveryConfigUtils;
 import com.hazelcast.config.CredentialsFactoryConfig;
 import com.hazelcast.config.DiscoveryConfig;
 import com.hazelcast.config.DiscoveryStrategyConfig;
@@ -42,12 +41,17 @@ import com.hazelcast.config.InMemoryFormat;
 import com.hazelcast.config.InvalidConfigurationException;
 import com.hazelcast.config.ListenerConfig;
 import com.hazelcast.config.MaxSizePolicy;
+import com.hazelcast.config.MetricsJmxConfig;
 import com.hazelcast.config.NearCacheConfig;
 import com.hazelcast.config.NearCachePreloaderConfig;
 import com.hazelcast.config.SSLConfig;
 import com.hazelcast.config.SerializationConfig;
 import com.hazelcast.config.SocketInterceptorConfig;
+import com.hazelcast.config.security.KerberosIdentityConfig;
+import com.hazelcast.config.security.RealmConfig;
 import com.hazelcast.config.security.TokenIdentityConfig;
+import com.hazelcast.internal.config.AbstractDomConfigProcessor;
+import com.hazelcast.internal.config.AliasedDiscoveryConfigUtils;
 import com.hazelcast.logging.ILogger;
 import com.hazelcast.logging.Logger;
 import com.hazelcast.topic.TopicOverloadPolicy;
@@ -58,13 +62,14 @@ import java.util.HashMap;
 import java.util.Map;
 
 import static com.hazelcast.client.config.impl.ClientConfigSections.BACKUP_ACK_TO_CLIENT;
+import static com.hazelcast.client.config.impl.ClientConfigSections.CLUSTER_NAME;
 import static com.hazelcast.client.config.impl.ClientConfigSections.CONNECTION_STRATEGY;
-import static com.hazelcast.client.config.impl.ClientConfigSections.EXECUTOR_POOL_SIZE;
 import static com.hazelcast.client.config.impl.ClientConfigSections.FLAKE_ID_GENERATOR;
 import static com.hazelcast.client.config.impl.ClientConfigSections.INSTANCE_NAME;
 import static com.hazelcast.client.config.impl.ClientConfigSections.LABELS;
 import static com.hazelcast.client.config.impl.ClientConfigSections.LISTENERS;
 import static com.hazelcast.client.config.impl.ClientConfigSections.LOAD_BALANCER;
+import static com.hazelcast.client.config.impl.ClientConfigSections.METRICS;
 import static com.hazelcast.client.config.impl.ClientConfigSections.NATIVE_MEMORY;
 import static com.hazelcast.client.config.impl.ClientConfigSections.NEAR_CACHE;
 import static com.hazelcast.client.config.impl.ClientConfigSections.NETWORK;
@@ -76,12 +81,13 @@ import static com.hazelcast.client.config.impl.ClientConfigSections.SECURITY;
 import static com.hazelcast.client.config.impl.ClientConfigSections.SERIALIZATION;
 import static com.hazelcast.client.config.impl.ClientConfigSections.USER_CODE_DEPLOYMENT;
 import static com.hazelcast.client.config.impl.ClientConfigSections.canOccurMultipleTimes;
+import static com.hazelcast.config.security.TokenEncoding.getTokenEncoding;
 import static com.hazelcast.internal.config.DomConfigHelper.childElements;
 import static com.hazelcast.internal.config.DomConfigHelper.cleanNodeName;
 import static com.hazelcast.internal.config.DomConfigHelper.getBooleanValue;
 import static com.hazelcast.internal.config.DomConfigHelper.getDoubleValue;
 import static com.hazelcast.internal.config.DomConfigHelper.getIntegerValue;
-import static com.hazelcast.config.security.TokenEncoding.getTokenEncoding;
+import static com.hazelcast.internal.config.DomConfigHelper.getLongValue;
 import static com.hazelcast.internal.util.StringUtil.upperCaseInternal;
 
 @SuppressWarnings({
@@ -144,8 +150,6 @@ public class ClientDomConfigProcessor extends AbstractDomConfigProcessor {
             handleNearCache(node);
         } else if (QUERY_CACHES.isEqual(nodeName)) {
             queryCacheConfigBuilderHelper.handleQueryCache(clientConfig, node);
-        } else if (EXECUTOR_POOL_SIZE.isEqual(nodeName)) {
-            handleExecutorPoolSize(node);
         } else if (INSTANCE_NAME.isEqual(nodeName)) {
             clientConfig.setInstanceName(getTextContent(node));
         } else if (CONNECTION_STRATEGY.isEqual(nodeName)) {
@@ -160,8 +164,10 @@ public class ClientDomConfigProcessor extends AbstractDomConfigProcessor {
             handleLabels(node);
         } else if (BACKUP_ACK_TO_CLIENT.isEqual(nodeName)) {
             handleBackupAckToClient(node);
-        } else if ("cluster-name".equals(nodeName)) {
+        } else if (CLUSTER_NAME.isEqual(nodeName)) {
             clientConfig.setClusterName(getTextContent(node));
+        } else if (METRICS.isEqual(nodeName)) {
+            handleMetrics(node);
         }
     }
 
@@ -202,6 +208,7 @@ public class ClientDomConfigProcessor extends AbstractDomConfigProcessor {
         String maxBackoffMillis = "max-backoff-millis";
         String multiplier = "multiplier";
         String jitter = "jitter";
+        String timeoutMillis = "cluster-connect-timeout-millis";
         for (Node child : childElements(node)) {
             String nodeName = cleanNodeName(child);
             String value = getTextContent(child).trim();
@@ -211,8 +218,8 @@ public class ClientDomConfigProcessor extends AbstractDomConfigProcessor {
                 connectionRetryConfig.setMaxBackoffMillis(getIntegerValue(maxBackoffMillis, value));
             } else if (multiplier.equals(nodeName)) {
                 connectionRetryConfig.setMultiplier(getDoubleValue(multiplier, value));
-            } else if ("fail-on-max-backoff".equals(nodeName)) {
-                connectionRetryConfig.setFailOnMaxBackoff(getBooleanValue(value));
+            } else if (timeoutMillis.equals(nodeName)) {
+                connectionRetryConfig.setClusterConnectTimeoutMillis(getLongValue(timeoutMillis, value));
             } else if (jitter.equals(nodeName)) {
                 connectionRetryConfig.setJitter(getDoubleValue(jitter, value));
             }
@@ -247,11 +254,6 @@ public class ClientDomConfigProcessor extends AbstractDomConfigProcessor {
             throw new InvalidConfigurationException("User code deployement can either be className or jarPath. "
                     + childNodeName + " is invalid");
         }
-    }
-
-    private void handleExecutorPoolSize(Node node) {
-        int poolSize = Integer.parseInt(getTextContent(node));
-        clientConfig.setExecutorPoolSize(poolSize);
     }
 
     protected void handleNearCache(Node node) {
@@ -629,6 +631,10 @@ public class ClientDomConfigProcessor extends AbstractDomConfigProcessor {
                 handleTokenIdentity(clientSecurityConfig, child);
             } else if ("credentials-factory".equals(nodeName)) {
                 handleCredentialsFactory(child, clientSecurityConfig);
+            } else if ("kerberos".equals(nodeName)) {
+                handleKerberosIdentity(child, clientSecurityConfig);
+            } else if ("realms".equals(nodeName)) {
+                handleRealms(child, clientSecurityConfig);
             }
         }
         clientConfig.setSecurityConfig(clientSecurityConfig);
@@ -637,6 +643,52 @@ public class ClientDomConfigProcessor extends AbstractDomConfigProcessor {
     protected void handleTokenIdentity(ClientSecurityConfig clientSecurityConfig, Node node) {
         clientSecurityConfig.setTokenIdentityConfig(new TokenIdentityConfig(
                 getTokenEncoding(getAttribute(node, "encoding")), getTextContent(node)));
+    }
+
+    private void handleKerberosIdentity(Node node, ClientSecurityConfig clientSecurityConfig) {
+        KerberosIdentityConfig kerbIdentity = new KerberosIdentityConfig();
+        for (Node child : childElements(node)) {
+            String nodeName = cleanNodeName(child);
+            if ("realm".equals(nodeName)) {
+                kerbIdentity.setRealm(getTextContent(child));
+            } else if ("security-realm".equals(nodeName)) {
+                kerbIdentity.setSecurityRealm(getTextContent(child));
+            } else if ("service-name-prefix".equals(nodeName)) {
+                kerbIdentity.setServiceNamePrefix(getTextContent(child));
+            } else if ("spn".equals(nodeName)) {
+                kerbIdentity.setSpn(getTextContent(child));
+            }
+        }
+        clientSecurityConfig.setKerberosIdentityConfig(kerbIdentity);
+    }
+
+    protected void handleRealms(Node node, ClientSecurityConfig clientSecurityConfig) {
+        for (Node child : childElements(node)) {
+            if ("realm".equals(cleanNodeName(child))) {
+                handleRealm(child, clientSecurityConfig);
+            }
+        }
+    }
+
+    protected void handleRealm(Node node, ClientSecurityConfig clientSecurityConfig) {
+        String realmName = getAttribute(node, "name");
+        RealmConfig realmConfig = new RealmConfig();
+        clientSecurityConfig.addRealmConfig(realmName, realmConfig);
+        for (Node child : childElements(node)) {
+            String nodeName = cleanNodeName(child);
+            if ("authentication".equals(nodeName)) {
+                handleAuthentication(realmConfig, child);
+            }
+        }
+    }
+
+    private void handleAuthentication(RealmConfig realmConfig, Node node) {
+        for (Node child : childElements(node)) {
+            String nodeName = cleanNodeName(child);
+            if ("jaas".equals(nodeName)) {
+                handleJaasAuthentication(realmConfig, child);
+            }
+        }
     }
 
     private void handleCredentialsFactory(Node node, ClientSecurityConfig clientSecurityConfig) {
@@ -663,4 +715,41 @@ public class ClientDomConfigProcessor extends AbstractDomConfigProcessor {
             }
         }
     }
+
+    private void handleMetrics(Node node) {
+        ClientMetricsConfig metricsConfig = clientConfig.getMetricsConfig();
+
+        NamedNodeMap attributes = node.getAttributes();
+        for (int a = 0; a < attributes.getLength(); a++) {
+            Node att = attributes.item(a);
+            if ("enabled".equals(att.getNodeName())) {
+                boolean enabled = getBooleanValue(getAttribute(node, "enabled"));
+                metricsConfig.setEnabled(enabled);
+            }
+        }
+
+        for (Node child : childElements(node)) {
+            String nodeName = cleanNodeName(child);
+            String value = getTextContent(child).trim();
+            if ("jmx".equals(nodeName)) {
+                handleMetricsJmx(child);
+            } else if ("collection-frequency-seconds".equals(nodeName)) {
+                metricsConfig.setCollectionFrequencySeconds(Integer.parseInt(value));
+            }
+        }
+    }
+
+    private void handleMetricsJmx(Node node) {
+        MetricsJmxConfig jmxConfig = clientConfig.getMetricsConfig().getJmxConfig();
+
+        NamedNodeMap attributes = node.getAttributes();
+        for (int a = 0; a < attributes.getLength(); a++) {
+            Node att = attributes.item(a);
+            if ("enabled".equals(att.getNodeName())) {
+                boolean enabled = getBooleanValue(getAttribute(node, "enabled"));
+                jmxConfig.setEnabled(enabled);
+            }
+        }
+    }
+
 }

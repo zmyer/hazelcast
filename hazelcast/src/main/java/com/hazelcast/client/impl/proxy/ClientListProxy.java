@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2008-2019, Hazelcast, Inc. All Rights Reserved.
+ * Copyright (c) 2008-2020, Hazelcast, Inc. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -15,6 +15,15 @@
  */
 
 package com.hazelcast.client.impl.proxy;
+
+import java.util.Collection;
+import java.util.Collections;
+import java.util.Iterator;
+import java.util.List;
+import java.util.ListIterator;
+import java.util.UUID;
+
+import javax.annotation.Nonnull;
 
 import com.hazelcast.client.impl.protocol.ClientMessage;
 import com.hazelcast.client.impl.protocol.codec.ListAddAllCodec;
@@ -47,17 +56,11 @@ import com.hazelcast.cluster.Member;
 import com.hazelcast.collection.IList;
 import com.hazelcast.collection.ItemEvent;
 import com.hazelcast.collection.ItemListener;
+import com.hazelcast.collection.LocalListStats;
 import com.hazelcast.collection.impl.common.DataAwareItemEvent;
 import com.hazelcast.core.ItemEventType;
-import com.hazelcast.nio.serialization.Data;
+import com.hazelcast.internal.serialization.Data;
 import com.hazelcast.spi.impl.UnmodifiableLazyList;
-
-import javax.annotation.Nonnull;
-import java.util.Collection;
-import java.util.Iterator;
-import java.util.List;
-import java.util.ListIterator;
-import java.util.UUID;
 
 import static com.hazelcast.internal.util.CollectionUtil.objectToDataCollection;
 import static com.hazelcast.internal.util.Preconditions.checkNotNull;
@@ -150,7 +153,7 @@ public class ClientListProxy<E> extends PartitionSpecificClientProxy implements 
         ClientMessage response = invokeOnPartition(request);
         ListIteratorCodec.ResponseParameters resultParameters = ListIteratorCodec.decodeResponse(response);
         List<Data> resultCollection = resultParameters.response;
-        return new UnmodifiableLazyList<E>(resultCollection, getSerializationService()).iterator();
+        return (Iterator<E>) new UnmodifiableLazyList(resultCollection, getSerializationService()).iterator();
     }
 
     @Override
@@ -273,7 +276,7 @@ public class ClientListProxy<E> extends PartitionSpecificClientProxy implements 
         ClientMessage request = ListGetAllCodec.encodeRequest(name);
         ClientMessage response = invokeOnPartition(request);
         ListGetAllCodec.ResponseParameters resultParameters = ListGetAllCodec.decodeResponse(response);
-        return new UnmodifiableLazyList<E>(resultParameters.response, getSerializationService());
+        return new UnmodifiableLazyList(resultParameters.response, getSerializationService());
     }
 
     @Override
@@ -307,7 +310,7 @@ public class ClientListProxy<E> extends PartitionSpecificClientProxy implements 
         ClientMessage response = invokeOnPartition(request);
         ListListIteratorCodec.ResponseParameters resultParameters = ListListIteratorCodec.decodeResponse(response);
         List<Data> resultCollection = resultParameters.response;
-        return new UnmodifiableLazyList<E>(resultCollection, getSerializationService()).listIterator();
+        return (ListIterator<E>) new UnmodifiableLazyList(resultCollection, getSerializationService()).listIterator();
     }
 
     @Override
@@ -316,12 +319,33 @@ public class ClientListProxy<E> extends PartitionSpecificClientProxy implements 
         ClientMessage response = invokeOnPartition(request);
         ListSubCodec.ResponseParameters resultParameters = ListSubCodec.decodeResponse(response);
         List<Data> resultCollection = resultParameters.response;
-        return new UnmodifiableLazyList<E>(resultCollection, getSerializationService());
+        return new UnmodifiableLazyList(resultCollection, getSerializationService());
+    }
+
+    @Override
+    public LocalListStats getLocalListStats() {
+        throw new UnsupportedOperationException("Locality is ambiguous for client!");
     }
 
     @Override
     public String toString() {
         return "IList{" + "name='" + name + '\'' + '}';
+    }
+
+    // used by jet
+    public Iterator<Data> dataIterator() {
+        ClientMessage request = ListIteratorCodec.encodeRequest(name);
+        ClientMessage response = invokeOnPartition(request);
+        ListIteratorCodec.ResponseParameters resultParameters = ListIteratorCodec.decodeResponse(response);
+        return Collections.unmodifiableList(resultParameters.response).iterator();
+    }
+
+    // used by jet
+    public List<Data> dataSubList(int fromIndex, int toIndex) {
+        ClientMessage request = ListSubCodec.encodeRequest(name, fromIndex, toIndex);
+        ClientMessage response = invokeOnPartition(request);
+        ListSubCodec.ResponseParameters resultParameters = ListSubCodec.decodeResponse(response);
+        return Collections.unmodifiableList(resultParameters.response);
     }
 
     private class ItemEventHandler extends ListAddListenerCodec.AbstractEventHandler
@@ -343,14 +367,6 @@ public class ClientListProxy<E> extends PartitionSpecificClientProxy implements 
             } else {
                 listener.itemRemoved(itemEvent);
             }
-        }
-
-        @Override
-        public void beforeListenerRegister() {
-        }
-
-        @Override
-        public void onListenerRegister() {
         }
     }
 }

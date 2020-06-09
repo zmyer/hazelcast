@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2008-2019, Hazelcast, Inc. All Rights Reserved.
+ * Copyright (c) 2008-2020, Hazelcast, Inc. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -98,7 +98,7 @@ public class MembersUpdateOp extends AbstractClusterOperation {
         NodeEngineImpl nodeEngine = clusterService.getNodeEngine();
         Node node = nodeEngine.getNode();
         Connection conn = getConnection();
-        return conn != null ? conn.getEndPoint() : node.getThisAddress();
+        return conn != null ? conn.getRemoteAddress() : node.getThisAddress();
     }
 
     final void processPartitionState() {

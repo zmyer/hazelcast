@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2008-2019, Hazelcast, Inc. All Rights Reserved.
+ * Copyright (c) 2008-2020, Hazelcast, Inc. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -17,17 +17,15 @@
 package com.hazelcast.client.cluster;
 
 import com.hazelcast.client.config.ClientConfig;
-import com.hazelcast.client.properties.ClientProperty;
 import com.hazelcast.client.test.TestHazelcastFactory;
 import com.hazelcast.cluster.ClusterState;
 import com.hazelcast.config.Config;
 import com.hazelcast.core.HazelcastInstance;
-import com.hazelcast.map.IMap;
-import com.hazelcast.core.OperationTimeoutException;
 import com.hazelcast.logging.ILogger;
 import com.hazelcast.logging.Logger;
+import com.hazelcast.map.IMap;
 import com.hazelcast.spi.exception.TargetDisconnectedException;
-import com.hazelcast.test.HazelcastParallelClassRunner;
+import com.hazelcast.test.HazelcastSerialClassRunner;
 import com.hazelcast.test.annotation.ParallelJVMTest;
 import com.hazelcast.test.annotation.QuickTest;
 import org.junit.After;
@@ -50,7 +48,7 @@ import static com.hazelcast.test.HazelcastTestSupport.warmUpPartitions;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
-@RunWith(HazelcastParallelClassRunner.class)
+@RunWith(HazelcastSerialClassRunner.class)
 @Category({QuickTest.class, ParallelJVMTest.class})
 public class ClientClusterStateTest {
 
@@ -107,12 +105,11 @@ public class ClientClusterStateTest {
         factory.newHazelcastClient();
     }
 
-    @Test(expected = OperationTimeoutException.class)
+    @Test(expected = IllegalStateException.class)
     public void testClient_canNotExecuteWriteOperations_whenClusterState_passive() {
         warmUpPartitions(instances);
 
-        ClientConfig clientConfig = new ClientConfig().setProperty(ClientProperty.INVOCATION_TIMEOUT_SECONDS.getName(), "3");
-        HazelcastInstance client = factory.newHazelcastClient(clientConfig);
+        HazelcastInstance client = factory.newHazelcastClient();
         IMap<Object, Object> map = client.getMap(randomMapName());
         changeClusterStateEventually(instance, ClusterState.PASSIVE);
         map.put(1, 1);
@@ -151,7 +148,10 @@ public class ClientClusterStateTest {
         warmUpPartitions(instances);
         waitAllForSafeState(instances);
 
-        HazelcastInstance client = factory.newHazelcastClient();
+        ClientConfig clientConfig = new ClientConfig();
+        clientConfig.getConnectionStrategyConfig().getConnectionRetryConfig().setClusterConnectTimeoutMillis(10_000);
+
+        HazelcastInstance client = factory.newHazelcastClient(clientConfig);
         final IMap<Object, Object> map = client.getMap(randomMapName());
 
         final HashMap values = new HashMap<Double, Double>();

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2008-2019, Hazelcast, Inc. All Rights Reserved.
+ * Copyright (c) 2008-2020, Hazelcast, Inc. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -18,6 +18,8 @@ package com.hazelcast.client.impl.protocol.codec.builtin;
 
 import com.hazelcast.cache.CacheEventType;
 import com.hazelcast.cache.impl.CacheEventDataImpl;
+import com.hazelcast.config.BitmapIndexOptions;
+import com.hazelcast.config.BitmapIndexOptions.UniqueKeyTransformation;
 import com.hazelcast.config.CacheSimpleEntryListenerConfig;
 import com.hazelcast.config.EventJournalConfig;
 import com.hazelcast.config.HotRestartConfig;
@@ -26,11 +28,13 @@ import com.hazelcast.config.IndexType;
 import com.hazelcast.config.MerkleTreeConfig;
 import com.hazelcast.config.NearCachePreloaderConfig;
 import com.hazelcast.core.HazelcastException;
+import com.hazelcast.instance.EndpointQualifier;
+import com.hazelcast.instance.ProtocolType;
 import com.hazelcast.internal.management.dto.ClientBwListEntryDTO;
 import com.hazelcast.map.impl.SimpleEntryView;
 import com.hazelcast.map.impl.querycache.event.DefaultQueryCacheEventData;
 import com.hazelcast.cluster.Address;
-import com.hazelcast.nio.serialization.Data;
+import com.hazelcast.internal.serialization.Data;
 
 import java.net.UnknownHostException;
 import java.util.List;
@@ -162,10 +166,20 @@ public final class CustomTypeFactory {
         return new DurationConfig(durationAmount, timeUnit);
     }
 
-    public static IndexConfig createIndexConfig(String name, int type, List<String> attributes) {
+    public static IndexConfig createIndexConfig(String name, int type, List<String> attributes,
+                                                BitmapIndexOptions bitmapIndexOptions) {
         IndexType type0 = IndexType.getById(type);
 
-        return new IndexConfig().setName(name).setType(type0).setAttributes(attributes);
+        return new IndexConfig()
+                .setName(name)
+                .setType(type0)
+                .setAttributes(attributes)
+                .setBitmapIndexOptions(bitmapIndexOptions);
+    }
+
+    public static BitmapIndexOptions createBitmapIndexOptions(String uniqueKey, int uniqueKeyTransformation) {
+        UniqueKeyTransformation resolvedUniqueKeyTransformation = UniqueKeyTransformation.fromId(uniqueKeyTransformation);
+        return new BitmapIndexOptions().setUniqueKey(uniqueKey).setUniqueKeyTransformation(resolvedUniqueKeyTransformation);
     }
 
     public static ClientBwListEntryDTO createClientBwListEntry(int type, String value) {
@@ -174,5 +188,13 @@ public final class CustomTypeFactory {
             throw new HazelcastException("Unexpected client B/W list entry type = [" + type + "]");
         }
         return new ClientBwListEntryDTO(entryType, value);
+    }
+
+    public static EndpointQualifier createEndpointQualifier(int type, String identifier) {
+        ProtocolType protocolType = ProtocolType.getById(type);
+        if (protocolType == null) {
+            throw new HazelcastException("Unexpected protocol type = [" + type + "]");
+        }
+        return EndpointQualifier.resolve(protocolType, identifier);
     }
 }

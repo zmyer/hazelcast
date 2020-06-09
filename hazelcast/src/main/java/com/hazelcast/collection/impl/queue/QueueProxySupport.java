@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2008-2019, Hazelcast, Inc. All Rights Reserved.
+ * Copyright (c) 2008-2020, Hazelcast, Inc. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -35,8 +35,7 @@ import com.hazelcast.config.ItemListenerConfig;
 import com.hazelcast.config.QueueConfig;
 import com.hazelcast.core.HazelcastInstanceAware;
 import com.hazelcast.internal.nio.ClassLoaderUtil;
-import com.hazelcast.internal.util.ExceptionUtil;
-import com.hazelcast.nio.serialization.Data;
+import com.hazelcast.internal.serialization.Data;
 import com.hazelcast.spi.impl.AbstractDistributedObject;
 import com.hazelcast.spi.impl.InitializingObject;
 import com.hazelcast.spi.impl.NodeEngine;
@@ -51,6 +50,7 @@ import java.util.List;
 import java.util.UUID;
 import java.util.concurrent.Future;
 
+import static com.hazelcast.internal.util.ExceptionUtil.rethrow;
 import static com.hazelcast.internal.util.Preconditions.checkNotNull;
 
 abstract class QueueProxySupport<E> extends AbstractDistributedObject<QueueService> implements InitializingObject {
@@ -77,7 +77,7 @@ abstract class QueueProxySupport<E> extends AbstractDistributedObject<QueueServi
                     listener = ClassLoaderUtil.newInstance(nodeEngine.getConfigClassLoader(),
                             itemListenerConfig.getClassName());
                 } catch (Exception e) {
-                    throw ExceptionUtil.rethrow(e);
+                    throw rethrow(e);
                 }
             }
             if (listener != null) {
@@ -178,7 +178,7 @@ abstract class QueueProxySupport<E> extends AbstractDistributedObject<QueueServi
             Future f = invoke(operation);
             return (T) nodeEngine.toObject(f.get());
         } catch (Throwable throwable) {
-            throw ExceptionUtil.rethrow(throwable, allowedException);
+            throw rethrow(throwable, allowedException);
         }
     }
 
@@ -195,7 +195,7 @@ abstract class QueueProxySupport<E> extends AbstractDistributedObject<QueueServi
             Future f = operationService.invokeOnPartition(QueueService.SERVICE_NAME, operation, partitionId);
             return f.get();
         } catch (Throwable throwable) {
-            throw ExceptionUtil.rethrow(throwable);
+            throw rethrow(throwable);
         }
     }
 
@@ -214,7 +214,7 @@ abstract class QueueProxySupport<E> extends AbstractDistributedObject<QueueServi
     UUID addItemListener(@Nonnull ItemListener<E> listener,
                            boolean includeValue) {
         checkNotNull(listener, "Null listener is not allowed!");
-        return getService().addItemListener(name, listener, includeValue, false);
+        return getService().addItemListener(name, listener, includeValue);
     }
 
     public boolean removeItemListener(@Nonnull UUID registrationId) {

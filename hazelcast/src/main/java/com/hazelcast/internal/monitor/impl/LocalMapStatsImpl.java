@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2008-2019, Hazelcast, Inc. All Rights Reserved.
+ * Copyright (c) 2008-2020, Hazelcast, Inc. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,9 +16,6 @@
 
 package com.hazelcast.internal.monitor.impl;
 
-import com.hazelcast.internal.json.JsonObject;
-import com.hazelcast.internal.json.JsonObject.Member;
-import com.hazelcast.internal.json.JsonValue;
 import com.hazelcast.internal.metrics.Probe;
 import com.hazelcast.internal.util.Clock;
 import com.hazelcast.map.LocalMapStats;
@@ -26,19 +23,44 @@ import com.hazelcast.nearcache.NearCacheStats;
 import com.hazelcast.query.LocalIndexStats;
 
 import java.util.Collections;
-import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.atomic.AtomicLongFieldUpdater;
 
+import static com.hazelcast.internal.metrics.MetricDescriptorConstants.MAP_METRIC_BACKUP_COUNT;
+import static com.hazelcast.internal.metrics.MetricDescriptorConstants.MAP_METRIC_BACKUP_ENTRY_COUNT;
+import static com.hazelcast.internal.metrics.MetricDescriptorConstants.MAP_METRIC_BACKUP_ENTRY_MEMORY_COST;
+import static com.hazelcast.internal.metrics.MetricDescriptorConstants.MAP_METRIC_CREATION_TIME;
+import static com.hazelcast.internal.metrics.MetricDescriptorConstants.MAP_METRIC_DIRTY_ENTRY_COUNT;
+import static com.hazelcast.internal.metrics.MetricDescriptorConstants.MAP_METRIC_GET_COUNT;
+import static com.hazelcast.internal.metrics.MetricDescriptorConstants.MAP_METRIC_HEAP_COST;
+import static com.hazelcast.internal.metrics.MetricDescriptorConstants.MAP_METRIC_HITS;
+import static com.hazelcast.internal.metrics.MetricDescriptorConstants.MAP_METRIC_INDEXED_QUERY_COUNT;
+import static com.hazelcast.internal.metrics.MetricDescriptorConstants.MAP_METRIC_LAST_ACCESS_TIME;
+import static com.hazelcast.internal.metrics.MetricDescriptorConstants.MAP_METRIC_LAST_UPDATE_TIME;
+import static com.hazelcast.internal.metrics.MetricDescriptorConstants.MAP_METRIC_LOCKED_ENTRY_COUNT;
+import static com.hazelcast.internal.metrics.MetricDescriptorConstants.MAP_METRIC_MERKLE_TREES_COST;
+import static com.hazelcast.internal.metrics.MetricDescriptorConstants.MAP_METRIC_NUMBER_OF_EVENTS;
+import static com.hazelcast.internal.metrics.MetricDescriptorConstants.MAP_METRIC_NUMBER_OF_OTHER_OPERATIONS;
+import static com.hazelcast.internal.metrics.MetricDescriptorConstants.MAP_METRIC_OWNED_ENTRY_COUNT;
+import static com.hazelcast.internal.metrics.MetricDescriptorConstants.MAP_METRIC_OWNED_ENTRY_MEMORY_COST;
+import static com.hazelcast.internal.metrics.MetricDescriptorConstants.MAP_METRIC_PUT_COUNT;
+import static com.hazelcast.internal.metrics.MetricDescriptorConstants.MAP_METRIC_QUERY_COUNT;
+import static com.hazelcast.internal.metrics.MetricDescriptorConstants.MAP_METRIC_REMOVE_COUNT;
+import static com.hazelcast.internal.metrics.MetricDescriptorConstants.MAP_METRIC_SET_COUNT;
+import static com.hazelcast.internal.metrics.MetricDescriptorConstants.MAP_METRIC_TOTAL_GET_LATENCY;
+import static com.hazelcast.internal.metrics.MetricDescriptorConstants.MAP_METRIC_TOTAL_MAX_GET_LATENCY;
+import static com.hazelcast.internal.metrics.MetricDescriptorConstants.MAP_METRIC_TOTAL_MAX_PUT_LATENCY;
+import static com.hazelcast.internal.metrics.MetricDescriptorConstants.MAP_METRIC_TOTAL_MAX_REMOVE_LATENCY;
+import static com.hazelcast.internal.metrics.MetricDescriptorConstants.MAP_METRIC_TOTAL_MAX_SET_LATENCY;
+import static com.hazelcast.internal.metrics.MetricDescriptorConstants.MAP_METRIC_TOTAL_PUT_LATENCY;
+import static com.hazelcast.internal.metrics.MetricDescriptorConstants.MAP_METRIC_TOTAL_REMOVE_LATENCY;
+import static com.hazelcast.internal.metrics.MetricDescriptorConstants.MAP_METRIC_TOTAL_SET_LATENCY;
+import static com.hazelcast.internal.metrics.ProbeUnit.BYTES;
+import static com.hazelcast.internal.metrics.ProbeUnit.MS;
 import static com.hazelcast.internal.util.ConcurrencyUtil.setMax;
-import static com.hazelcast.internal.util.JsonUtil.getInt;
-import static com.hazelcast.internal.util.JsonUtil.getLong;
-import static com.hazelcast.internal.util.JsonUtil.getObject;
-import static com.hazelcast.internal.util.TimeUtil.timeInMsOrOneIfResultIsZero;
-import static java.util.concurrent.TimeUnit.MILLISECONDS;
-import static java.util.concurrent.TimeUnit.NANOSECONDS;
+import static com.hazelcast.internal.util.TimeUtil.convertNanosToMillis;
 import static java.util.concurrent.atomic.AtomicLongFieldUpdater.newUpdater;
 
 /**
@@ -83,28 +105,27 @@ public class LocalMapStatsImpl implements LocalMapStats {
             newUpdater(LocalMapStatsImpl.class, "maxRemoveLatency");
 
     private final ConcurrentMap<String, LocalIndexStatsImpl> mutableIndexStats =
-            new ConcurrentHashMap<String, LocalIndexStatsImpl>();
-    private final Map<String, LocalIndexStats> indexStats = Collections.<String, LocalIndexStats>unmodifiableMap(
-            mutableIndexStats);
+            new ConcurrentHashMap<>();
+    private final Map<String, LocalIndexStats> indexStats = Collections.unmodifiableMap(mutableIndexStats);
 
     // These fields are only accessed through the updaters
-    @Probe
+    @Probe(name = MAP_METRIC_LAST_ACCESS_TIME, unit = MS)
     private volatile long lastAccessTime;
-    @Probe
+    @Probe(name = MAP_METRIC_LAST_UPDATE_TIME, unit = MS)
     private volatile long lastUpdateTime;
-    @Probe
+    @Probe(name = MAP_METRIC_HITS)
     private volatile long hits;
-    @Probe
+    @Probe(name = MAP_METRIC_NUMBER_OF_OTHER_OPERATIONS)
     private volatile long numberOfOtherOperations;
-    @Probe
+    @Probe(name = MAP_METRIC_NUMBER_OF_EVENTS)
     private volatile long numberOfEvents;
-    @Probe
+    @Probe(name = MAP_METRIC_GET_COUNT)
     private volatile long getCount;
-    @Probe
+    @Probe(name = MAP_METRIC_PUT_COUNT)
     private volatile long putCount;
-    @Probe
+    @Probe(name = MAP_METRIC_SET_COUNT)
     private volatile long setCount;
-    @Probe
+    @Probe(name = MAP_METRIC_REMOVE_COUNT)
     private volatile long removeCount;
     private volatile long totalGetLatenciesNanos;
     private volatile long totalPutLatenciesNanos;
@@ -114,36 +135,36 @@ public class LocalMapStatsImpl implements LocalMapStats {
     private volatile long maxPutLatency;
     private volatile long maxSetLatency;
     private volatile long maxRemoveLatency;
-    @Probe
-    private volatile long creationTime;
-    @Probe
+    @Probe(name = MAP_METRIC_CREATION_TIME, unit = MS)
+    private final long creationTime;
+    @Probe(name = MAP_METRIC_OWNED_ENTRY_COUNT)
     private volatile long ownedEntryCount;
-    @Probe
+    @Probe(name = MAP_METRIC_BACKUP_ENTRY_COUNT)
     private volatile long backupEntryCount;
-    @Probe
+    @Probe(name = MAP_METRIC_OWNED_ENTRY_MEMORY_COST, unit = BYTES)
     private volatile long ownedEntryMemoryCost;
-    @Probe
+    @Probe(name = MAP_METRIC_BACKUP_ENTRY_MEMORY_COST, unit = BYTES)
     private volatile long backupEntryMemoryCost;
     /**
      * Holds total heap cost of map & Near Cache & backups & Merkle trees.
      */
-    @Probe
+    @Probe(name = MAP_METRIC_HEAP_COST)
     private volatile long heapCost;
     /**
      * Holds the total memory footprint of the Merkle trees
      */
-    @Probe
+    @Probe(name = MAP_METRIC_MERKLE_TREES_COST)
     private volatile long merkleTreesCost;
-    @Probe
+    @Probe(name = MAP_METRIC_LOCKED_ENTRY_COUNT)
     private volatile long lockedEntryCount;
-    @Probe
+    @Probe(name = MAP_METRIC_DIRTY_ENTRY_COUNT)
     private volatile long dirtyEntryCount;
-    @Probe
+    @Probe(name = MAP_METRIC_BACKUP_COUNT)
     private volatile int backupCount;
     private volatile NearCacheStats nearCacheStats;
-    @Probe
+    @Probe(name = MAP_METRIC_QUERY_COUNT)
     private volatile long queryCount;
-    @Probe
+    @Probe(name = MAP_METRIC_INDEXED_QUERY_COUNT)
     private volatile long indexedQueryCount;
 
     public LocalMapStatsImpl() {
@@ -265,49 +286,49 @@ public class LocalMapStatsImpl implements LocalMapStats {
         return removeCount;
     }
 
-    @Probe
+    @Probe(name = MAP_METRIC_TOTAL_PUT_LATENCY, unit = MS)
     @Override
     public long getTotalPutLatency() {
         return convertNanosToMillis(totalPutLatenciesNanos);
     }
 
-    @Probe
+    @Probe(name = MAP_METRIC_TOTAL_SET_LATENCY, unit = MS)
     @Override
     public long getTotalSetLatency() {
         return convertNanosToMillis(totalSetLatenciesNanos);
     }
 
-    @Probe
+    @Probe(name = MAP_METRIC_TOTAL_GET_LATENCY, unit = MS)
     @Override
     public long getTotalGetLatency() {
         return convertNanosToMillis(totalGetLatenciesNanos);
     }
 
-    @Probe
+    @Probe(name = MAP_METRIC_TOTAL_REMOVE_LATENCY, unit = MS)
     @Override
     public long getTotalRemoveLatency() {
         return convertNanosToMillis(totalRemoveLatenciesNanos);
     }
 
-    @Probe
+    @Probe(name = MAP_METRIC_TOTAL_MAX_PUT_LATENCY, unit = MS)
     @Override
     public long getMaxPutLatency() {
         return convertNanosToMillis(maxPutLatency);
     }
 
-    @Probe
+    @Probe(name = MAP_METRIC_TOTAL_MAX_SET_LATENCY, unit = MS)
     @Override
     public long getMaxSetLatency() {
         return convertNanosToMillis(maxSetLatency);
     }
 
-    @Probe
+    @Probe(name = MAP_METRIC_TOTAL_MAX_GET_LATENCY, unit = MS)
     @Override
     public long getMaxGetLatency() {
         return convertNanosToMillis(maxGetLatency);
     }
 
-    @Probe
+    @Probe(name = MAP_METRIC_TOTAL_MAX_REMOVE_LATENCY, unit = MS)
     @Override
     public long getMaxRemoveLatency() {
         return convertNanosToMillis(maxRemoveLatency);
@@ -465,111 +486,6 @@ public class LocalMapStatsImpl implements LocalMapStats {
     }
 
     @Override
-    public JsonObject toJson() {
-        JsonObject root = new JsonObject();
-        root.add("getCount", getCount);
-        root.add("putCount", putCount);
-        root.add("setCount", setCount);
-        root.add("removeCount", removeCount);
-        root.add("numberOfOtherOperations", numberOfOtherOperations);
-        root.add("numberOfEvents", numberOfEvents);
-        root.add("lastAccessTime", lastAccessTime);
-        root.add("lastUpdateTime", lastUpdateTime);
-        root.add("hits", hits);
-        root.add("ownedEntryCount", ownedEntryCount);
-        root.add("backupEntryCount", backupEntryCount);
-        root.add("backupCount", backupCount);
-        root.add("ownedEntryMemoryCost", ownedEntryMemoryCost);
-        root.add("backupEntryMemoryCost", backupEntryMemoryCost);
-        root.add("creationTime", creationTime);
-        root.add("lockedEntryCount", lockedEntryCount);
-        root.add("dirtyEntryCount", dirtyEntryCount);
-
-        // keep the contract as milliseconds for latencies sent using Json
-        root.add("totalGetLatencies", convertNanosToMillis(totalGetLatenciesNanos));
-        root.add("totalPutLatencies", convertNanosToMillis(totalPutLatenciesNanos));
-        root.add("totalSetLatencies", convertNanosToMillis(totalSetLatenciesNanos));
-        root.add("totalRemoveLatencies", convertNanosToMillis(totalRemoveLatenciesNanos));
-        root.add("maxGetLatency", convertNanosToMillis(maxGetLatency));
-        root.add("maxPutLatency", convertNanosToMillis(maxPutLatency));
-        root.add("maxSetLatency", convertNanosToMillis(maxSetLatency));
-        root.add("maxRemoveLatency", convertNanosToMillis(maxRemoveLatency));
-
-        root.add("heapCost", heapCost);
-        root.add("merkleTreesCost", merkleTreesCost);
-        if (nearCacheStats != null) {
-            root.add("nearCacheStats", nearCacheStats.toJson());
-        }
-
-        root.add("queryCount", queryCount);
-        root.add("indexedQueryCount", indexedQueryCount);
-        Map<String, LocalIndexStats> localIndexStats = indexStats;
-        if (!localIndexStats.isEmpty()) {
-            JsonObject indexes = new JsonObject();
-            for (Map.Entry<String, LocalIndexStats> indexEntry : localIndexStats.entrySet()) {
-                indexes.add(indexEntry.getKey(), indexEntry.getValue().toJson());
-            }
-            root.add("indexStats", indexes);
-        }
-
-        return root;
-    }
-
-    @Override
-    public void fromJson(JsonObject json) {
-        getCount = getLong(json, "getCount", -1L);
-        putCount = getLong(json, "putCount", -1L);
-        setCount = getLong(json, "setCount", -1L);
-        removeCount = getLong(json, "removeCount", -1L);
-        numberOfOtherOperations = getLong(json, "numberOfOtherOperations", -1L);
-        numberOfEvents = getLong(json, "numberOfEvents", -1L);
-        lastAccessTime = getLong(json, "lastAccessTime", -1L);
-        lastUpdateTime = getLong(json, "lastUpdateTime", -1L);
-
-        // Json uses milliseconds but we keep latencies in nanoseconds internally
-        totalGetLatenciesNanos = convertMillisToNanos(getLong(json, "totalGetLatencies", -1L));
-        totalPutLatenciesNanos = convertMillisToNanos(getLong(json, "totalPutLatencies", -1L));
-        totalSetLatenciesNanos = convertMillisToNanos(getLong(json, "totalSetLatencies", -1L));
-        totalRemoveLatenciesNanos = convertMillisToNanos(getLong(json, "totalRemoveLatencies", -1L));
-        maxGetLatency = convertMillisToNanos(getLong(json, "maxGetLatency", -1L));
-        maxPutLatency = convertMillisToNanos(getLong(json, "maxPutLatency", -1L));
-        maxSetLatency = convertMillisToNanos(getLong(json, "maxSetLatency", -1L));
-        maxRemoveLatency = convertMillisToNanos(getLong(json, "maxRemoveLatency", -1L));
-
-        hits = getLong(json, "hits", -1L);
-        ownedEntryCount = getLong(json, "ownedEntryCount", -1L);
-        backupEntryCount = getLong(json, "backupEntryCount", -1L);
-        backupCount = getInt(json, "backupCount", -1);
-        ownedEntryMemoryCost = getLong(json, "ownedEntryMemoryCost", -1L);
-        backupEntryMemoryCost = getLong(json, "backupEntryMemoryCost", -1L);
-        creationTime = getLong(json, "creationTime", -1L);
-        lockedEntryCount = getLong(json, "lockedEntryCount", -1L);
-        dirtyEntryCount = getLong(json, "dirtyEntryCount", -1L);
-        heapCost = getLong(json, "heapCost", -1L);
-        merkleTreesCost = getLong(json, "merkleTreesCost", -1L);
-        JsonValue jsonNearCacheStats = json.get("nearCacheStats");
-        if (jsonNearCacheStats != null) {
-            nearCacheStats = new NearCacheStatsImpl();
-            nearCacheStats.fromJson(jsonNearCacheStats.asObject());
-        }
-
-        queryCount = getLong(json, "queryCount", -1L);
-        indexedQueryCount = getLong(json, "indexedQueryCount", -1L);
-        JsonObject indexes = getObject(json, "indexStats", null);
-        if (indexes != null && !indexes.isEmpty()) {
-            Map<String, LocalIndexStatsImpl> localIndexStats = new HashMap<String, LocalIndexStatsImpl>();
-            for (Member member : indexes) {
-                LocalIndexStatsImpl indexStats = new LocalIndexStatsImpl();
-                indexStats.fromJson(member.getValue().asObject());
-                localIndexStats.put(member.getName(), indexStats);
-            }
-            setIndexStats(localIndexStats);
-        } else {
-            setIndexStats(null);
-        }
-    }
-
-    @Override
     public String toString() {
         return "LocalMapStatsImpl{"
                 + "lastAccessTime=" + lastAccessTime
@@ -604,13 +520,5 @@ public class LocalMapStatsImpl implements LocalMapStats {
                 + ", indexedQueryCount=" + indexedQueryCount
                 + ", indexStats=" + indexStats
                 + '}';
-    }
-
-    private static long convertNanosToMillis(long nanos) {
-        return timeInMsOrOneIfResultIsZero(nanos, NANOSECONDS);
-    }
-
-    private static long convertMillisToNanos(long millis) {
-        return MILLISECONDS.toNanos(millis);
     }
 }

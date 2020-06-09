@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2008-2019, Hazelcast, Inc. All Rights Reserved.
+ * Copyright (c) 2008-2020, Hazelcast, Inc. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -32,7 +32,7 @@ import java.util.concurrent.CompletionStage;
  * from which the operation's result can be obtained in a blocking manner. For example:
  * <pre>
  * CompletionStage&lt;Long&gt; stage = atomicLong.addAndGetAsync(13);
- * stage.whenCompleteAsync((response, t) -> {
+ * stage.whenCompleteAsync((response, t) -&gt; {
  *     if (t == null) {
  *         // do something with the result
  *     } else {
@@ -40,6 +40,12 @@ import java.util.concurrent.CompletionStage;
  *     }
  * });
  * </pre>
+ * <p>
+ * Actions supplied for dependent completions of default non-async methods and async methods
+ * without an explicit {@link java.util.concurrent.Executor} argument are performed
+ * by the {@link java.util.concurrent.ForkJoinPool#commonPool()} (unless it does not
+ * support a parallelism level of at least 2, in which case a new {@code Thread} is
+ * created per task).
  * <p>
  * IAtomicLong is accessed via {@link CPSubsystem#getAtomicLong(String)}.
  * It works on top of the Raft consensus algorithm. It offers linearizability during crash
@@ -170,6 +176,7 @@ public interface IAtomicLong extends DistributedObject {
      * Applies a function on the value, the actual stored value will not change.
      *
      * @param function the function applied to the value, the value is not changed
+     * @param <R> the result type of the function
      * @return the result of the function application
      * @throws IllegalArgumentException if function is {@code null}
      * @since 3.2
@@ -194,7 +201,7 @@ public interface IAtomicLong extends DistributedObject {
      * </pre>
      * <pre>
      * CompletionStage&lt;Long&gt; stage = atomicLong.addAndGetAsync(13);
-     * stage.whenCompleteAsync((response, t) -> {
+     * stage.whenCompleteAsync((response, t) -&gt; {
      *     if (t == null) {
      *         // do something with the result
      *     } else {
@@ -358,7 +365,7 @@ public interface IAtomicLong extends DistributedObject {
      * }
      *
      * CompletionStage&lt;Boolean&gt; stage = atomicLong.applyAsync(new IsOneFunction());
-     * stage.whenCompleteAsync((response, t) -> {
+     * stage.whenCompleteAsync((response, t) -&gt; {
      *    if (t == null) {
      *        // do something with the response
      *    } else {
@@ -368,6 +375,7 @@ public interface IAtomicLong extends DistributedObject {
      * </pre>
      *
      * @param function the function
+     * @param <R> the result type of the function
      * @return a {@link CompletionStage} with the result of the function application
      * @throws IllegalArgumentException if function is {@code null}
      * @since 3.7

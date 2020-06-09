@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2008-2019, Hazelcast, Inc. All Rights Reserved.
+ * Copyright (c) 2008-2020, Hazelcast, Inc. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -27,6 +27,7 @@ import com.hazelcast.topic.impl.TopicService;
 
 import java.security.Permission;
 import java.util.UUID;
+import java.util.concurrent.Future;
 
 public class TopicRemoveMessageListenerMessageTask
         extends AbstractRemoveListenerMessageTask<TopicRemoveMessageListenerCodec.RequestParameters> {
@@ -36,9 +37,9 @@ public class TopicRemoveMessageListenerMessageTask
     }
 
     @Override
-    protected boolean deRegisterListener() {
+    protected Future<Boolean> deRegisterListener() {
         TopicService service = getService(TopicService.SERVICE_NAME);
-        return service.removeMessageListener(parameters.name, parameters.registrationId);
+        return service.removeMessageListenerAsync(parameters.name, parameters.registrationId);
     }
 
     @Override

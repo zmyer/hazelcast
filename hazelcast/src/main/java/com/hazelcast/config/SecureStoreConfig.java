@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2008-2019, Hazelcast, Inc. All Rights Reserved.
+ * Copyright (c) 2008-2020, Hazelcast, Inc. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -18,7 +18,7 @@ package com.hazelcast.config;
 
 /**
  * Abstract Secure Store configuration class.
- * <p/>
+ * <p>
  * A Secure Store represents an abstraction for interacting
  * with systems that manage symmetric encryption keys. Different
  * types of Secure Stores are configured by means of corresponding

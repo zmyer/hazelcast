@@ -666,7 +666,7 @@ Export-Package: com.hazelcast.cluster.impl;uses:="com.hazelcast.loggin
  ast.logging,com.hazelcast.core,com.hazelcast.nio.serialization.impl,c
  om.hazelcast.spi.annotation,com.hazelcast.nio,com.hazelcast.version,c
  om.hazelcast.internal.util,com.hazelcast.cluster.impl,com.hazelcast.spi.proper
- ties,com.hazelcast.config,com.hazelcast.internal.nio.tcp,com.hazelcast.interna
+ ties,com.hazelcast.config,com.hazelcast.internal.server,com.hazelcast.interna
  l.networking.spinning,com.hazelcast.internal.metrics,com.hazelcast.in
  ternal.networking,com.hazelcast.internal.networking.nio,com.h
  azelcast.spi.impl,com.hazelcast.hotrestart,com.hazelcast.wan.impl,com
@@ -1001,7 +1001,7 @@ Export-Package: com.hazelcast.cluster.impl;uses:="com.hazelcast.loggin
  .function,com.hazelcast.map.impl.operation,com.hazelcast.nio.serializ
  ation,com.hazelcast.client.impl.operations,com.hazelcast.internal.ser
  ialization.impl,com.hazelcast.internal.serialization,com.hazelcast.ni
- o,com.hazelcast.logging,com.hazelcast.internal.nio.tcp,com.hazelcast.client.im
+ o,com.hazelcast.logging,com.hazelcast.internal.server,com.hazelcast.client.im
  pl.client,com.hazelcast.core,com.hazelcast.security,com.hazelcast.cli
  ent,com.hazelcast.transaction,com.hazelcast.internal.networking,com.h
  azelcast.transaction.impl.xa,javax.security.auth,javax.security.auth.
@@ -1131,7 +1131,7 @@ Export-Package: com.hazelcast.cluster.impl;uses:="com.hazelcast.loggin
  tion.impl,com.hazelcast.logging,com.hazelcast.core,com.hazelcast.inte
  rnal.cluster,com.hazelcast.partition,com.hazelcast.spi.properties,com
  .hazelcast.internal.partition.operation,com.hazelcast.spi.impl.operat
- ionservice,com.hazelcast.partition.membergroup,com.hazelcast.spi.exce
+ ionservice,com.hazelcast.internal.partition.membergroup,com.hazelcast.spi.exce
  ption";version="3.8.0.SNAPSHOT",com.hazelcast.client.impl.protocol.ta
  sk.cardinality;uses:="com.hazelcast.cardinality.impl,com.hazelcast.ca
  rdinality.impl.operations,com.hazelcast.spi,com.hazelcast.client.impl
@@ -1181,7 +1181,7 @@ Export-Package: com.hazelcast.cluster.impl;uses:="com.hazelcast.loggin
  spi.impl.executionservice,com.hazelcast.internal.serialization.impl,c
  om.hazelcast.internal.serialization,com.hazelcast.spi.impl.eventservi
  ce,com.hazelcast.spi.annotation,com.hazelcast.internal.util.counters,
- com.hazelcast.partition.membergroup,com.hazelcast.config,com.hazelcas
+ com.hazelcast.internal.partition.membergroup,com.hazelcast.config,com.hazelcas
  t.spi.discovery.integration";version="3.8.0.SNAPSHOT",com.hazelcast.m
  ap.impl.event;uses:="com.hazelcast.nio,com.hazelcast.nio.serializatio
  n.impl,com.hazelcast.query.impl.getters,com.hazelcast.map.impl.query,
@@ -1491,7 +1491,7 @@ Export-Package: com.hazelcast.cluster.impl;uses:="com.hazelcast.loggin
  erties,com.hazelcast.spi.partition,com.hazelcast.internal.cluster.imp
  l,com.hazelcast.transaction,com.hazelcast.internal.monitor,com.hazelcast.trans
  action.impl,com.hazelcast.mapreduce,com.hazelcast.mapreduce.aggregati
- on";version="3.8.0.SNAPSHOT",com.hazelcast.internal.nio.tcp;uses:="com.hazelca
+ on";version="3.8.0.SNAPSHOT",com.hazelcast.internal.server;uses:="com.hazelca
  st.internal.util.counters,com.hazelcast.internal.networking,com.hazel
  cast.client.impl.protocol,com.hazelcast.client.impl.protocol.util,com
  .hazelcast.nio,com.hazelcast.logging,com.hazelcast.internal.util,com.hazelcast
@@ -1613,12 +1613,12 @@ Export-Package: com.hazelcast.cluster.impl;uses:="com.hazelcast.loggin
  mpl,com.hazelcast.internal.serialization,com.hazelcast.core,com.hazel
  cast.spi.partition,com.hazelcast.spi,com.hazelcast.internal.util,com.hazelcast
  .partition.strategy,com.hazelcast.instance";version="3.8.0.SNAPSHOT",
- com.hazelcast.partition.membergroup;uses:="com.hazelcast.core,com.haz
+ com.hazelcast.internal.partition.membergroup;uses:="com.hazelcast.core,com.haz
  elcast.internal.util,com.hazelcast.config,com.hazelcast.nio,com.hazelcast.inst
  ance,com.hazelcast.spi.discovery.integration,com.hazelcast.config.pro
  perties,com.hazelcast.spi.discovery.impl,com.hazelcast.spi.discovery,
  com.hazelcast.spi.partitiongroup";version="3.8.0.SNAPSHOT",com.hazelc
- ast.spi.partitiongroup;uses:="com.hazelcast.partition.membergroup";ve
+ ast.spi.partitiongroup;uses:="com.hazelcast.internal.partition.membergroup";ve
  rsion="3.8.0.SNAPSHOT",com.hazelcast.spi.impl.operationservice.impl.r
  esponses;uses:="com.hazelcast.spi.impl,com.hazelcast.nio.serializatio
  n,com.hazelcast.nio";version="3.8.0.SNAPSHOT",com.hazelcast.internal.

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2008-2019, Hazelcast, Inc. All Rights Reserved.
+ * Copyright (c) 2008-2020, Hazelcast, Inc. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -22,21 +22,19 @@ import com.hazelcast.config.MergePolicyConfig;
 import com.hazelcast.map.impl.operation.MapOperationProvider;
 import com.hazelcast.map.impl.record.Record;
 import com.hazelcast.map.impl.recordstore.RecordStore;
-import com.hazelcast.nio.serialization.Data;
+import com.hazelcast.internal.serialization.Data;
 import com.hazelcast.spi.impl.merge.AbstractMergeRunnable;
 import com.hazelcast.spi.impl.operationservice.OperationFactory;
 import com.hazelcast.spi.merge.SplitBrainMergePolicy;
 import com.hazelcast.spi.merge.SplitBrainMergeTypes.MapMergeTypes;
-import com.hazelcast.internal.util.Clock;
 
 import java.util.Collection;
-import java.util.Iterator;
 import java.util.List;
 import java.util.function.BiConsumer;
 
 import static com.hazelcast.spi.impl.merge.MergingValueFactory.createMergingEntry;
 
-class MapMergeRunnable extends AbstractMergeRunnable<Data, Data, RecordStore, MapMergeTypes> {
+class MapMergeRunnable extends AbstractMergeRunnable<Object, Object, RecordStore, MapMergeTypes<Object, Object>> {
 
     private final MapServiceContext mapServiceContext;
 
@@ -49,20 +47,15 @@ class MapMergeRunnable extends AbstractMergeRunnable<Data, Data, RecordStore, Ma
     }
 
     @Override
-    protected void mergeStore(RecordStore store, BiConsumer<Integer, MapMergeTypes> consumer) {
-        long now = Clock.currentTimeMillis();
+    protected void mergeStore(RecordStore store, BiConsumer<Integer, MapMergeTypes<Object, Object>> consumer) {
         int partitionId = store.getPartitionId();
 
-        //noinspection unchecked
-        Iterator<Record> iterator = store.iterator(now, false);
-        while (iterator.hasNext()) {
-            Record record = iterator.next();
-
-            Data dataKey = toHeapData(record.getKey());
+        store.forEach((BiConsumer<Data, Record>) (key, record) -> {
+            Data dataKey = toHeapData(key);
             Data dataValue = toHeapData(record.getValue());
-
-            consumer.accept(partitionId, createMergingEntry(getSerializationService(), dataKey, dataValue, record));
-        }
+            consumer.accept(partitionId,
+                    createMergingEntry(getSerializationService(), dataKey, dataValue, record));
+        }, false);
     }
 
     @Override
@@ -97,8 +90,9 @@ class MapMergeRunnable extends AbstractMergeRunnable<Data, Data, RecordStore, Ma
 
     @Override
     protected OperationFactory createMergeOperationFactory(String dataStructureName,
-                                                           SplitBrainMergePolicy<Data, MapMergeTypes> mergePolicy,
-                                                           int[] partitions, List<MapMergeTypes>[] entries) {
+                                                           SplitBrainMergePolicy<Object, MapMergeTypes<Object, Object>,
+                                                                   Object> mergePolicy,
+                                                           int[] partitions, List<MapMergeTypes<Object, Object>>[] entries) {
         MapOperationProvider operationProvider = mapServiceContext.getMapOperationProvider(dataStructureName);
         return operationProvider.createMergeOperationFactory(dataStructureName, partitions, entries, mergePolicy);
     }

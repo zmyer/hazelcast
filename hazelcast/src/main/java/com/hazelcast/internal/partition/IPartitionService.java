@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2008-2019, Hazelcast, Inc. All Rights Reserved.
+ * Copyright (c) 2008-2020, Hazelcast, Inc. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -18,7 +18,7 @@ package com.hazelcast.internal.partition;
 
 import com.hazelcast.partition.MigrationListener;
 import com.hazelcast.cluster.Address;
-import com.hazelcast.nio.serialization.Data;
+import com.hazelcast.internal.serialization.Data;
 import com.hazelcast.partition.NoDataMemberInClusterException;
 import com.hazelcast.partition.PartitionLostListener;
 import com.hazelcast.internal.services.CoreService;
@@ -27,6 +27,7 @@ import javax.annotation.Nonnull;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import java.util.concurrent.CompletableFuture;
 
 /**
  * An SPI service for accessing partition related information.
@@ -56,7 +57,7 @@ public interface IPartitionService extends CoreService {
      *
      * @param partitionId the partitionId
      * @return owner of partition
-     * @throws InterruptedException
+     * @throws InterruptedException if interrupted while waiting
      * @throws NoDataMemberInClusterException if all nodes are lite members and partitions can't be assigned
      */
     Address getPartitionOwnerOrWait(int partitionId);
@@ -135,9 +136,13 @@ public interface IPartitionService extends CoreService {
 
     UUID addPartitionLostListener(PartitionLostListener partitionLostListener);
 
+    CompletableFuture<UUID> addPartitionLostListenerAsync(PartitionLostListener partitionLostListener);
+
     UUID addLocalPartitionLostListener(PartitionLostListener partitionLostListener);
 
     boolean removePartitionLostListener(UUID registrationId);
+
+    CompletableFuture<Boolean> removePartitionLostListenerAsync(UUID registrationId);
 
     long getMigrationQueueSize();
 

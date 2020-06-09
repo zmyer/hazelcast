@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2008-2019, Hazelcast, Inc. All Rights Reserved.
+ * Copyright (c) 2008-2020, Hazelcast, Inc. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -19,6 +19,7 @@ package com.hazelcast.internal.metrics.impl;
 import com.hazelcast.config.Config;
 import com.hazelcast.core.HazelcastInstance;
 import com.hazelcast.instance.impl.Node;
+import com.hazelcast.internal.metrics.MetricConsumer;
 import com.hazelcast.internal.metrics.MetricDescriptor;
 import com.hazelcast.internal.metrics.MetricsPublisher;
 import com.hazelcast.internal.metrics.MetricsRegistry;
@@ -26,15 +27,15 @@ import com.hazelcast.internal.metrics.Probe;
 import com.hazelcast.internal.metrics.ProbeLevel;
 import com.hazelcast.internal.metrics.collectors.MetricsCollector;
 import com.hazelcast.internal.metrics.managementcenter.ConcurrentArrayRingbuffer.RingbufferSlice;
-import com.hazelcast.internal.metrics.MetricConsumer;
 import com.hazelcast.internal.metrics.managementcenter.MetricsResultSet;
 import com.hazelcast.logging.ILogger;
 import com.hazelcast.logging.LoggingService;
 import com.hazelcast.spi.impl.NodeEngineImpl;
 import com.hazelcast.spi.impl.executionservice.ExecutionService;
 import com.hazelcast.spi.impl.executionservice.impl.ExecutionServiceImpl;
-import com.hazelcast.test.HazelcastParallelClassRunner;
+import com.hazelcast.test.HazelcastSerialClassRunner;
 import com.hazelcast.test.HazelcastTestSupport;
+import com.hazelcast.test.JmxLeakHelper;
 import com.hazelcast.test.annotation.ParallelJVMTest;
 import com.hazelcast.test.annotation.QuickTest;
 import org.hamcrest.CoreMatchers;
@@ -71,7 +72,7 @@ import static org.mockito.Mockito.verifyNoMoreInteractions;
 import static org.mockito.Mockito.when;
 import static org.mockito.MockitoAnnotations.initMocks;
 
-@RunWith(HazelcastParallelClassRunner.class)
+@RunWith(HazelcastSerialClassRunner.class)
 @Category({QuickTest.class, ParallelJVMTest.class})
 public class MetricsServiceTest extends HazelcastTestSupport {
     @Rule
@@ -95,11 +96,12 @@ public class MetricsServiceTest extends HazelcastTestSupport {
     private final Config config = new Config();
     private ExecutionServiceImpl executionService;
 
+    private MetricsService metricsService;
+
     @Before
     public void setUp() {
         initMocks(this);
 
-        config.getMetricsConfig().setCollectionIntervalSeconds(10);
         metricsRegistry = new MetricsRegistryImpl(loggerMock, ProbeLevel.INFO);
 
         when(nodeMock.getLogger(any(Class.class))).thenReturn(loggerMock);
@@ -124,6 +126,16 @@ public class MetricsServiceTest extends HazelcastTestSupport {
 
     @After
     public void tearDown() {
+        // Destroy JMX beans created during testing.
+        if (metricsService != null) {
+            metricsService.shutdown(true);
+
+            metricsService = null;
+        }
+
+        JmxLeakHelper.checkJmxBeans();
+
+        // Stop executor service.
         if (executionService != null) {
             executionService.shutdown();
         }
@@ -131,8 +143,7 @@ public class MetricsServiceTest extends HazelcastTestSupport {
 
     @Test
     public void testUpdatesRenderedInOrder() {
-        MetricsService metricsService = new MetricsService(nodeEngineMock, () -> metricsRegistry);
-        metricsService.init(nodeEngineMock, new Properties());
+        MetricsService metricsService = prepareMetricsService();
 
         testProbeSource.update(1, 1.5D);
         metricsService.collectMetrics(metricsCollectorMock);
@@ -161,11 +172,11 @@ public class MetricsServiceTest extends HazelcastTestSupport {
     public void testReadMetricsReadsLastTwoCollections() throws Exception {
         // configure metrics to keep the result of the last 2 collection cycles
         config.getMetricsConfig()
-              .setRetentionSeconds(2)
-              .setCollectionIntervalSeconds(1);
+              .setCollectionFrequencySeconds(1)
+              .getManagementCenterConfig()
+              .setRetentionSeconds(2);
 
-        MetricsService metricsService = new MetricsService(nodeEngineMock, () -> metricsRegistry);
-        metricsService.init(nodeEngineMock, new Properties());
+        MetricsService metricsService = prepareMetricsService();
 
         testProbeSource.update(1, 1.5D);
         metricsService.collectMetrics();
@@ -202,11 +213,11 @@ public class MetricsServiceTest extends HazelcastTestSupport {
     public void testReadMetricsReadsOnlyLastCollection() throws Exception {
         // configure metrics to keep the result only of the last collection cycle
         config.getMetricsConfig()
-              .setRetentionSeconds(1)
-              .setCollectionIntervalSeconds(5);
+              .setCollectionFrequencySeconds(5)
+              .getManagementCenterConfig()
+              .setRetentionSeconds(1);
 
-        MetricsService metricsService = new MetricsService(nodeEngineMock, () -> metricsRegistry);
-        metricsService.init(nodeEngineMock, new Properties());
+        MetricsService metricsService = prepareMetricsService();
 
         // this collection will be dropped
         testProbeSource.update(1, 1.5D);
@@ -245,8 +256,7 @@ public class MetricsServiceTest extends HazelcastTestSupport {
         ExecutionService executionServiceMock = mock(ExecutionService.class);
         when(nodeEngineMock.getExecutionService()).thenReturn(executionServiceMock);
 
-        MetricsService metricsService = new MetricsService(nodeEngineMock, () -> metricsRegistry);
-        metricsService.init(nodeEngineMock, new Properties());
+        prepareMetricsService();
 
         verifyNoMoreInteractions(executionServiceMock);
     }
@@ -254,14 +264,16 @@ public class MetricsServiceTest extends HazelcastTestSupport {
     @Test
     public void testNoCollectionIfMetricsEnabledAndMcJmxDisabled() {
         config.getMetricsConfig()
-              .setEnabled(true)
-              .setMcEnabled(false)
-              .setJmxEnabled(false);
+              .setEnabled(true);
+        config.getMetricsConfig().getManagementCenterConfig()
+              .setEnabled(false);
+        config.getMetricsConfig().getJmxConfig()
+              .setEnabled(false);
+
         ExecutionService executionServiceMock = mock(ExecutionService.class);
         when(nodeEngineMock.getExecutionService()).thenReturn(executionServiceMock);
 
-        MetricsService metricsService = new MetricsService(nodeEngineMock, () -> metricsRegistry);
-        metricsService.init(nodeEngineMock, new Properties());
+        prepareMetricsService();
 
         verifyNoMoreInteractions(executionServiceMock);
     }
@@ -269,13 +281,14 @@ public class MetricsServiceTest extends HazelcastTestSupport {
     @Test
     public void testMetricsCollectedIfMetricsEnabledAndMcJmxDisabledButCustomPublisherRegistered() {
         config.getMetricsConfig()
-              .setEnabled(true)
-              .setMcEnabled(false)
-              .setJmxEnabled(false);
+              .setEnabled(true);
+        config.getMetricsConfig().getManagementCenterConfig()
+              .setEnabled(false);
+        config.getMetricsConfig().getJmxConfig()
+              .setEnabled(false);
 
         MetricsPublisher publisherMock = mock(MetricsPublisher.class);
-        MetricsService metricsService = new MetricsService(nodeEngineMock, () -> metricsRegistry);
-        metricsService.init(nodeEngineMock, new Properties());
+        MetricsService metricsService = prepareMetricsService();
         metricsService.registerPublisher(nodeEngine -> publisherMock);
 
         assertTrueEventually(() -> {
@@ -286,8 +299,7 @@ public class MetricsServiceTest extends HazelcastTestSupport {
 
     @Test
     public void testReadMetricsThrowsOnFutureSequence() throws Exception {
-        MetricsService metricsService = new MetricsService(nodeEngineMock, () -> metricsRegistry);
-        metricsService.init(nodeEngineMock, new Properties());
+        MetricsService metricsService = prepareMetricsService();
 
         MetricConsumer metricConsumerMock = mock(MetricConsumer.class);
 
@@ -304,8 +316,7 @@ public class MetricsServiceTest extends HazelcastTestSupport {
     @Test
     public void testCustomPublisherIsRegistered() {
         MetricsPublisher publisherMock = mock(MetricsPublisher.class);
-        MetricsService metricsService = new MetricsService(nodeEngineMock, () -> metricsRegistry);
-        metricsService.init(nodeEngineMock, new Properties());
+        MetricsService metricsService = prepareMetricsService();
         metricsService.registerPublisher(nodeEngine -> publisherMock);
 
         metricsService.collectMetrics();
@@ -319,8 +330,7 @@ public class MetricsServiceTest extends HazelcastTestSupport {
         config.getMetricsConfig().setEnabled(false);
 
         MetricsPublisher publisherMock = mock(MetricsPublisher.class);
-        MetricsService metricsService = new MetricsService(nodeEngineMock, () -> metricsRegistry);
-        metricsService.init(nodeEngineMock, new Properties());
+        MetricsService metricsService = prepareMetricsService();
         metricsService.registerPublisher(nodeEngine -> publisherMock);
 
         metricsService.collectMetrics();
@@ -333,14 +343,14 @@ public class MetricsServiceTest extends HazelcastTestSupport {
     public void testExclusion() throws Exception {
         // configure metrics to keep the result only of the last collection cycle
         config.getMetricsConfig()
-              .setRetentionSeconds(1)
-              .setCollectionIntervalSeconds(5);
+              .setCollectionFrequencySeconds(5)
+              .getManagementCenterConfig()
+              .setRetentionSeconds(1);
 
         ExclusionProbeSource metricsSource = new ExclusionProbeSource();
         metricsRegistry.registerStaticMetrics(metricsSource, "testExclusion");
 
-        MetricsService metricsService = new MetricsService(nodeEngineMock, () -> metricsRegistry);
-        metricsService.init(nodeEngineMock, new Properties());
+        MetricsService metricsService = prepareMetricsService();
 
         metricsSource.update(1, 2, 1.5D, 2.5D);
         metricsService.collectMetrics();
@@ -372,11 +382,22 @@ public class MetricsServiceTest extends HazelcastTestSupport {
         metricsResultSet.collections().forEach(entry -> extractMetrics(entry.getValue(), metricConsumer));
     }
 
+    private MetricsService prepareMetricsService() {
+        if (metricsService != null) {
+            throw new IllegalStateException("MetricsService is already prepared.");
+        }
+
+        metricsService = new MetricsService(nodeEngineMock, () -> metricsRegistry);
+        metricsService.init(nodeEngineMock, new Properties());
+
+        return metricsService;
+    }
+
     private static class TestProbeSource {
-        @Probe
+        @Probe(name = "longValue")
         private long longValue;
 
-        @Probe
+        @Probe(name = "doubleValue")
         private double doubleValue;
 
         private void update(long longValue, double doubleValue) {
@@ -387,16 +408,16 @@ public class MetricsServiceTest extends HazelcastTestSupport {
     }
 
     private static class ExclusionProbeSource {
-        @Probe
+        @Probe(name = "notExcludedLong")
         private long notExcludedLong;
 
-        @Probe(excludedTargets = MANAGEMENT_CENTER)
+        @Probe(name = "excludedLong", excludedTargets = MANAGEMENT_CENTER)
         private long excludedLong;
 
-        @Probe
+        @Probe(name = "notExcludedDouble")
         private double notExcludedDouble;
 
-        @Probe(excludedTargets = MANAGEMENT_CENTER)
+        @Probe(name = "excludedDouble", excludedTargets = MANAGEMENT_CENTER)
         private double excludedDouble;
 
         private void update(long notExcludedLong, long excludedLong, double notExcludedDouble, double excludedDouble) {

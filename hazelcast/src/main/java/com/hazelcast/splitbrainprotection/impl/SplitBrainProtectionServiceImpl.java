@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2008-2019, Hazelcast, Inc. All Rights Reserved.
+ * Copyright (c) 2008-2020, Hazelcast, Inc. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -24,7 +24,6 @@ import com.hazelcast.config.SplitBrainProtectionConfig;
 import com.hazelcast.config.SplitBrainProtectionListenerConfig;
 import com.hazelcast.internal.cluster.ClusterService;
 import com.hazelcast.internal.nio.ClassLoaderUtil;
-import com.hazelcast.internal.services.MemberAttributeServiceEvent;
 import com.hazelcast.internal.services.MembershipAwareService;
 import com.hazelcast.internal.services.MembershipServiceEvent;
 import com.hazelcast.internal.services.ServiceNamespace;
@@ -38,7 +37,7 @@ import com.hazelcast.spi.impl.eventservice.EventService;
 import com.hazelcast.spi.impl.executionservice.ExecutionService;
 import com.hazelcast.spi.impl.operationservice.NamedOperation;
 import com.hazelcast.spi.impl.operationservice.Operation;
-import com.hazelcast.spi.properties.GroupProperty;
+import com.hazelcast.spi.properties.ClusterProperty;
 import com.hazelcast.spi.properties.HazelcastProperties;
 import com.hazelcast.splitbrainprotection.HeartbeatAware;
 import com.hazelcast.splitbrainprotection.PingAware;
@@ -107,16 +106,19 @@ public class SplitBrainProtectionServiceImpl implements EventPublishingService<S
         // single thread split brain protection executor
         executionService.register(SPLIT_BRAIN_PROTECTION_EXECUTOR, 1, Integer.MAX_VALUE, ExecutorType.CACHED);
 
-        long heartbeatInterval = nodeEngine.getProperties().getSeconds(GroupProperty.HEARTBEAT_INTERVAL_SECONDS);
+        long heartbeatInterval = nodeEngine.getProperties().getSeconds(ClusterProperty.HEARTBEAT_INTERVAL_SECONDS);
         executionService.scheduleWithRepetition(SPLIT_BRAIN_PROTECTION_EXECUTOR, new UpdateSplitBrainProtections(),
                 heartbeatInterval, heartbeatInterval, TimeUnit.SECONDS);
     }
 
     private Map<String, SplitBrainProtectionImpl> initializeSplitBrainProtections() {
-        Map<String, SplitBrainProtectionImpl> splitBrainProtections = new HashMap<String, SplitBrainProtectionImpl>();
+        Map<String, SplitBrainProtectionImpl> splitBrainProtections = new HashMap<>();
         for (SplitBrainProtectionConfig splitBrainProtectionConfig
                 : nodeEngine.getConfig().getSplitBrainProtectionConfigs().values()) {
             validateSplitBrainProtectionConfig(splitBrainProtectionConfig);
+            if (!splitBrainProtectionConfig.isEnabled()) {
+                continue;
+            }
             SplitBrainProtectionImpl splitBrainProtection = new SplitBrainProtectionImpl(splitBrainProtectionConfig, nodeEngine);
             splitBrainProtections.put(splitBrainProtectionConfig.getName(), splitBrainProtection);
         }
@@ -145,8 +147,8 @@ public class SplitBrainProtectionServiceImpl implements EventPublishingService<S
 
     private void validateSplitBrainProtectionParameters(String splitBrainProtectionName, long value, String parameterName) {
         HazelcastProperties nodeProperties = nodeEngine.getProperties();
-        long maxNoHeartbeatMillis = nodeProperties.getMillis(GroupProperty.MAX_NO_HEARTBEAT_SECONDS);
-        long heartbeatIntervalMillis = nodeProperties.getMillis(GroupProperty.HEARTBEAT_INTERVAL_SECONDS);
+        long maxNoHeartbeatMillis = nodeProperties.getMillis(ClusterProperty.MAX_NO_HEARTBEAT_SECONDS);
+        long heartbeatIntervalMillis = nodeProperties.getMillis(ClusterProperty.HEARTBEAT_INTERVAL_SECONDS);
 
         if (value > maxNoHeartbeatMillis) {
             throw new InvalidConfigurationException("This member is configured with maximum no-heartbeat duration "
@@ -326,13 +328,6 @@ public class SplitBrainProtectionServiceImpl implements EventPublishingService<S
             return;
         }
         nodeEngine.getExecutionService().execute(SPLIT_BRAIN_PROTECTION_EXECUTOR, new UpdateSplitBrainProtections(event));
-    }
-
-    @Override
-    public void memberAttributeChanged(MemberAttributeServiceEvent event) {
-        // nop
-        // MemberAttributeServiceEvent does NOT contain set of members
-        // They cannot change split brain protection state
     }
 
     @Nonnull

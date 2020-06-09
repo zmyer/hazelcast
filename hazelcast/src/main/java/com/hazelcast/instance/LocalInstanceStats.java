@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2008-2019, Hazelcast, Inc. All Rights Reserved.
+ * Copyright (c) 2008-2020, Hazelcast, Inc. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,17 +16,10 @@
 
 package com.hazelcast.instance;
 
-import com.hazelcast.json.JsonSerializable;
-
 /**
  * Base interface for local instance statistics.
  */
-public interface LocalInstanceStats extends JsonSerializable {
-
-    /**
-     * Default value for unavailable statistics.
-     */
-    long STAT_NOT_AVAILABLE = -99L;
+public interface LocalInstanceStats {
 
     /**
      * Returns the creation time of this distributed object instance on this member.

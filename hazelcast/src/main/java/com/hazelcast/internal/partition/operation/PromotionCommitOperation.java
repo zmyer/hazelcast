@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2008-2019, Hazelcast, Inc. All Rights Reserved.
+ * Copyright (c) 2008-2020, Hazelcast, Inc. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -106,10 +106,14 @@ public class PromotionCommitOperation extends AbstractPartitionOperation impleme
         }
 
         Address masterAddress = nodeEngine.getMasterAddress();
-        Address callerAddress = getCallerAddress();
-        if (!callerAddress.equals(masterAddress)) {
-            throw new IllegalStateException("Caller is not master node! Caller: " + callerAddress
-                + ", Master: " + masterAddress);
+        Address caller = getCallerAddress();
+        if (!caller.equals(masterAddress)) {
+            throw new IllegalStateException("Caller is not master node! Caller: " + caller + ", Master: " + masterAddress);
+        }
+
+        InternalPartitionServiceImpl partitionService = getService();
+        if (!partitionService.isMemberMaster(caller)) {
+            throw new RetryableHazelcastException("Caller is not master node known by migration system! Caller: " + caller);
         }
     }
 
@@ -120,10 +124,10 @@ public class PromotionCommitOperation extends AbstractPartitionOperation impleme
                 return beforePromotion();
             case FINALIZE_PROMOTION:
                 finalizePromotion();
-                return CallStatus.DONE_VOID;
+                return CallStatus.VOID;
             case COMPLETE:
                 complete();
-                return CallStatus.DONE_RESPONSE;
+                return CallStatus.RESPONSE;
             default:
                 throw new IllegalStateException("Unknown state: " + runStage);
         }
@@ -150,7 +154,7 @@ public class PromotionCommitOperation extends AbstractPartitionOperation impleme
                     + partitionState.getVersion() + ", current version: " + partitionStateVersion);
             partitionService.getMigrationManager().releasePromotionPermit();
             success = true;
-            return CallStatus.DONE_RESPONSE;
+            return CallStatus.RESPONSE;
         }
 
         migrationState = new MigrationStateImpl(Clock.currentTimeMillis(), promotions.size(), 0, 0L);
@@ -173,7 +177,7 @@ public class PromotionCommitOperation extends AbstractPartitionOperation impleme
             op.setPartitionId(promotion.getPartitionId()).setNodeEngine(nodeEngine).setService(partitionService);
             operationService.execute(op);
         }
-        return CallStatus.DONE_VOID;
+        return CallStatus.VOID;
     }
 
     /** Processes the sent partition state and sends {@link FinalizePromotionOperation} for all promotions. */

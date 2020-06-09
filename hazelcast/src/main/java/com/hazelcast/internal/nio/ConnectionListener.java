@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2008-2019, Hazelcast, Inc. All Rights Reserved.
+ * Copyright (c) 2008-2020, Hazelcast, Inc. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -17,13 +17,11 @@
 package com.hazelcast.internal.nio;
 
 /**
- * A listener for the {@link EndpointManager} to listen to connections
- * being added or removed.
+ * A listener to listen to connections being added or removed.
  */
-//FGTODO: 2019/11/22 下午4:00 zmyer
-public interface ConnectionListener {
+public interface ConnectionListener<C extends Connection> {
 
-    void connectionAdded(Connection connection);
+    void connectionAdded(C connection);
 
-    void connectionRemoved(Connection connection);
+    void connectionRemoved(C connection);
 }

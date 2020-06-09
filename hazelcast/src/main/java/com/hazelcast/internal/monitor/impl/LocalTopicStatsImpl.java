@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2008-2019, Hazelcast, Inc. All Rights Reserved.
+ * Copyright (c) 2008-2020, Hazelcast, Inc. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -17,14 +17,16 @@
 package com.hazelcast.internal.monitor.impl;
 
 import com.hazelcast.internal.metrics.Probe;
-import com.hazelcast.internal.json.JsonObject;
+import com.hazelcast.internal.util.Clock;
 import com.hazelcast.topic.LocalTopicStats;
 import com.hazelcast.topic.impl.reliable.ReliableMessageRunner;
-import com.hazelcast.internal.util.Clock;
 
 import java.util.concurrent.atomic.AtomicLongFieldUpdater;
 
-import static com.hazelcast.internal.util.JsonUtil.getLong;
+import static com.hazelcast.internal.metrics.MetricDescriptorConstants.TOPIC_METRIC_CREATION_TIME;
+import static com.hazelcast.internal.metrics.MetricDescriptorConstants.TOPIC_METRIC_TOTAL_PUBLISHES;
+import static com.hazelcast.internal.metrics.MetricDescriptorConstants.TOPIC_METRIC_TOTAL_RECEIVED_MESSAGES;
+import static com.hazelcast.internal.metrics.ProbeUnit.MS;
 import static java.util.concurrent.atomic.AtomicLongFieldUpdater.newUpdater;
 
 public class LocalTopicStatsImpl implements LocalTopicStats {
@@ -33,13 +35,13 @@ public class LocalTopicStatsImpl implements LocalTopicStats {
             newUpdater(LocalTopicStatsImpl.class, "totalPublishes");
     private static final AtomicLongFieldUpdater<LocalTopicStatsImpl> TOTAL_RECEIVED_MESSAGES =
             newUpdater(LocalTopicStatsImpl.class, "totalReceivedMessages");
-    @Probe
-    private long creationTime;
+    @Probe(name = TOPIC_METRIC_CREATION_TIME, unit = MS)
+    private final long creationTime;
 
     // These fields are only accessed through the updaters
-    @Probe
+    @Probe(name = TOPIC_METRIC_TOTAL_PUBLISHES)
     private volatile long totalPublishes;
-    @Probe
+    @Probe(name = TOPIC_METRIC_TOTAL_RECEIVED_MESSAGES)
     private volatile long totalReceivedMessages;
 
     public LocalTopicStatsImpl() {
@@ -83,22 +85,6 @@ public class LocalTopicStatsImpl implements LocalTopicStats {
      */
     public void incrementReceives() {
         TOTAL_RECEIVED_MESSAGES.incrementAndGet(this);
-    }
-
-    @Override
-    public JsonObject toJson() {
-        JsonObject root = new JsonObject();
-        root.add("creationTime", creationTime);
-        root.add("totalPublishes", totalPublishes);
-        root.add("totalReceivedMessages", totalReceivedMessages);
-        return root;
-    }
-
-    @Override
-    public void fromJson(JsonObject json) {
-        creationTime = getLong(json, "creationTime", -1L);
-        totalPublishes = getLong(json, "totalPublishes", -1L);
-        totalReceivedMessages = getLong(json, "totalReceivedMessages", -1L);
     }
 
     @Override

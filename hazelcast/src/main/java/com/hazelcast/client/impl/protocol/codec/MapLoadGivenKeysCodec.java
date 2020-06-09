@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2008-2019, Hazelcast, Inc. All Rights Reserved.
+ * Copyright (c) 2008-2020, Hazelcast, Inc. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -36,15 +36,15 @@ import static com.hazelcast.client.impl.protocol.codec.builtin.FixedSizeTypesCod
 /**
  * Loads the given keys. This is a batch load operation so that an implementation can optimize the multiple loads.
  */
-@Generated("6bfaa4059a23a953017d10ab82eb7e68")
+@Generated("6d19792196b7aa790a0e3199c0341c87")
 public final class MapLoadGivenKeysCodec {
-    //hex: 0x012200
-    public static final int REQUEST_MESSAGE_TYPE = 74240;
-    //hex: 0x012201
-    public static final int RESPONSE_MESSAGE_TYPE = 74241;
+    //hex: 0x012100
+    public static final int REQUEST_MESSAGE_TYPE = 73984;
+    //hex: 0x012101
+    public static final int RESPONSE_MESSAGE_TYPE = 73985;
     private static final int REQUEST_REPLACE_EXISTING_VALUES_FIELD_OFFSET = PARTITION_ID_FIELD_OFFSET + INT_SIZE_IN_BYTES;
     private static final int REQUEST_INITIAL_FRAME_SIZE = REQUEST_REPLACE_EXISTING_VALUES_FIELD_OFFSET + BOOLEAN_SIZE_IN_BYTES;
-    private static final int RESPONSE_INITIAL_FRAME_SIZE = RESPONSE_BACKUP_ACKS_FIELD_OFFSET + INT_SIZE_IN_BYTES;
+    private static final int RESPONSE_INITIAL_FRAME_SIZE = RESPONSE_BACKUP_ACKS_FIELD_OFFSET + BYTE_SIZE_IN_BYTES;
 
     private MapLoadGivenKeysCodec() {
     }
@@ -60,7 +60,7 @@ public final class MapLoadGivenKeysCodec {
         /**
          * keys to load
          */
-        public java.util.List<com.hazelcast.nio.serialization.Data> keys;
+        public java.util.List<com.hazelcast.internal.serialization.Data> keys;
 
         /**
          * when <code>true</code>, existing values in the Map will be replaced by those loaded from the MapLoader
@@ -68,13 +68,13 @@ public final class MapLoadGivenKeysCodec {
         public boolean replaceExistingValues;
     }
 
-    public static ClientMessage encodeRequest(java.lang.String name, java.util.Collection<com.hazelcast.nio.serialization.Data> keys, boolean replaceExistingValues) {
+    public static ClientMessage encodeRequest(java.lang.String name, java.util.Collection<com.hazelcast.internal.serialization.Data> keys, boolean replaceExistingValues) {
         ClientMessage clientMessage = ClientMessage.createForEncode();
         clientMessage.setRetryable(false);
-        clientMessage.setAcquiresResource(false);
         clientMessage.setOperationName("Map.LoadGivenKeys");
         ClientMessage.Frame initialFrame = new ClientMessage.Frame(new byte[REQUEST_INITIAL_FRAME_SIZE], UNFRAGMENTED_MESSAGE);
         encodeInt(initialFrame.content, TYPE_FIELD_OFFSET, REQUEST_MESSAGE_TYPE);
+        encodeInt(initialFrame.content, PARTITION_ID_FIELD_OFFSET, -1);
         encodeBoolean(initialFrame.content, REQUEST_REPLACE_EXISTING_VALUES_FIELD_OFFSET, replaceExistingValues);
         clientMessage.add(initialFrame);
         StringCodec.encode(clientMessage, name);

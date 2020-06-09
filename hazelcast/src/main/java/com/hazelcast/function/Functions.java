@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2008-2019, Hazelcast, Inc. All Rights Reserved.
+ * Copyright (c) 2008-2020, Hazelcast, Inc. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -32,6 +32,7 @@ public final class Functions {
     /**
      * Synonym for {@link FunctionEx#identity}, to be used as a
      * projection function (e.g., key extractor).
+     * @param <T> the type of the input and output objects to the function
      */
     @Nonnull
     public static <T> FunctionEx<T, T> wholeItem() {

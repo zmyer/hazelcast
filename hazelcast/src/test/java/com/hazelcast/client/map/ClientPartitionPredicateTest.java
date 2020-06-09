@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2008-2019, Hazelcast, Inc. All Rights Reserved.
+ * Copyright (c) 2008-2020, Hazelcast, Inc. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -26,7 +26,7 @@ import com.hazelcast.projection.Projection;
 import com.hazelcast.query.PagingPredicate;
 import com.hazelcast.query.Predicate;
 import com.hazelcast.query.Predicates;
-import com.hazelcast.spi.properties.GroupProperty;
+import com.hazelcast.spi.properties.ClusterProperty;
 import com.hazelcast.test.HazelcastParallelClassRunner;
 import com.hazelcast.test.HazelcastTestSupport;
 import com.hazelcast.test.annotation.ParallelJVMTest;
@@ -62,7 +62,7 @@ public class ClientPartitionPredicateTest extends HazelcastTestSupport {
 
     @Before
     public void setUp() {
-        Config config = getConfig().setProperty(GroupProperty.PARTITION_COUNT.getName(), "" + PARTITIONS);
+        Config config = getConfig().setProperty(ClusterProperty.PARTITION_COUNT.getName(), "" + PARTITIONS);
 
         server = hazelcastFactory.newHazelcastInstance(config);
         HazelcastInstance remote = hazelcastFactory.newHazelcastInstance(config);

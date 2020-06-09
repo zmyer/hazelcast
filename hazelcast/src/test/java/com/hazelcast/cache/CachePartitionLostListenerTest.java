@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2008-2019, Hazelcast, Inc. All Rights Reserved.
+ * Copyright (c) 2008-2020, Hazelcast, Inc. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -26,12 +26,14 @@ import com.hazelcast.cluster.Address;
 import com.hazelcast.config.CacheConfig;
 import com.hazelcast.core.HazelcastInstance;
 import com.hazelcast.instance.impl.Node;
+import com.hazelcast.internal.nio.DataReader;
+import com.hazelcast.internal.nio.DataWriter;
+import com.hazelcast.internal.partition.IPartition;
+import com.hazelcast.internal.partition.IPartitionLostEvent;
 import com.hazelcast.internal.partition.PartitionLostEventImpl;
 import com.hazelcast.nio.ObjectDataInput;
 import com.hazelcast.nio.ObjectDataOutput;
 import com.hazelcast.partition.AbstractPartitionLostListenerTest;
-import com.hazelcast.internal.partition.IPartition;
-import com.hazelcast.internal.partition.IPartitionLostEvent;
 import com.hazelcast.test.AssertTask;
 import com.hazelcast.test.HazelcastParallelClassRunner;
 import com.hazelcast.test.annotation.ParallelJVMTest;
@@ -51,11 +53,13 @@ import java.util.List;
 import java.util.Set;
 
 import static com.hazelcast.cache.CacheTestSupport.createServerCachingProvider;
+import static com.hazelcast.test.Accessors.getNode;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.withSettings;
 
 @RunWith(HazelcastParallelClassRunner.class)
 @Category({QuickTest.class, ParallelJVMTest.class})
@@ -181,7 +185,8 @@ public class CachePartitionLostListenerTest extends AbstractPartitionLostListene
     @Test
     public void test_cachePartitionEventData_serialization() throws IOException {
         CachePartitionEventData cachePartitionEventData = new CachePartitionEventData("cacheName", 1, null);
-        ObjectDataOutput output = mock(ObjectDataOutput.class);
+        ObjectDataOutput output = mock(ObjectDataOutput.class,
+                withSettings().extraInterfaces(DataWriter.class));
         cachePartitionEventData.writeData(output);
 
         verify(output).writeUTF("cacheName");
@@ -192,7 +197,8 @@ public class CachePartitionLostListenerTest extends AbstractPartitionLostListene
     public void test_cachePartitionEventData_deserialization() throws IOException {
         CachePartitionEventData cachePartitionEventData = new CachePartitionEventData("", 0, null);
 
-        ObjectDataInput input = mock(ObjectDataInput.class);
+        ObjectDataInput input = mock(ObjectDataInput.class,
+                withSettings().extraInterfaces(DataReader.class));
         when(input.readUTF()).thenReturn("cacheName");
         when(input.readInt()).thenReturn(1);
 

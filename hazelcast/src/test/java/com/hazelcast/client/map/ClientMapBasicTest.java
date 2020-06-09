@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2008-2019, Hazelcast, Inc. All Rights Reserved.
+ * Copyright (c) 2008-2020, Hazelcast, Inc. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -23,9 +23,10 @@ import com.hazelcast.map.IMap;
 import com.hazelcast.map.MapEvent;
 import com.hazelcast.map.BasicMapTest;
 import com.hazelcast.map.MapInterceptor;
+import com.hazelcast.map.listener.EntryAddedListener;
 import com.hazelcast.map.listener.EntryExpiredListener;
 import com.hazelcast.map.LocalMapStats;
-import com.hazelcast.query.Predicate;
+import com.hazelcast.query.PagingPredicate;
 import com.hazelcast.query.Predicates;
 import com.hazelcast.test.HazelcastParallelClassRunner;
 import com.hazelcast.test.annotation.ParallelJVMTest;
@@ -46,6 +47,9 @@ import java.util.TreeSet;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
+import java.util.function.Function;
+import java.util.stream.Collectors;
+import java.util.stream.IntStream;
 
 import static java.util.concurrent.TimeUnit.MILLISECONDS;
 import static java.util.concurrent.TimeUnit.MINUTES;
@@ -429,6 +433,60 @@ public class ClientMapBasicTest extends AbstractClientMapTest {
         result.get();
         assertOpenEventually(latch);
         assertNull(map.get(key));
+    }
+
+    @Test
+    public void testSetAll() {
+        int max = 100;
+        final IMap<Integer, Integer> map = client.getMap(randomString());
+
+        final CountDownLatch latch = new CountDownLatch(max);
+        map.addEntryListener((EntryAddedListener<Integer, Integer>) event -> latch.countDown(), true);
+
+        final Map<Integer, Integer> expected = IntStream.range(0, max).boxed()
+            .collect(Collectors.toMap(Function.identity(), Function.identity()));
+        map.setAll(expected);
+
+        assertEquals(max, map.size());
+        expected.keySet().forEach(i -> assertEquals(i, map.get(i)));
+        assertOpenEventually(latch);
+    }
+
+    @Test
+    public void testSetAll_WhenKeyExists() {
+        int max = 100;
+        final IMap<Integer, Integer> map = client.getMap(randomString());
+        IntStream.range(0, max).forEach(i -> map.put(i, 0));
+        assertEquals(max, map.size());
+
+        final CountDownLatch latch = new CountDownLatch(max);
+        map.addEntryListener((EntryAddedListener<Integer, Integer>) event -> latch.countDown(), true);
+
+        final Map<Integer, Integer> expected = IntStream.range(0, max).boxed()
+            .collect(Collectors.toMap(Function.identity(), Function.identity()));
+        map.setAll(expected);
+
+        assertEquals(max, map.size());
+        expected.keySet().forEach(i -> assertEquals(i, map.get(i)));
+        assertOpenEventually(latch);
+    }
+
+    @Test
+    public void testSetAllAsync() {
+        int max = 100;
+        final IMap<Integer, Integer> map = client.getMap(randomString());
+
+        final CountDownLatch latch = new CountDownLatch(max);
+        map.addEntryListener((EntryAddedListener<Integer, Integer>) event -> latch.countDown(), true);
+
+        final Map<Integer, Integer> expected = IntStream.range(0, max).boxed()
+            .collect(Collectors.toMap(Function.identity(), Function.identity()));
+        final Future<Void> future = map.setAllAsync(expected).toCompletableFuture();
+
+        assertEqualsEventually(future::isDone, true);
+        assertEquals(max, map.size());
+        expected.keySet().forEach(i -> assertEquals(i, map.get(i)));
+        assertOpenEventually(latch);
     }
 
     @Test
@@ -1246,17 +1304,36 @@ public class ClientMapBasicTest extends AbstractClientMapTest {
     }
 
     @Test
-    public void github_11489_verifyNoFailingCastOnValue() throws Exception {
-        IMap<Integer, Integer> test = client.getMap("github_11489");
-        for (int i = 0; i < 1000; i++) {
-            test.put(i, i);
-        }
+    public void github_11489_verifyNoFailingCastOnValueForPagingPredicate() throws Exception {
+        PagingPredicate<Integer, Integer> predicate = Predicates.pagingPredicate(100);
+        github_11489_verifyNoFailingCastOnValue(map -> map.values(predicate));
+    }
 
-        Collection<Integer> values = test.values(Predicates.pagingPredicate(100));
-        Type genericSuperClass = values.getClass().getGenericSuperclass();
-        Type actualType = ((ParameterizedType) genericSuperClass).getActualTypeArguments()[0];
-        // Raw class is expected. ParameterizedType-s cause troubles to Jackson serializer.
-        assertInstanceOf(Class.class, actualType);
+    @Test
+    public void github_11489_verifyNoFailingCastOnValueForTruePredicate() throws Exception {
+        github_11489_verifyNoFailingCastOnValue(map -> map.values(Predicates.alwaysTrue()));
+    }
+
+    @Test
+    public void github_11489_verifyNoFailingCastOnKeySetForPagingPredicate() throws Exception {
+        PagingPredicate<Integer, Integer> predicate = Predicates.pagingPredicate(100);
+        github_11489_verifyNoFailingCastOnValue(map -> map.keySet(predicate));
+    }
+
+    @Test
+    public void github_11489_verifyNoFailingCastOnKeySetForTruePredicate() throws Exception {
+        github_11489_verifyNoFailingCastOnValue(map -> map.keySet(Predicates.alwaysTrue()));
+    }
+
+    @Test
+    public void github_11489_verifyNoFailingCastOnEntriesForPagingPredicate() throws Exception {
+        PagingPredicate<Integer, Integer> predicate = Predicates.pagingPredicate(100);
+        github_11489_verifyNoFailingCastOnValue(map -> map.entrySet(predicate));
+    }
+
+    @Test
+    public void github_11489_verifyNoFailingCastOnEntriesForTruePredicate() throws Exception {
+        github_11489_verifyNoFailingCastOnValue(map -> map.entrySet(Predicates.alwaysTrue()));
     }
 
     @Test
@@ -1313,21 +1390,18 @@ public class ClientMapBasicTest extends AbstractClientMapTest {
     }
 
     @Test(expected = UnsupportedOperationException.class)
-    @SuppressWarnings("deprecation")
     public void testAddLocalEntryListener() {
         IMap<String, String> map = client.getMap(randomString());
         map.addLocalEntryListener(new EmptyEntryListener());
     }
 
     @Test(expected = UnsupportedOperationException.class)
-    @SuppressWarnings("deprecation")
     public void testAddLocalEntryListener_WithPredicate() {
         IMap<String, String> map = client.getMap(randomString());
         map.addLocalEntryListener(new EmptyEntryListener(), Predicates.alwaysFalse(), true);
     }
 
     @Test(expected = UnsupportedOperationException.class)
-    @SuppressWarnings("deprecation")
     public void testAddLocalEntryListener_WithPredicateAndKey() {
         IMap<String, String> map = client.getMap(randomString());
         map.addLocalEntryListener(new EmptyEntryListener(), Predicates.alwaysFalse(), "Key", true);
@@ -1404,10 +1478,19 @@ public class ClientMapBasicTest extends AbstractClientMapTest {
         }
     }
 
-    private static class FalsePredicate implements Predicate<String, String> {
+    private void github_11489_verifyNoFailingCastOnValue(Function<IMap<Integer, Integer>, Object> function) {
+        IMap<Integer, Integer> test = client.getMap("github_11489");
+        for (int i = 0; i < 1000; i++) {
+            test.put(i, i);
+        }
 
-        public boolean apply(Map.Entry mapEntry) {
-            return false;
+        Object values = function.apply(test);
+        Type genericSuperClass = values.getClass().getGenericSuperclass();
+        if (genericSuperClass instanceof ParameterizedType) {
+            Type actualType = ((ParameterizedType) genericSuperClass).getActualTypeArguments()[0];
+            // Raw class is expected. ParameterizedType-s cause troubles to Jackson serializer.
+            assertInstanceOf(Class.class, actualType);
         }
     }
+
 }

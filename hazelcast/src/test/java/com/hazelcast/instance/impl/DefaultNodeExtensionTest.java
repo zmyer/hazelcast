@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2008-2019, Hazelcast, Inc. All Rights Reserved.
+ * Copyright (c) 2008-2020, Hazelcast, Inc. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,6 +16,7 @@
 
 package com.hazelcast.instance.impl;
 
+import com.hazelcast.cluster.Address;
 import com.hazelcast.core.HazelcastInstance;
 import com.hazelcast.core.HazelcastInstanceAware;
 import com.hazelcast.instance.BuildInfoProvider;
@@ -23,9 +24,8 @@ import com.hazelcast.internal.cluster.ClusterVersionListener;
 import com.hazelcast.internal.cluster.impl.ClusterStateManager;
 import com.hazelcast.internal.cluster.impl.JoinRequest;
 import com.hazelcast.internal.cluster.impl.VersionMismatchException;
-import com.hazelcast.cluster.Address;
 import com.hazelcast.internal.nio.Packet;
-import com.hazelcast.spi.properties.GroupProperty;
+import com.hazelcast.spi.properties.ClusterProperty;
 import com.hazelcast.test.HazelcastParallelClassRunner;
 import com.hazelcast.test.HazelcastTestSupport;
 import com.hazelcast.test.annotation.ParallelJVMTest;
@@ -44,6 +44,7 @@ import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 import static com.hazelcast.internal.util.UuidUtil.newUnsecureUUID;
+import static com.hazelcast.test.Accessors.getNode;
 import static org.hamcrest.Matchers.containsString;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
@@ -203,7 +204,7 @@ public class DefaultNodeExtensionTest extends HazelcastTestSupport {
     @Test
     public void test_clusterVersionListener_invokedWithOverriddenPropertyValue_whenClusterVersionIsNull() throws Exception {
         // override initial cluster version
-        System.setProperty(GroupProperty.INIT_CLUSTER_VERSION.getName(), "2.1.7");
+        System.setProperty(ClusterProperty.INIT_CLUSTER_VERSION.getName(), "2.1.7");
         final CountDownLatch latch = new CountDownLatch(1);
         final AtomicBoolean failed = new AtomicBoolean(false);
         ClusterVersionListener listener = newVersion -> {
@@ -213,7 +214,7 @@ public class DefaultNodeExtensionTest extends HazelcastTestSupport {
             latch.countDown();
         };
         makeClusterVersionUnknownAndVerifyListener(latch, failed, listener);
-        System.clearProperty(GroupProperty.INIT_CLUSTER_VERSION.getName());
+        System.clearProperty(ClusterProperty.INIT_CLUSTER_VERSION.getName());
     }
 
     private void makeClusterVersionUnknownAndVerifyListener(CountDownLatch latch, AtomicBoolean failed,

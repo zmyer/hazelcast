@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2008-2019, Hazelcast, Inc. All Rights Reserved.
+ * Copyright (c) 2008-2020, Hazelcast, Inc. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -65,7 +65,7 @@ public class ThreadLeakClientTest {
     public void testThreadLeak_withoutCluster() {
         ClientConfig clientConfig = new ClientConfig();
         clientConfig.getConnectionStrategyConfig().setAsyncStart(true);
-        clientConfig.getConnectionStrategyConfig().getConnectionRetryConfig().setFailOnMaxBackoff(false);
+        clientConfig.getConnectionStrategyConfig().getConnectionRetryConfig().setClusterConnectTimeoutMillis(Long.MAX_VALUE);
 
         Set<Thread> testStartThreads = getThreads();
         HazelcastInstance client = HazelcastClient.newHazelcastClient(clientConfig);

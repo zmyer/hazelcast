@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!--
-  ~ Copyright (c) 2008-2019, Hazelcast, Inc. All Rights Reserved.
+  ~ Copyright (c) 2008-2020, Hazelcast, Inc. All Rights Reserved.
   ~
   ~ Licensed under the Apache License, Version 2.0 (the "License");
   ~ you may not use this file except in compliance with the License.
@@ -22,7 +22,7 @@
        xsi:schemaLocation="http://www.springframework.org/schema/beans
         http://www.springframework.org/schema/beans/spring-beans.xsd
         http://www.hazelcast.com/schema/spring
-        http://www.hazelcast.com/schema/spring/hazelcast-spring-4.0.xsd">
+        http://www.hazelcast.com/schema/spring/hazelcast-spring-4.1.xsd">
 
     <bean class="org.springframework.beans.factory.config.PropertyPlaceholderConfigurer"
           p:systemPropertiesModeName="SYSTEM_PROPERTIES_MODE_OVERRIDE">
@@ -129,8 +129,8 @@
                                      class-name="com.hazelcast.spring.serialization.DummyPortableFactory"/>
             </hz:portable-factories>
             <hz:serializers>
-                <hz:serializer type-class="com.hazelcast.nio.serialization.CustomSerializationTest$Foo"
-                               class-name="com.hazelcast.nio.serialization.CustomSerializationTest$FooXmlSerializer"/>
+                <hz:serializer type-class="com.hazelcast.internal.serialization.impl.CustomSerializationTest$Foo"
+                               class-name="com.hazelcast.internal.serialization.impl.CustomSerializationTest$FooXmlSerializer"/>
             </hz:serializers>
         </hz:serialization>
 
@@ -193,14 +193,34 @@
         <hz:cluster-name>${cluster.name}</hz:cluster-name>
         <hz:connection-strategy>
             <hz:connection-retry>
-                <hz:fail-on-max-backoff>false</hz:fail-on-max-backoff>
+                <hz:cluster-connect-timeout-millis>1000</hz:cluster-connect-timeout-millis>
             </hz:connection-retry>
         </hz:connection-strategy>
         <hz:network>
             <hz:member>127.0.0.1:5700</hz:member>
             <hz:member>127.0.0.1:5701</hz:member>
         </hz:network>
-
+        <hz:security>
+            <hz:realms>
+                <hz:realm name="krb5Initiator">
+                    <hz:authentication>
+                        <hz:jaas>
+                            <hz:login-module class-name="com.sun.security.auth.module.Krb5LoginModule" usage="REQUIRED">
+                                <hz:properties>
+                                    <hz:property name="isInitiator">true</hz:property>
+                                    <hz:property name="useTicketCache">false</hz:property>
+                                    <hz:property name="doNotPrompt">true</hz:property>
+                                    <hz:property name="useKeyTab">true</hz:property>
+                                    <hz:property name="storeKey">true</hz:property>
+                                    <hz:property name="principal">jduke@HAZELCAST.COM</hz:property>
+                                    <hz:property name="keyTab">/opt/jduke.keytab</hz:property>
+                                </hz:properties>
+                            </hz:login-module>
+                        </hz:jaas>
+                    </hz:authentication>
+                </hz:realm>
+            </hz:realms>
+        </hz:security>
     </hz:client>
 
     <hz:client id="client6">
@@ -338,7 +358,7 @@
                 <hz:initial-backoff-millis>2000</hz:initial-backoff-millis>
                 <hz:max-backoff-millis>60000</hz:max-backoff-millis>
                 <hz:multiplier>3</hz:multiplier>
-                <hz:fail-on-max-backoff>true</hz:fail-on-max-backoff>
+                <hz:cluster-connect-timeout-millis>5000</hz:cluster-connect-timeout-millis>
                 <hz:jitter>0.5</hz:jitter>
             </hz:connection-retry>
         </hz:connection-strategy>
@@ -377,6 +397,18 @@
             <hz:member>127.0.0.1:5701</hz:member>
         </hz:network>
         <hz:backup-ack-to-client-enabled>false</hz:backup-ack-to-client-enabled>
+    </hz:client>
+
+    <hz:client id="client18-metrics">
+        <hz:cluster-name>${cluster.name}</hz:cluster-name>
+        <hz:network>
+            <hz:member>127.0.0.1:5700</hz:member>
+            <hz:member>127.0.0.1:5701</hz:member>
+        </hz:network>
+        <hz:metrics enabled="false">
+            <hz:jmx enabled="false"/>
+            <hz:collection-frequency-seconds>42</hz:collection-frequency-seconds>
+        </hz:metrics>
     </hz:client>
 
     <bean id="credentials" class="com.hazelcast.security.UsernamePasswordCredentials">

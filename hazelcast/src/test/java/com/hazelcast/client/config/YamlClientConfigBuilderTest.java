@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2008-2019, Hazelcast, Inc. All Rights Reserved.
+ * Copyright (c) 2008-2020, Hazelcast, Inc. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -24,12 +24,13 @@ import com.hazelcast.config.InMemoryFormat;
 import com.hazelcast.config.InvalidConfigurationException;
 import com.hazelcast.config.NearCacheConfig;
 import com.hazelcast.config.YamlConfigBuilderTest;
+import com.hazelcast.config.security.KerberosIdentityConfig;
 import com.hazelcast.config.security.TokenIdentityConfig;
 import com.hazelcast.core.HazelcastException;
+import com.hazelcast.internal.util.RootCauseMatcher;
 import com.hazelcast.test.HazelcastSerialClassRunner;
 import com.hazelcast.test.annotation.QuickTest;
 import com.hazelcast.topic.TopicOverloadPolicy;
-import com.hazelcast.internal.util.RootCauseMatcher;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Rule;
@@ -356,6 +357,7 @@ public class YamlClientConfigBuilderTest extends AbstractClientConfigBuilderTest
     }
 
     @Override
+    @Test
     public void testWhitespaceInNonSpaceStrings() {
         String yaml = ""
                 + "hazelcast-client:\n"
@@ -366,19 +368,85 @@ public class YamlClientConfigBuilderTest extends AbstractClientConfigBuilderTest
     }
 
     @Override
+    @Test
     public void testTokenIdentityConfig() {
         String yaml = ""
                 + "hazelcast-client:\n"
                 + "  security:\n"
                 + "    token:\n"
                 + "      encoding: base64\n"
-                + "      value: SGF6ZWxjYXN0\n"
-                ;
+                + "      value: SGF6ZWxjYXN0\n";
+
         ClientConfig config = buildConfig(yaml);
         TokenIdentityConfig tokenIdentityConfig = config.getSecurityConfig().getTokenIdentityConfig();
         assertNotNull(tokenIdentityConfig);
         assertArrayEquals("Hazelcast".getBytes(StandardCharsets.US_ASCII), tokenIdentityConfig.getToken());
         assertEquals("SGF6ZWxjYXN0", tokenIdentityConfig.getTokenEncoded());
+    }
+
+    @Override
+    @Test
+    public void testKerberosIdentityConfig() {
+        String yaml = ""
+                + "hazelcast-client:\n"
+                + "  security:\n"
+                + "    kerberos:\n"
+                + "      realm: HAZELCAST.COM\n"
+                + "      security-realm: krb5Initiator\n"
+                + "      service-name-prefix: hz/\n"
+                + "      spn: hz/127.0.0.1@HAZELCAST.COM\n";
+
+        ClientConfig config = buildConfig(yaml);
+        KerberosIdentityConfig identityConfig = config.getSecurityConfig().getKerberosIdentityConfig();
+        assertNotNull(identityConfig);
+        assertEquals("HAZELCAST.COM", identityConfig.getRealm());
+        assertEquals("krb5Initiator", identityConfig.getSecurityRealm());
+        assertEquals("hz/", identityConfig.getServiceNamePrefix());
+        assertEquals("hz/127.0.0.1@HAZELCAST.COM", identityConfig.getSpn());
+    }
+
+    @Override
+    @Test
+    public void testMetricsConfig() {
+        String yaml = ""
+                + "hazelcast-client:\n"
+                + "  metrics:\n"
+                + "    enabled: false\n"
+                + "    jmx:\n"
+                + "      enabled: false\n"
+                + "    collection-frequency-seconds: 10\n";
+        ClientConfig config = buildConfig(yaml);
+        ClientMetricsConfig metricsConfig = config.getMetricsConfig();
+        assertFalse(metricsConfig.isEnabled());
+        assertFalse(metricsConfig.getJmxConfig().isEnabled());
+        assertEquals(10, metricsConfig.getCollectionFrequencySeconds());
+    }
+
+    @Override
+    @Test
+    public void testMetricsConfigMasterSwitchDisabled() {
+        String yaml = ""
+                + "hazelcast-client:\n"
+                + "  metrics:\n"
+                + "    enabled: false";
+        ClientConfig config = buildConfig(yaml);
+        ClientMetricsConfig metricsConfig = config.getMetricsConfig();
+        assertFalse(metricsConfig.isEnabled());
+        assertTrue(metricsConfig.getJmxConfig().isEnabled());
+    }
+
+    @Override
+    @Test
+    public void testMetricsConfigJmxDisabled() {
+        String yaml = ""
+                + "hazelcast-client:\n"
+                + "  metrics:\n"
+                + "    jmx:\n"
+                + "      enabled: false";
+        ClientConfig config = buildConfig(yaml);
+        ClientMetricsConfig metricsConfig = config.getMetricsConfig();
+        assertTrue(metricsConfig.isEnabled());
+        assertFalse(metricsConfig.getJmxConfig().isEnabled());
     }
 
     public static ClientConfig buildConfig(String yaml) {

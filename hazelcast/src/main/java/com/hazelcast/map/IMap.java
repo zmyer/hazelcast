@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2008-2019, Hazelcast, Inc. All Rights Reserved.
+ * Copyright (c) 2008-2020, Hazelcast, Inc. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -21,7 +21,6 @@ import com.hazelcast.config.IndexConfig;
 import com.hazelcast.config.IndexType;
 import com.hazelcast.config.MaxSizePolicy;
 import com.hazelcast.core.EntryView;
-import com.hazelcast.core.ExecutionCallback;
 import com.hazelcast.core.Offloadable;
 import com.hazelcast.core.ReadOnly;
 import com.hazelcast.map.listener.MapListener;
@@ -29,7 +28,7 @@ import com.hazelcast.map.listener.MapPartitionLostListener;
 import com.hazelcast.projection.Projection;
 import com.hazelcast.query.Predicate;
 import com.hazelcast.query.impl.IndexUtils;
-import com.hazelcast.spi.properties.GroupProperty;
+import com.hazelcast.spi.properties.ClusterProperty;
 
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
@@ -40,6 +39,9 @@ import java.util.UUID;
 import java.util.concurrent.CompletionStage;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.TimeUnit;
+import java.util.function.BiConsumer;
+import java.util.function.BiFunction;
+import java.util.function.Function;
 
 /**
  * Concurrent, distributed, observable and queryable map.
@@ -111,7 +113,6 @@ import java.util.concurrent.TimeUnit;
  * <ul>
  * <li>{@link IMap#executeOnKey(Object, EntryProcessor)}</li>
  * <li>{@link IMap#submitToKey(Object, EntryProcessor)}</li>
- * <li>{@link IMap#submitToKey(Object, EntryProcessor, ExecutionCallback)}</li>
  * </ul>
  * However, there are following methods that run the {@code EntryProcessor}
  * on more than one entry.
@@ -222,8 +223,24 @@ import java.util.concurrent.TimeUnit;
  * The methods to which this procedure applies: {@link #put(Object, Object) put},
  * {@link #set(Object, Object) set}, {@link #putAsync(Object, Object) putAsync},
  * {@link #setAsync(Object, Object) setAsync},
- * {@link #tryPut(Object, Object, long, TimeUnit) tryPut}, {@link #putAll(Map) putAll},
+ * {@link #tryPut(Object, Object, long, TimeUnit) tryPut},
+ * {@link #putAll(Map) putAll}, {@link #setAll(Map) setAll},
+ * {@link #putAllAsync(Map) putAllAsync}, {@link #setAllAsync(Map) setAllAsync},
  * {@link #replace(Object, Object, Object)} and {@link #replace(Object, Object)}.
+ *
+ *  <p>
+ *  <b>Asynchronous methods</b>
+ *  <p>
+ *  Asynchronous methods return a {@link CompletionStage} that can be used to
+ *  chain further computation stages. Alternatively, a {@link java.util.concurrent.CompletableFuture}
+ *  can be obtained via {@link CompletionStage#toCompletableFuture()} to wait
+ *  for the operation to complete in a blocking way.
+ *  <p>
+ *  Actions supplied for dependent completions of default non-async methods and async methods
+ *  without an explicit {@link java.util.concurrent.Executor} argument are performed
+ *  by the {@link java.util.concurrent.ForkJoinPool#commonPool()} (unless it does not
+ *  support a parallelism level of at least 2, in which case a new {@code Thread} is
+ *  created per task).
  *
  * @param <K> key type
  * @param <V> value type
@@ -530,14 +547,15 @@ public interface IMap<K, V> extends ConcurrentMap<K, V>, BaseMap<K, V> {
      *
      * <p><b>Interactions with the map store</b>
      * <p>
-     * If any keys are not found in memory,
-     * {@link MapLoader#loadAll(java.util.Collection)} is called with
-     * the missing keys. Exceptions thrown by loadAll fail the operation
-     * and are propagated to the caller.
+     * If any keys are not found in memory, {@link MapLoader#loadAll}
+     * is called with the missing keys. Exceptions thrown by
+     * loadAll fail the operation and are propagated to the caller.
      *
      * @param keys keys to get (keys inside the collection cannot be null)
      * @return an immutable map of entries
-     * @throws NullPointerException if any of the specified keys are null
+     * @throws NullPointerException if any of the specified
+     *                              keys are null or if any key or any value returned
+     *                              from {@link MapLoader#loadAll} is {@code null}.
      */
     Map<K, V> getAll(@Nullable Set<K> keys);
 
@@ -851,6 +869,60 @@ public interface IMap<K, V> extends ConcurrentMap<K, V>, BaseMap<K, V> {
                                 long maxIdle, @Nonnull TimeUnit maxIdleUnit);
 
     /**
+     * Asynchronously copies all of the mappings from the specified map to this map.
+     * This version doesn't support batching.
+     * <pre>{@code
+     *     CompletionStage<Void> future = map.putAllAsync(map);
+     *     // do some other stuff, when ready wait for completion
+     *     future.toCompletableFuture.get();
+     * }</pre>
+     * {@code CompletionStage.toCompletableFuture.get()} will block until the actual map.putAll(map) operation completes
+     * You can also register further computation stages to be invoked upon
+     * completion of the {@code CompletionStage} via any of {@link CompletionStage}
+     * methods:
+     * <pre>{@code
+     *      CompletionStage<Void> future = map.putAllAsync(map);
+     *      future.thenRunAsync(() -> System.out.println("All the entries are added"));
+     * }</pre>
+     *  {@inheritDoc}
+     * <p>
+     * No atomicity guarantees are given. It could be that in case of failure
+     * some of the key/value-pairs get written, while others are not.
+     *
+     * <p><b>Interactions with the map store</b>
+     * <p>
+     * For each element not found in memory
+     * {@link MapLoader#load(Object)} is invoked to load the value from
+     * the map store backing the map, which may come at a significant
+     * performance cost. Exceptions thrown by load fail the operation
+     * and are propagated to the caller. The elements which were added
+     * before the exception was thrown will remain in the map, the rest
+     * will not be added.
+     * <p>
+     * If write-through persistence mode is configured,
+     * {@link MapStore#store(Object, Object)} is invoked for each element
+     * before the element is added in memory, which may come at a
+     * significant performance cost. Exceptions thrown by store fail the
+     * operation and are propagated to the caller. The elements which
+     * were added before the exception was thrown will remain in the map,
+     * the rest will not be added.
+     * <p>
+     * If write-behind persistence mode is configured with
+     * write-coalescing turned off,
+     * {@link com.hazelcast.map.ReachedMaxSizeException} may be thrown
+     * if the write-behind queue has reached its per-node maximum
+     * capacity.
+     * @param map mappings to be stored in this map
+     * @return CompletionStage on which client code can block waiting for the
+     * operation to complete or register callbacks to be invoked
+     * upon putAll operation completion
+     * @see CompletionStage
+     *
+     * @since 4.1
+     */
+    CompletionStage<Void> putAllAsync(@Nonnull Map<? extends K, ? extends V> map);
+
+    /**
      * Asynchronously puts the given key and value.
      * The entry lives forever.
      * Similar to the put operation except that set
@@ -926,7 +998,7 @@ public interface IMap<K, V> extends ConcurrentMap<K, V>, BaseMap<K, V> {
      * methods:
      * <pre>
      *   CompletionStage&lt;Void&gt; future = map.setAsync("a", "b", 5, TimeUnit.MINUTES);
-     *   future.thenRunAsync(() -> System.out.println("done"));
+     *   future.thenRunAsync(() -&gt; System.out.println("done"));
      * </pre>
      * <p>
      * <b>Warning 1:</b>
@@ -1000,7 +1072,7 @@ public interface IMap<K, V> extends ConcurrentMap<K, V>, BaseMap<K, V> {
      * methods:
      * <pre>
      *   CompletionStage&lt;Void&gt; future = map.setAsync("a", "b", 5, TimeUnit.MINUTES);
-     *   future.thenRunAsync(() -> System.out.println("Done"));
+     *   future.thenRunAsync(() -&gt; System.out.println("Done"));
      * </pre>
      * <p>
      * <b>Warning 1:</b>
@@ -1697,6 +1769,85 @@ public interface IMap<K, V> extends ConcurrentMap<K, V>, BaseMap<K, V> {
              long maxIdle, @Nonnull TimeUnit maxIdleUnit);
 
     /**
+     * Copies all of the mappings from the specified map to this map without loading
+     * non-existing elements from map store (which is more efficient than {@code putAll()}).
+     * <p>
+     * This method breaks the contract of EntryListener.
+     * EntryEvent of all the updated entries will have null oldValue even if they exist previously.
+     * <p>
+     * No atomicity guarantees are given. It could be that in case of failure
+     * some of the key/value-pairs get written, while others are not.
+     *
+     * <p><b>Interactions with the map store</b>
+     * <p>
+     * If write-through persistence mode is configured,
+     * {@link MapStore#store(Object, Object)} is invoked for each element
+     * before the element is added in memory, which may come at a
+     * significant performance cost. Exceptions thrown by store fail the
+     * operation and are propagated to the caller. The elements which
+     * were added before the exception was thrown will remain in the map,
+     * the rest will not be added.
+     * <p>
+     * If write-behind persistence mode is configured with
+     * write-coalescing turned off,
+     * {@link com.hazelcast.map.ReachedMaxSizeException} may be thrown
+     * if the write-behind queue has reached its per-node maximum
+     * capacity.
+     *
+     * @since 4.1
+     */
+    void setAll(@Nonnull Map<? extends K, ? extends V> map);
+
+    /**
+     * Asynchronously copies all of the mappings from the specified map to this map
+     * without loading non-existing elements from map store. This version doesn't
+     * support batching.
+     * <pre>{@code
+     *     CompletionStage<Void> future = map.setAllAsync(map);
+     *     // do some other stuff, when ready wait for completion
+     *     future.toCompletableFuture.get();
+     * }</pre>
+     * {@code CompletionStage.toCompletableFuture.get()} will block until the actual map.setAll(map) operation completes
+     * You can also register further computation stages to be invoked upon
+     * completion of the {@code CompletionStage} via any of {@link CompletionStage}
+     * methods:
+     * <pre>{@code
+     *      CompletionStage<Void> future = map.setAllAsync(map);
+     *      future.thenRunAsync(() -> System.out.println("All the entries are set"));
+     * }</pre>
+     * <p>
+     * This method breaks the contract of EntryListener.
+     * EntryEvent of all the updated entries will have null oldValue even if they exist previously.
+     * <p>
+     * No atomicity guarantees are given. It could be that in case of failure
+     * some of the key/value-pairs get written, while others are not.
+     *
+     * <p><b>Interactions with the map store</b>
+     * <p>
+     * If write-through persistence mode is configured,
+     * {@link MapStore#store(Object, Object)} is invoked for each element
+     * before the element is added in memory, which may come at a
+     * significant performance cost. Exceptions thrown by store fail the
+     * operation and are propagated to the caller. The elements which
+     * were added before the exception was thrown will remain in the map,
+     * the rest will not be added.
+     * <p>
+     * If write-behind persistence mode is configured with
+     * write-coalescing turned off,
+     * {@link com.hazelcast.map.ReachedMaxSizeException} may be thrown
+     * if the write-behind queue has reached its per-node maximum
+     * capacity.
+     * @param map mappings to be stored in this map
+     * @return CompletionStage on which client code can block waiting for the
+     * operation to complete or register callbacks to be invoked
+     * upon setAll operation completion
+     * @see CompletionStage
+     *
+     * @since 4.1
+     */
+    CompletionStage<Void> setAllAsync(@Nonnull Map<? extends K, ? extends V> map);
+
+    /**
      * Acquires the lock for the specified key.
      * <p>
      * If the lock is not available, then the current thread becomes disabled
@@ -1817,6 +1968,7 @@ public interface IMap<K, V> extends ConcurrentMap<K, V>, BaseMap<K, V> {
      * @return {@code true} if the lock was acquired, {@code false} if the waiting time
      * elapsed before the lock was acquired
      * @throws NullPointerException if the specified key is {@code null}
+     * @throws InterruptedException if interrupted while trying to acquire the lock
      */
     boolean tryLock(@Nonnull K key, long time, @Nullable TimeUnit timeunit) throws InterruptedException;
 
@@ -1847,6 +1999,7 @@ public interface IMap<K, V> extends ConcurrentMap<K, V>, BaseMap<K, V> {
      * @return {@code true} if the lock was acquired, {@code false} if the waiting time
      * elapsed before the lock was acquired
      * @throws NullPointerException if the specified key is {@code null}
+     * @throws InterruptedException if interrupted while trying to acquire the lock
      */
     boolean tryLock(@Nonnull K key,
                     long time, @Nullable TimeUnit timeunit,
@@ -2163,11 +2316,11 @@ public interface IMap<K, V> extends ConcurrentMap<K, V>, BaseMap<K, V> {
      * <p>
      * This method is always executed by a distributed query,
      * so it may throw a {@link QueryResultSizeExceededException}
-     * if {@link GroupProperty#QUERY_RESULT_SIZE_LIMIT} is configured.
+     * if {@link ClusterProperty#QUERY_RESULT_SIZE_LIMIT} is configured.
      *
      * @return an immutable set clone of the keys contained in this map
      * @throws QueryResultSizeExceededException if query result size limit is exceeded
-     * @see GroupProperty#QUERY_RESULT_SIZE_LIMIT
+     * @see ClusterProperty#QUERY_RESULT_SIZE_LIMIT
      */
     @Nonnull
     Set<K> keySet();
@@ -2182,11 +2335,11 @@ public interface IMap<K, V> extends ConcurrentMap<K, V>, BaseMap<K, V> {
      * <p>
      * This method is always executed by a distributed query,
      * so it may throw a {@link QueryResultSizeExceededException}
-     * if {@link GroupProperty#QUERY_RESULT_SIZE_LIMIT} is configured.
+     * if {@link ClusterProperty#QUERY_RESULT_SIZE_LIMIT} is configured.
      *
      * @return an immutable collection clone of the values contained in this map
      * @throws QueryResultSizeExceededException if query result size limit is exceeded
-     * @see GroupProperty#QUERY_RESULT_SIZE_LIMIT
+     * @see ClusterProperty#QUERY_RESULT_SIZE_LIMIT
      */
     @Nonnull
     Collection<V> values();
@@ -2201,11 +2354,11 @@ public interface IMap<K, V> extends ConcurrentMap<K, V>, BaseMap<K, V> {
      * <p>
      * This method is always executed by a distributed query,
      * so it may throw a {@link QueryResultSizeExceededException}
-     * if {@link GroupProperty#QUERY_RESULT_SIZE_LIMIT} is configured.
+     * if {@link ClusterProperty#QUERY_RESULT_SIZE_LIMIT} is configured.
      *
      * @return an immutable set clone of the keys mappings in this map
      * @throws QueryResultSizeExceededException if query result size limit is exceeded
-     * @see GroupProperty#QUERY_RESULT_SIZE_LIMIT
+     * @see ClusterProperty#QUERY_RESULT_SIZE_LIMIT
      */
     @Nonnull
     Set<Map.Entry<K, V>> entrySet();
@@ -2223,13 +2376,13 @@ public interface IMap<K, V> extends ConcurrentMap<K, V>, BaseMap<K, V> {
      * <p>
      * This method is always executed by a distributed query,
      * so it may throw a {@link QueryResultSizeExceededException}
-     * if {@link GroupProperty#QUERY_RESULT_SIZE_LIMIT} is configured.
+     * if {@link ClusterProperty#QUERY_RESULT_SIZE_LIMIT} is configured.
      *
      * @param predicate specified query criteria
      * @return result key set of the query
      * @throws QueryResultSizeExceededException if query result size limit is exceeded
      * @throws NullPointerException             if the predicate is {@code null}
-     * @see GroupProperty#QUERY_RESULT_SIZE_LIMIT
+     * @see ClusterProperty#QUERY_RESULT_SIZE_LIMIT
      */
     Set<K> keySet(@Nonnull Predicate<K, V> predicate);
 
@@ -2245,13 +2398,13 @@ public interface IMap<K, V> extends ConcurrentMap<K, V>, BaseMap<K, V> {
      * <p>
      * This method is always executed by a distributed query,
      * so it may throw a {@link QueryResultSizeExceededException}
-     * if {@link GroupProperty#QUERY_RESULT_SIZE_LIMIT} is configured.
+     * if {@link ClusterProperty#QUERY_RESULT_SIZE_LIMIT} is configured.
      *
      * @param predicate specified query criteria
      * @return result entry set of the query
      * @throws QueryResultSizeExceededException if query result size limit is exceeded
      * @throws NullPointerException             if the predicate is {@code null}
-     * @see GroupProperty#QUERY_RESULT_SIZE_LIMIT
+     * @see ClusterProperty#QUERY_RESULT_SIZE_LIMIT
      */
     Set<Map.Entry<K, V>> entrySet(@Nonnull Predicate<K, V> predicate);
 
@@ -2268,13 +2421,13 @@ public interface IMap<K, V> extends ConcurrentMap<K, V>, BaseMap<K, V> {
      * <p>
      * This method is always executed by a distributed query,
      * so it may throw a {@link QueryResultSizeExceededException}
-     * if {@link GroupProperty#QUERY_RESULT_SIZE_LIMIT} is configured.
+     * if {@link ClusterProperty#QUERY_RESULT_SIZE_LIMIT} is configured.
      *
      * @param predicate specified query criteria
      * @return result value collection of the query
      * @throws QueryResultSizeExceededException if query result size limit is exceeded
      * @throws NullPointerException             if the predicate is {@code null}
-     * @see GroupProperty#QUERY_RESULT_SIZE_LIMIT
+     * @see ClusterProperty#QUERY_RESULT_SIZE_LIMIT
      */
     Collection<V> values(@Nonnull Predicate<K, V> predicate);
 
@@ -2295,11 +2448,11 @@ public interface IMap<K, V> extends ConcurrentMap<K, V>, BaseMap<K, V> {
      * <p>
      * This method is always executed by a distributed query,
      * so it may throw a {@link QueryResultSizeExceededException}
-     * if {@link GroupProperty#QUERY_RESULT_SIZE_LIMIT} is configured.
+     * if {@link ClusterProperty#QUERY_RESULT_SIZE_LIMIT} is configured.
      *
      * @return locally owned immutable set of keys
      * @throws QueryResultSizeExceededException if query result size limit is exceeded
-     * @see GroupProperty#QUERY_RESULT_SIZE_LIMIT
+     * @see ClusterProperty#QUERY_RESULT_SIZE_LIMIT
      */
     Set<K> localKeySet();
 
@@ -2320,12 +2473,12 @@ public interface IMap<K, V> extends ConcurrentMap<K, V>, BaseMap<K, V> {
      * <p>
      * This method is always executed by a distributed query,
      * so it may throw a {@link QueryResultSizeExceededException}
-     * if {@link GroupProperty#QUERY_RESULT_SIZE_LIMIT} is configured.
+     * if {@link ClusterProperty#QUERY_RESULT_SIZE_LIMIT} is configured.
      *
      * @param predicate specified query criteria
      * @return an immutable set of the keys of matching locally owned entries
      * @throws QueryResultSizeExceededException if query result size limit is exceeded
-     * @see GroupProperty#QUERY_RESULT_SIZE_LIMIT
+     * @see ClusterProperty#QUERY_RESULT_SIZE_LIMIT
      */
     Set<K> localKeySet(@Nonnull Predicate<K, V> predicate);
 
@@ -2473,6 +2626,7 @@ public interface IMap<K, V> extends ConcurrentMap<K, V>, BaseMap<K, V> {
      * if the write-behind queue has reached its per-node maximum
      * capacity.
      *
+     * @param <R> the entry processor return type
      * @return result of {@link EntryProcessor#process(Entry)}
      * @throws NullPointerException if the specified key is {@code null}
      * @see Offloadable
@@ -2531,6 +2685,7 @@ public interface IMap<K, V> extends ConcurrentMap<K, V>, BaseMap<K, V> {
      *
      * @param keys The keys to execute the entry processor on. Can be empty, in
      *             that case it's a local no-op
+     * @param <R>  the entry processor return type
      * @return results of {@link EntryProcessor#process(Entry)}
      * @throws NullPointerException if there's null element in {@code keys}
      */
@@ -2538,89 +2693,18 @@ public interface IMap<K, V> extends ConcurrentMap<K, V>, BaseMap<K, V> {
                                 @Nonnull EntryProcessor<K, V, R> entryProcessor);
 
     /**
-     * Applies the user defined {@code EntryProcessor} to the entry mapped by
-     * the {@code key} with specified {@link ExecutionCallback} to listen event
-     * status and returns immediately.
-     * <p>
-     * The {@code EntryProcessor} may implement the {@link Offloadable} and
-     * {@link ReadOnly} interfaces.
-     * <p>
-     * If the EntryProcessor implements the {@link Offloadable} interface the
-     * processing will be offloaded to the given ExecutorService allowing
-     * unblocking of the partition-thread, which means that other
-     * partition-operations may proceed. The key will be locked for the time-span
-     * of the processing in order to not generate a write-conflict.
-     * In this case the threading looks as follows:
-     * <ol>
-     * <li>partition-thread (fetch &amp; lock)</li>
-     * <li>execution-thread (process)</li>
-     * <li>partition-thread (set &amp; unlock, or just unlock if no changes)</li>
-     * </ol>
-     * If the EntryProcessor implements the Offloadable and ReadOnly interfaces
-     * the processing will be offloaded to the given ExecutorService allowing
-     * unblocking the partition-thread. Since the EntryProcessor is not supposed
-     * to do any changes to the Entry the key will NOT be locked for the time-span
-     * of the processing. In this case the threading looks as follows:
-     * <ol>
-     * <li>partition-thread (fetch &amp; lock)</li>
-     * <li>execution-thread (process)</li>
-     * </ol>
-     * In this case the {@link EntryProcessor#getBackupProcessor()} has to return
-     * {@code null}; otherwise an {@link IllegalArgumentException} exception is thrown.
-     * <p>
-     * If the EntryProcessor implements only {@link ReadOnly} without implementing
-     * {@link Offloadable} the processing unit will not be offloaded, however,
-     * the EntryProcessor will not wait for the lock to be acquired, since the EP
-     * will not do any modifications.
-     * <p>
-     * If the EntryProcessor implements ReadOnly and modifies the entry it is processing an UnsupportedOperationException
-     * will be thrown.
-     * <p>
-     * Using offloading is useful if the EntryProcessor encompasses heavy logic that may stall the partition-thread.
-     * <p>
-     * Offloading will not be applied to backup partitions. It is possible to initialize the entry backup processor
-     * with some input provided by the EntryProcessor in the EntryProcessor.getBackupProcessor() method.
-     * The input allows providing context to the entry backup processor - for example the "delta"
-     * so that the entry backup processor does not have to calculate the "delta" but it may just apply it.
-     * <p>
-     * See {@link #executeOnKey(Object, EntryProcessor)} for sync version of this method.
-     *
-     * <p><b>Interactions with the map store</b>
-     * <p>
-     * If value with {@code key} is not found in memory
-     * {@link MapLoader#load(Object)} is invoked to load the value from
-     * the map store backing the map.
-     * <p>
-     * If the entryProcessor updates the entry and write-through
-     * persistence mode is configured, before the value is stored
-     * in memory, {@link MapStore#store(Object, Object)} is called to
-     * write the value into the map store.
-     * <p>
-     * If the entryProcessor updates the entry's value to null value and
-     * write-through persistence mode is configured, before the value is
-     * removed from the memory, {@link MapStore#delete(Object)} is
-     * called to delete the value from the map store.
-     * <p>
-     * Any exception thrown by the map store fail the operation and are
-     * propagated to the provided callback via {@link
-     * ExecutionCallback#onFailure(Throwable)}.
-     * <p>
-     * If write-behind persistence mode is configured with
-     * write-coalescing turned off,
-     * {@link com.hazelcast.map.ReachedMaxSizeException} may be thrown
-     * if the write-behind queue has reached its per-node maximum
-     * capacity.
-     *
-     * @param key            key to be processed
-     * @param entryProcessor processor to process the key
-     * @param callback       to listen whether operation is finished or not
-     * @param <R>            return type for entry processor
-     * @see Offloadable
-     * @see ReadOnly
+     * Async version of {@link #executeOnKeys}.
+     * @param keys the keys to execute the entry processor on. Can be empty, in
+     *             that case it's a local no-op
+     * @param entryProcessor the processor to process the keys
+     * @param <R> return type for entry processor
+     * @return CompletionStage on which client code can block waiting for the
+     * operation to complete or register callbacks to be invoked
+     * upon set operation completion
+     * @see CompletionStage
      */
-    <R> void submitToKey(@Nonnull K key,
-                         @Nonnull EntryProcessor<K, V, R> entryProcessor,
-                         @Nullable ExecutionCallback<? super R> callback);
+    <R> CompletionStage<Map<K, R>> submitToKeys(@Nonnull Set<K> keys,
+                               @Nonnull EntryProcessor<K, V, R> entryProcessor);
 
     /**
      * Applies the user defined {@code EntryProcessor} to the entry mapped by the {@code key}.
@@ -2933,4 +3017,78 @@ public interface IMap<K, V> extends ConcurrentMap<K, V>, BaseMap<K, V> {
      * @since 3.11
      */
     boolean setTtl(@Nonnull K key, long ttl, @Nonnull TimeUnit timeunit);
+
+    /**
+     * {@inheritDoc}
+     *
+     * <p> </p>
+     * <p>
+     *     If the supplied {@code remappingFunction} is a lambda, anonymous class or an inner class,
+     *     it would be executed locally. Same would happen if it is not serializable.
+     *     This may result in multiple round-trips between hazelcast nodes, and possibly a livelock.
+     *</p>
+     * <p>
+     *     Otherwise (i.e. if it is a top-level class or a member class, and it is serializable), the function <i>may be</i> sent
+     *     to the server which owns the key. This results in a single remote call. Also, the function would have exclusive
+     *     access to the map entry during its execution.
+     *     Note that in this case, the function class must be deployed on all the servers (either physically
+     *     or via user-code-deployment).
+     * </p>
+     * <p>
+     *     When this method is invoked using a hazelcast-client instance, the {@code remappingFunction} is always executed locally
+     * </p>
+     *
+     * @since 4.1
+     */
+    V computeIfPresent(@Nonnull K key, @Nonnull BiFunction<? super K, ? super V, ? extends V> remappingFunction);
+
+    /**
+     * {@inheritDoc}
+     *
+     * <p> </p>
+     * <p>
+     *     If the supplied {@code mappingFunction} is a lambda, anonymous class or an inner class,
+     *     it would be executed locally. Same would happen if it is not serializable.
+     *     This may result in two round-trips between hazelcast nodes.
+     *</p>
+     * <p>
+     *     Otherwise (i.e. if it is a top-level class or a member class, and it is serializable), the function <i>may be</i> sent
+     *     to the server which owns the key. This results in a single remote call. Also, the function would have exclusive
+     *     access to the map entry during its execution.
+     *     Note that in this case, the function class must be deployed on all the servers (either physically
+     *     or via user-code-deployment).
+     * </p>
+     * <p>
+     *     When this method is invoked using a hazelcast-client instance, the {@code mappingFunction} is always executed locally
+     * </p>
+     *
+     * @since 4.1
+     */
+    V computeIfAbsent(@Nonnull K key, @Nonnull Function<? super K, ? extends V> mappingFunction);
+
+    /**
+     * {@inheritDoc}
+     *
+     * <p> </p>
+     * <p>
+     *     If the supplied {@code action} is a lambda, anonymous class or an inner class,
+     *     it would be executed locally. Same would happen if it is not serializable.
+     *     This may result in multiple round-trips between hazelcast nodes, as all map entries
+     *     will need to be pulled into the local node
+     *</p>
+     * <p>
+     *     Otherwise (i.e. if it is a top-level class or a member class, and it is serializable), the function <i>may be</i> sent
+     *     to the servers which own the partitions/keys. This results in a much less number of remote calls.
+     *     Note that in this case, side effects of the {@code action} may not be visible to the local JVM.
+     *     If users intend to install the changed value in the map entry, the {@link IMap#executeOnEntries(EntryProcessor)}
+     *     method can be used instead
+     * </p>
+     * <p>
+     *     When this method is invoked using a hazelcast-client instance, the {@code action} is always executed locally
+     * </p>
+     */
+    default void forEach(@Nonnull BiConsumer<? super K, ? super V> action) {
+        ConcurrentMap.super.forEach(action);
+    }
+
 }

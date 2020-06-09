@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2008-2019, Hazelcast, Inc. All Rights Reserved.
+ * Copyright (c) 2008-2020, Hazelcast, Inc. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -24,10 +24,10 @@ import com.hazelcast.config.ItemListenerConfig;
 import com.hazelcast.config.ListenerConfig;
 import com.hazelcast.config.MapPartitionLostListenerConfig;
 import com.hazelcast.config.SplitBrainProtectionListenerConfig;
-import com.hazelcast.core.EntryListener;
 import com.hazelcast.internal.serialization.SerializationService;
+import com.hazelcast.map.listener.MapListener;
 import com.hazelcast.map.listener.MapPartitionLostListener;
-import com.hazelcast.nio.serialization.Data;
+import com.hazelcast.internal.serialization.Data;
 import com.hazelcast.nio.serialization.HazelcastSerializationException;
 import com.hazelcast.splitbrainprotection.SplitBrainProtectionListener;
 
@@ -122,7 +122,7 @@ public class ListenerConfigHolder {
                     listenerConfig = new ItemListenerConfig((ItemListener) eventListener, includeValue);
                     break;
                 case TYPE_ENTRY_LISTENER_CONFIG:
-                    listenerConfig = new EntryListenerConfig((EntryListener) eventListener, local, includeValue);
+                    listenerConfig = new EntryListenerConfig((MapListener) eventListener, local, includeValue);
                     break;
                 case TYPE_SPLIT_BRAIN_PROTECTION_LISTENER_CONFIG:
                     listenerConfig = new SplitBrainProtectionListenerConfig((SplitBrainProtectionListener) eventListener);

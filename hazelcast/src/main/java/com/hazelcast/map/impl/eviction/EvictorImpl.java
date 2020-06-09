@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2008-2019, Hazelcast, Inc. All Rights Reserved.
+ * Copyright (c) 2008-2020, Hazelcast, Inc. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -24,7 +24,7 @@ import com.hazelcast.map.impl.record.Record;
 import com.hazelcast.map.impl.recordstore.LazyEvictableEntryView;
 import com.hazelcast.map.impl.recordstore.RecordStore;
 import com.hazelcast.map.impl.recordstore.Storage;
-import com.hazelcast.nio.serialization.Data;
+import com.hazelcast.internal.serialization.Data;
 import com.hazelcast.spi.eviction.EvictionPolicyComparator;
 
 import static com.hazelcast.internal.util.Preconditions.checkNotNull;
@@ -65,7 +65,7 @@ public class EvictorImpl implements Evictor {
     }
 
     @Override
-    public void forceEvict(RecordStore recordStore) {
+    public void forceEvictByPercentage(RecordStore recordStore, double evictionPercentage) {
         // NOP.
     }
 
@@ -76,7 +76,7 @@ public class EvictorImpl implements Evictor {
 
         for (EntryView current : getRandomSamples(recordStore)) {
             if (excludedKey != null && excluded == null
-                    && getDataKey(current).equals(excludedKey)) {
+                    && getDataKeyFromEntryView(current).equals(excludedKey)) {
                 excluded = current;
                 continue;
             }
@@ -90,23 +90,19 @@ public class EvictorImpl implements Evictor {
         return selected == null ? excluded : selected;
     }
 
-    private Data getDataKey(EntryView evictable) {
-        return getRecordFromEntryView(evictable).getKey();
-    }
+    private void evictEntry(RecordStore recordStore, EntryView selectedEntry) {
+        Record record = getRecordFromEntryView(selectedEntry);
+        Data dataKey = getDataKeyFromEntryView(selectedEntry);
 
-    private void evictEntry(RecordStore recordStore, EntryView evictable) {
-        Record record = getRecordFromEntryView(evictable);
-        Data key = record.getKey();
-
-        if (recordStore.isLocked(record.getKey())) {
+        if (recordStore.isLocked(dataKey)) {
             return;
         }
 
         boolean backup = isBackup(recordStore);
-        recordStore.evict(key, backup);
+        recordStore.evict(dataKey, backup);
 
         if (!backup) {
-            recordStore.doPostEvictionOperations(record);
+            recordStore.doPostEvictionOperations(dataKey, record);
         }
     }
 
@@ -117,9 +113,14 @@ public class EvictorImpl implements Evictor {
         return evictionChecker.checkEvictable(recordStore);
     }
 
-    // this method is overridden in another context.
+    // Overridden by EE code
     protected Record getRecordFromEntryView(EntryView evictableEntryView) {
         return ((LazyEvictableEntryView) evictableEntryView).getRecord();
+    }
+
+    // Overridden by EE code
+    protected Data getDataKeyFromEntryView(EntryView selectedEntry) {
+        return ((LazyEvictableEntryView) selectedEntry).getDataKey();
     }
 
     protected boolean isBackup(RecordStore recordStore) {

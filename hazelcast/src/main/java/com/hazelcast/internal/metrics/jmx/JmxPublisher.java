@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2008-2019, Hazelcast, Inc. All Rights Reserved.
+ * Copyright (c) 2008-2020, Hazelcast, Inc. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,7 +16,6 @@
 
 package com.hazelcast.internal.metrics.jmx;
 
-import com.hazelcast.config.MetricsConfig;
 import com.hazelcast.internal.metrics.MetricDescriptor;
 import com.hazelcast.internal.metrics.MetricsPublisher;
 import com.hazelcast.internal.metrics.ProbeUnit;
@@ -35,6 +34,8 @@ import java.util.function.Function;
 
 import static com.hazelcast.internal.metrics.MetricTarget.JMX;
 import static com.hazelcast.internal.metrics.impl.DefaultMetricDescriptorSupplier.DEFAULT_DESCRIPTOR_SUPPLIER;
+import static com.hazelcast.internal.metrics.jmx.MetricsMBean.Type.DOUBLE;
+import static com.hazelcast.internal.metrics.jmx.MetricsMBean.Type.LONG;
 
 /**
  * Renderer to create, register and unregister mBeans for metrics as they are
@@ -44,6 +45,7 @@ public class JmxPublisher implements MetricsPublisher {
 
     private final MBeanServer platformMBeanServer;
     private final String instanceNameEscaped;
+    private final String domainPrefix;
 
     /**
      * key: metric name, value: MetricData
@@ -59,6 +61,7 @@ public class JmxPublisher implements MetricsPublisher {
     private final Function<? super ObjectName, ? extends MetricsMBean> createMBeanFunction;
 
     public JmxPublisher(String instanceName, String domainPrefix) {
+        this.domainPrefix = domainPrefix;
         platformMBeanServer = ManagementFactory.getPlatformMBeanServer();
         instanceNameEscaped = escapeObjectNameValue(instanceName);
         createMetricDataFunction = n -> new MetricData(n, instanceNameEscaped, domainPrefix);
@@ -80,30 +83,36 @@ public class JmxPublisher implements MetricsPublisher {
 
     @Override
     public void publishLong(MetricDescriptor descriptor, long value) {
-        publishNumber(descriptor, value);
+        publishNumber(descriptor, value, LONG);
     }
 
     @Override
     public void publishDouble(MetricDescriptor descriptor, double value) {
-        publishNumber(descriptor, value);
+        publishNumber(descriptor, value, DOUBLE);
     }
 
-    private void publishNumber(MetricDescriptor originalDescriptor, Number value) {
+    private void publishNumber(MetricDescriptor originalDescriptor, Number value, MetricsMBean.Type type) {
         if (originalDescriptor.isTargetExcluded(JMX)) {
             return;
         }
 
-        // we need to take a copy of originalDescriptor here to ensure
-        // we map with an instance that doesn't get recycled or mutated
-        MetricDescriptor descriptor = copy(originalDescriptor);
-        MetricData metricData = metricNameToMetricData.computeIfAbsent(descriptor, createMetricDataFunction);
+        final MetricData metricData;
+        if (!metricNameToMetricData.containsKey(originalDescriptor)) {
+            // we need to take a copy of originalDescriptor here to ensure
+            // we map with an instance that doesn't get recycled or mutated
+            MetricDescriptor descriptor = copy(originalDescriptor);
+            metricData = metricNameToMetricData.computeIfAbsent(descriptor, createMetricDataFunction);
+        } else {
+            metricData = metricNameToMetricData.get(originalDescriptor);
+        }
+
         assert !metricData.wasPresent : "metric '" + originalDescriptor.toString() + "' was rendered twice";
         metricData.wasPresent = true;
         MetricsMBean mBean = mBeans.computeIfAbsent(metricData.objectName, createMBeanFunction);
         if (isShutdown) {
             unregisterMBeanIgnoreError(metricData.objectName);
         }
-        mBean.setMetricValue(metricData.metric, metricData.unit, value);
+        mBean.setMetricValue(metricData.metric, metricData.unit, value, type);
     }
 
     private MetricDescriptor copy(MetricDescriptor descriptor) {
@@ -169,7 +178,7 @@ public class JmxPublisher implements MetricsPublisher {
         boolean wasPresent;
 
         /**
-         * See {@link MetricsConfig#setJmxEnabled(boolean)}.
+         * See {@link com.hazelcast.config.MetricsJmxConfig#setEnabled(boolean)}.
          */
         @SuppressWarnings({"checkstyle:ExecutableStatementCount", "checkstyle:NPathComplexity",
                            "checkstyle:CyclomaticComplexity"})
@@ -238,15 +247,16 @@ public class JmxPublisher implements MetricsPublisher {
     @Override
     public void shutdown() {
         isShutdown = true;
-        ObjectName name;
         try {
-            name = new ObjectName("com.hazelcast*" + ":instance=" + instanceNameEscaped + ",type=Metrics,*");
+            // unregister the MBeans registered by this JmxPublisher
+            // the mBeans map can't be used since it is not thread-safe
+            // and is meant to be used by the publisher thread only
+            ObjectName name = new ObjectName(domainPrefix + "*" + ":instance=" + instanceNameEscaped + ",type=Metrics,*");
+            for (ObjectName bean : platformMBeanServer.queryNames(name, null)) {
+                unregisterMBeanIgnoreError(bean);
+            }
         } catch (MalformedObjectNameException e) {
             throw new RuntimeException("Exception when unregistering JMX beans", e);
-        }
-
-        for (ObjectName bean : platformMBeanServer.queryNames(name, null)) {
-            unregisterMBeanIgnoreError(bean);
         }
     }
 }

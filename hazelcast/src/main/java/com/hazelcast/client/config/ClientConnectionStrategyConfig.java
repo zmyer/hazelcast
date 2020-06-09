@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2008-2019, Hazelcast, Inc. All Rights Reserved.
+ * Copyright (c) 2008-2020, Hazelcast, Inc. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -92,7 +92,7 @@ public class ClientConnectionStrategyConfig {
      * custom implementations may ignore it if configured.
      * default value is {@link ReconnectMode#ON}
      *
-     * @param reconnectMode
+     * @param reconnectMode the reconnect mode
      * @return the updated ClientConnectionStrategyConfig
      */
     public ClientConnectionStrategyConfig setReconnectMode(ReconnectMode reconnectMode) {
@@ -114,7 +114,7 @@ public class ClientConnectionStrategyConfig {
      * Connection Retry Config is controls the period among the retries and when should a client gave up
      * retrying. Exponential behaviour can be chosen or jitter can be added to wait periods.
      *
-     * @param connectionRetryConfig
+     * @param connectionRetryConfig the connection retry config
      * @return the updated ClientConnectionStrategyConfig
      */
     public ClientConnectionStrategyConfig setConnectionRetryConfig(ConnectionRetryConfig connectionRetryConfig) {

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2008-2019, Hazelcast, Inc. All Rights Reserved.
+ * Copyright (c) 2008-2020, Hazelcast, Inc. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -23,23 +23,24 @@ import com.hazelcast.internal.nio.Connection;
 import com.hazelcast.spi.impl.proxyservice.impl.ProxyServiceImpl;
 
 import java.security.Permission;
-import java.util.UUID;
 
 public class RemoveDistributedObjectListenerMessageTask
-        extends AbstractRemoveListenerMessageTask<ClientRemoveDistributedObjectListenerCodec.RequestParameters> {
+        extends AbstractCallableMessageTask<ClientRemoveDistributedObjectListenerCodec.RequestParameters> {
 
     public RemoveDistributedObjectListenerMessageTask(ClientMessage clientMessage, Node node, Connection connection) {
         super(clientMessage, node, connection);
     }
 
     @Override
-    protected boolean deRegisterListener() {
+    protected Object call()
+            throws Exception {
+        endpoint.removeDestroyAction(parameters.registrationId);
         return clientEngine.getProxyService().removeProxyListener(parameters.registrationId);
     }
 
     @Override
-    protected UUID getRegistrationId() {
-        return parameters.registrationId;
+    public Object[] getParameters() {
+        return new Object[]{parameters.registrationId};
     }
 
     @Override

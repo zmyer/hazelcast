@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2008-2019, Hazelcast, Inc. All Rights Reserved.
+ * Copyright (c) 2008-2020, Hazelcast, Inc. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -31,6 +31,8 @@ import com.hazelcast.config.IndexType;
 import com.hazelcast.config.InvalidConfigurationException;
 import com.hazelcast.config.JavaSerializationFilterConfig;
 import com.hazelcast.config.ListenerConfig;
+import com.hazelcast.config.LoginModuleConfig;
+import com.hazelcast.config.LoginModuleConfig.LoginModuleUsage;
 import com.hazelcast.config.MaxSizePolicy;
 import com.hazelcast.config.NearCacheConfig;
 import com.hazelcast.config.QueryCacheConfig;
@@ -39,6 +41,8 @@ import com.hazelcast.config.SerializationConfig;
 import com.hazelcast.config.SerializerConfig;
 import com.hazelcast.config.SocketInterceptorConfig;
 import com.hazelcast.config.XMLConfigBuilderTest;
+import com.hazelcast.config.security.JaasAuthenticationConfig;
+import com.hazelcast.config.security.RealmConfig;
 import com.hazelcast.core.HazelcastException;
 import com.hazelcast.test.HazelcastTestSupport;
 import com.hazelcast.topic.TopicOverloadPolicy;
@@ -281,7 +285,7 @@ public abstract class AbstractClientConfigBuilderTest extends HazelcastTestSuppo
     public void testExponentialConnectionRetryConfig() {
         ClientConnectionStrategyConfig connectionStrategyConfig = fullClientConfig.getConnectionStrategyConfig();
         ConnectionRetryConfig exponentialRetryConfig = connectionStrategyConfig.getConnectionRetryConfig();
-        assertFalse(exponentialRetryConfig.isFailOnMaxBackoff());
+        assertEquals(5000, exponentialRetryConfig.getClusterConnectTimeoutMillis());
         assertEquals(0.5, exponentialRetryConfig.getJitter(), 0);
         assertEquals(2000, exponentialRetryConfig.getInitialBackoffMillis());
         assertEquals(60000, exponentialRetryConfig.getMaxBackoffMillis());
@@ -292,22 +296,20 @@ public abstract class AbstractClientConfigBuilderTest extends HazelcastTestSuppo
     public void testExponentialConnectionRetryConfig_defaults() {
         ClientConnectionStrategyConfig connectionStrategyConfig = defaultClientConfig.getConnectionStrategyConfig();
         ConnectionRetryConfig exponentialRetryConfig = connectionStrategyConfig.getConnectionRetryConfig();
-        assertTrue(exponentialRetryConfig.isFailOnMaxBackoff());
-        assertEquals(0.2, exponentialRetryConfig.getJitter(), 0);
+        assertEquals(20000, exponentialRetryConfig.getClusterConnectTimeoutMillis());
+        assertEquals(0, exponentialRetryConfig.getJitter(), 0);
         assertEquals(1000, exponentialRetryConfig.getInitialBackoffMillis());
         assertEquals(30000, exponentialRetryConfig.getMaxBackoffMillis());
-        assertEquals(2, exponentialRetryConfig.getMultiplier(), 0);
+        assertEquals(1, exponentialRetryConfig.getMultiplier(), 0);
     }
 
     @Test
     public void testLeftovers() {
-        assertEquals(40, fullClientConfig.getExecutorPoolSize());
         assertEquals("com.hazelcast.client.util.RandomLB", fullClientConfig.getLoadBalancer().getClass().getName());
 
         final List<ListenerConfig> listenerConfigs = fullClientConfig.getListenerConfigs();
-        assertEquals(3, listenerConfigs.size());
+        assertEquals(2, listenerConfigs.size());
         assertContains(listenerConfigs, new ListenerConfig("com.hazelcast.examples.MembershipListener"));
-        assertContains(listenerConfigs, new ListenerConfig("com.hazelcast.examples.InstanceListener"));
         assertContains(listenerConfigs, new ListenerConfig("com.hazelcast.examples.MigrationListener"));
     }
 
@@ -375,7 +377,7 @@ public abstract class AbstractClientConfigBuilderTest extends HazelcastTestSuppo
 
     @Test
     public void testClusterName() {
-        assertEquals("dev", fullClientConfig.getClusterName());
+        assertEquals("my-cluster", fullClientConfig.getClusterName());
     }
 
     @Test
@@ -405,6 +407,17 @@ public abstract class AbstractClientConfigBuilderTest extends HazelcastTestSuppo
         assertEquals("com.hazelcast.examples.MyCredentialsFactory", credentialsFactoryConfig.getClassName());
         Properties properties = credentialsFactoryConfig.getProperties();
         assertEquals("value", properties.getProperty("property"));
+        RealmConfig realmConfig = securityConfig.getRealmConfig("krb5Initiator");
+        assertNotNull(realmConfig);
+        JaasAuthenticationConfig jaasConf = realmConfig.getJaasAuthenticationConfig();
+        assertNotNull(jaasConf);
+        List<LoginModuleConfig> loginModuleConfigs = jaasConf.getLoginModuleConfigs();
+        assertNotNull(loginModuleConfigs);
+        assertEquals(1, loginModuleConfigs.size());
+        LoginModuleConfig loginModuleConfig = loginModuleConfigs.get(0);
+        assertEquals("com.sun.security.auth.module.Krb5LoginModule", loginModuleConfig.getClassName());
+        assertEquals(LoginModuleUsage.REQUIRED, loginModuleConfig.getUsage());
+        assertEquals("jduke@HAZELCAST.COM", loginModuleConfig.getProperties().get("principal"));
     }
 
     @Test(expected = HazelcastException.class)
@@ -457,4 +470,17 @@ public abstract class AbstractClientConfigBuilderTest extends HazelcastTestSuppo
 
     @Test
     public abstract void testTokenIdentityConfig();
+
+    @Test
+    public abstract void testKerberosIdentityConfig();
+
+    @Test
+    public abstract void testMetricsConfig();
+
+    @Test
+    public abstract void testMetricsConfigMasterSwitchDisabled();
+
+    @Test
+    public abstract void testMetricsConfigJmxDisabled();
+
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2008-2019, Hazelcast, Inc. All Rights Reserved.
+ * Copyright (c) 2008-2020, Hazelcast, Inc. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,14 +16,20 @@
 
 package com.hazelcast.internal.monitor.impl;
 
-import com.hazelcast.internal.metrics.Probe;
-import com.hazelcast.internal.json.JsonObject;
 import com.hazelcast.executor.LocalExecutorStats;
+import com.hazelcast.internal.metrics.Probe;
 import com.hazelcast.internal.util.Clock;
 
 import java.util.concurrent.atomic.AtomicLongFieldUpdater;
 
-import static com.hazelcast.internal.util.JsonUtil.getLong;
+import static com.hazelcast.internal.metrics.MetricDescriptorConstants.EXECUTOR_METRIC_CANCELLED;
+import static com.hazelcast.internal.metrics.MetricDescriptorConstants.EXECUTOR_METRIC_COMPLETED;
+import static com.hazelcast.internal.metrics.MetricDescriptorConstants.EXECUTOR_METRIC_CREATION_TIME;
+import static com.hazelcast.internal.metrics.MetricDescriptorConstants.EXECUTOR_METRIC_PENDING;
+import static com.hazelcast.internal.metrics.MetricDescriptorConstants.EXECUTOR_METRIC_STARTED;
+import static com.hazelcast.internal.metrics.MetricDescriptorConstants.EXECUTOR_METRIC_TOTAL_EXECUTION_TIME;
+import static com.hazelcast.internal.metrics.MetricDescriptorConstants.EXECUTOR_METRIC_TOTAL_START_LATENCY;
+import static com.hazelcast.internal.metrics.ProbeUnit.MS;
 
 public class LocalExecutorStatsImpl implements LocalExecutorStats {
 
@@ -39,20 +45,22 @@ public class LocalExecutorStatsImpl implements LocalExecutorStats {
             .newUpdater(LocalExecutorStatsImpl.class, "totalStartLatency");
     private static final AtomicLongFieldUpdater<LocalExecutorStatsImpl> TOTAL_EXECUTION_TIME = AtomicLongFieldUpdater
             .newUpdater(LocalExecutorStatsImpl.class, "totalExecutionTime");
-    private long creationTime;
+
+    @Probe(name = EXECUTOR_METRIC_CREATION_TIME, unit = MS)
+    private final long creationTime;
 
     // These fields are only accessed through the updaters
-    @Probe
+    @Probe(name = EXECUTOR_METRIC_PENDING)
     private volatile long pending;
-    @Probe
+    @Probe(name = EXECUTOR_METRIC_STARTED)
     private volatile long started;
-    @Probe
+    @Probe(name = EXECUTOR_METRIC_COMPLETED)
     private volatile long completed;
-    @Probe
+    @Probe(name = EXECUTOR_METRIC_CANCELLED)
     private volatile long cancelled;
-    @Probe
+    @Probe(name = EXECUTOR_METRIC_TOTAL_START_LATENCY, unit = MS)
     private volatile long totalStartLatency;
-    @Probe
+    @Probe(name = EXECUTOR_METRIC_TOTAL_EXECUTION_TIME, unit = MS)
     private volatile long totalExecutionTime;
 
     public LocalExecutorStatsImpl() {
@@ -115,30 +123,6 @@ public class LocalExecutorStatsImpl implements LocalExecutorStats {
     @Override
     public long getTotalExecutionLatency() {
         return totalExecutionTime;
-    }
-
-    @Override
-    public JsonObject toJson() {
-        JsonObject root = new JsonObject();
-        root.add("creationTime", creationTime);
-        root.add("pending", pending);
-        root.add("started", started);
-        root.add("completed", completed);
-        root.add("cancelled", cancelled);
-        root.add("totalStartLatency", totalStartLatency);
-        root.add("totalExecutionTime", totalExecutionTime);
-        return root;
-    }
-
-    @Override
-    public void fromJson(JsonObject json) {
-        creationTime = getLong(json, "creationTime", -1L);
-        PENDING.set(this, getLong(json, "pending", -1L));
-        STARTED.set(this, getLong(json, "started", -1L));
-        COMPLETED.set(this, getLong(json, "completed", -1L));
-        CANCELLED.set(this, getLong(json, "cancelled", -1L));
-        TOTAL_START_LATENCY.set(this, getLong(json, "totalStartLatency", -1L));
-        TOTAL_EXECUTION_TIME.set(this, getLong(json, "totalExecutionTime", -1L));
     }
 
     @Override

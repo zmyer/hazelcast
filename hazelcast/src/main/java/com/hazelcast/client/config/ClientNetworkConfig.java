@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2008-2019, Hazelcast, Inc. All Rights Reserved.
+ * Copyright (c) 2008-2020, Hazelcast, Inc. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -226,7 +226,7 @@ public class ClientNetworkConfig {
      * This can be because of network, or simply because the member died. However it is not clear whether the
      * application is performed or not. For idempotent operations this is harmless, but for non idempotent ones
      * retrying can cause to undesirable effects. Note that the redo can perform on any member.
-     * <p/>
+     * <p>
      * If false, the operation will throw {@link RuntimeException} that is wrapping {@link java.io.IOException}.
      * TODO clear what is the exception here
      *
