@@ -42,6 +42,7 @@ import com.hazelcast.internal.nio.Connection;
 import com.hazelcast.internal.nio.ConnectionListener;
 import com.hazelcast.internal.services.ManagedService;
 import com.hazelcast.internal.services.TransactionalService;
+import com.hazelcast.internal.util.Timer;
 import com.hazelcast.internal.util.UuidUtil;
 import com.hazelcast.internal.util.executor.ExecutorType;
 import com.hazelcast.logging.ILogger;
@@ -86,7 +87,6 @@ import static com.hazelcast.internal.util.Preconditions.checkNotNull;
 import static com.hazelcast.internal.util.Preconditions.checkTrue;
 import static java.lang.String.format;
 
-//FGTODO: 2019/11/22 下午3:58 zmyer
 @SuppressWarnings({"checkstyle:methodcount", "checkstyle:classdataabstractioncoupling", "checkstyle:classfanoutcomplexity"})
 public class ClusterServiceImpl implements ClusterService, ConnectionListener, ManagedService,
         EventPublishingService<MembershipEvent, MembershipListener>, TransactionalService {
@@ -877,10 +877,10 @@ public class ClusterServiceImpl implements ClusterService, ConnectionListener, M
         }
 
         long timeoutNanos = node.getProperties().getNanos(ClusterProperty.CLUSTER_SHUTDOWN_TIMEOUT_SECONDS);
-        long startNanos = System.nanoTime();
+        long startNanos = Timer.nanos();
         node.getNodeExtension().getInternalHotRestartService()
-                .waitPartitionReplicaSyncOnCluster(timeoutNanos, TimeUnit.NANOSECONDS);
-        timeoutNanos -= (System.nanoTime() - startNanos);
+            .waitPartitionReplicaSyncOnCluster(timeoutNanos, TimeUnit.NANOSECONDS);
+        timeoutNanos -= (Timer.nanosElapsed(startNanos));
 
         if (node.config.getCPSubsystemConfig().getCPMemberCount() == 0) {
             shutdownNodesConcurrently(timeoutNanos);
@@ -892,11 +892,11 @@ public class ClusterServiceImpl implements ClusterService, ConnectionListener, M
     private void shutdownNodesConcurrently(final long timeoutNanos) {
         Operation op = new ShutdownNodeOp();
         Collection<Member> members = getMembers(NON_LOCAL_MEMBER_SELECTOR);
-        long startTime = System.nanoTime();
+        long startTimeNanos = Timer.nanos();
 
         logger.info("Sending shut down operations to all members...");
 
-        while ((System.nanoTime() - startTime) < timeoutNanos && !members.isEmpty()) {
+        while (Timer.nanosElapsed(startTimeNanos) < timeoutNanos && !members.isEmpty()) {
             for (Member member : members) {
                 nodeEngine.getOperationService().send(op, member.getAddress());
             }
@@ -920,12 +920,12 @@ public class ClusterServiceImpl implements ClusterService, ConnectionListener, M
 
     private void shutdownNodesSerially(final long timeoutNanos) {
         Operation op = new ShutdownNodeOp();
-        long startTime = System.nanoTime();
+        long startTimeNanos = Timer.nanos();
         Collection<Member> members = getMembers(NON_LOCAL_MEMBER_SELECTOR);
 
         logger.info("Sending shut down operations to other members one by one...");
 
-        while ((System.nanoTime() - startTime) < timeoutNanos && !members.isEmpty()) {
+        while (Timer.nanosElapsed(startTimeNanos) < timeoutNanos && !members.isEmpty()) {
             Member member = members.iterator().next();
             nodeEngine.getOperationService().send(op, member.getAddress());
             members = getMembers(NON_LOCAL_MEMBER_SELECTOR);
