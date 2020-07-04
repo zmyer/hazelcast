@@ -177,6 +177,8 @@ public class Config {
 
     private CPSubsystemConfig cpSubsystemConfig = new CPSubsystemConfig();
 
+    private SqlConfig sqlConfig = new SqlConfig();
+
     private MetricsConfig metricsConfig = new MetricsConfig();
 
     public Config() {
@@ -2632,6 +2634,24 @@ public class Config {
     }
 
     /**
+     * @return Return SQL config.
+     */
+    @Nonnull
+    public SqlConfig getSqlConfig() {
+        return sqlConfig;
+    }
+
+    /**
+     * Sets SQL config.
+     */
+    @Nonnull
+    public Config setSqlConfig(@Nonnull SqlConfig sqlConfig) {
+        Preconditions.checkNotNull(sqlConfig, "sqlConfig");
+        this.sqlConfig = sqlConfig;
+        return this;
+    }
+
+    /**
      * Returns the configuration for the user services managed by this
      * hazelcast instance.
      *
@@ -2687,6 +2707,7 @@ public class Config {
                 + ", crdtReplicationConfig=" + crdtReplicationConfig
                 + ", liteMember=" + liteMember
                 + ", cpSubsystemConfig=" + cpSubsystemConfig
+                + ", sqlConfig=" + sqlConfig
                 + ", metricsConfig=" + metricsConfig
                 + '}';
     }
